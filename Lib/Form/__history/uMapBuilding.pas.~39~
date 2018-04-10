@@ -1,0 +1,315 @@
+unit uMapBuilding;
+
+
+interface
+uses
+  System.Classes,System.SysUtils,Vcl.Controls,Vcl.StdCtrls,Vcl.Graphics,JvGIFCtrl,Winapi.Windows,
+  uDeviceVariable,Vcl.ExtCtrls,Vcl.ExtCtrls,Vcl.Imaging.GIFImg;
+
+type
+  TDblClick = procedure(Sender:TObject;BuildingCode,BuildingName:string) of object;
+
+  TMapBuilding = Class(TComponent)
+  public
+    constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
+  private
+    MouseDowning : Boolean;
+    DragOrigin : TPoint;
+    procedure ImageDblClick(Sender: TObject);
+    procedure ImageMouseDown(Sender: TObject; Button: TMouseButton;
+      Shift: TShiftState; X, Y: Integer);
+    procedure ImageMouseMove(Sender: TObject; Shift: TShiftState; X,
+      Y: Integer);
+    procedure ImageMouseUp(Sender: TObject; Button: TMouseButton;
+      Shift: TShiftState; X, Y: Integer);
+  private
+    BuildingImage : TImage;
+    BuildingNameText: TEdit;
+    FParent: TWinControl;
+    FHeight: integer;
+    FWidth: integer;
+    FLeft: integer;
+    FTop: integer;
+    FImageFile: string;
+    FAnimate: Boolean;
+    FBuildingName: string;
+    FBuildingCode: string;
+    FOnDblClick: TDblClick;
+    FDblClickOn: Boolean;
+    FNameVisible: Boolean;
+    FCurX: integer;
+    FCurY: integer;
+    FTotW: integer;
+    FTotH: integer;
+    FDragOn: Boolean;
+    FParentImageHeight: integer;
+    FParentImageWidth: integer;
+    FImageArmFile: string;
+    FImageDisArmFile: string;
+    FImageArmEventFile: string;
+    FWatchMode: TWatchMode;
+    FAlarmEvent: TAlarmEventState;
+    FImageNomalEventFile: string;
+    FStretch: Boolean;
+    procedure SetParent(const Value: TWinControl);
+    procedure SetHeight(const Value: integer);
+    procedure SetWidth(const Value: integer);
+    procedure SetLeft(const Value: integer);
+    procedure SetTop(const Value: integer);
+    procedure SetImageFile(const Value: string);
+    procedure SetAnimate(const Value: Boolean);
+    procedure SetBuildingName(const Value: string);
+    procedure SetBuildingCode(const Value: string);
+    procedure SetNameVisible(const Value: Boolean);
+    procedure SetWatchMode(const Value: TWatchMode);
+    procedure SetAlarmEvent(const Value: TAlarmEventState);
+    procedure SetStretch(const Value: Boolean);
+  public
+    property AlarmEvent : TAlarmEventState read FAlarmEvent write SetAlarmEvent;
+    property Animate : Boolean read FAnimate write SetAnimate;
+    property BuildingCode :string read FBuildingCode write SetBuildingCode;
+    property BuildingName :string read FBuildingName write SetBuildingName;
+    property CurX: integer read FCurX write FCurX;
+    property CurY: integer read FCurY write FCurY;
+    property TotH: integer read FTotH write FTotH;
+    property TotW: integer read FTotW write FTotW;
+    property DblClickOn : Boolean read FDblClickOn write FDblClickOn;
+    property DragOn : Boolean read FDragOn write FDragOn;
+    property Height: integer read FHeight write SetHeight;
+    property Left: integer read FLeft write SetLeft;
+    property ImageFile : string read FImageFile write SetImageFile;
+    property ImageArmEventFile : string read FImageArmEventFile write FImageArmEventFile;
+    property ImageArmFile : string read FImageArmFile write FImageArmFile;
+    property ImageDisArmFile : string read FImageDisArmFile write FImageDisArmFile;
+    property ImageNomalEventFile : string read FImageNomalEventFile write FImageNomalEventFile;
+    property NameVisible : Boolean read FNameVisible write SetNameVisible;
+    property Parent: TWinControl read FParent write SetParent;
+    property ParentImageHeight: integer read FParentImageHeight write FParentImageHeight;
+    property ParentImageWidth: integer read FParentImageWidth write FParentImageWidth;
+    property Stretch:Boolean read FStretch write SetStretch;
+    property Top: integer read FTop write SetTop;
+    property WatchMode : TWatchMode read FWatchMode write SetWatchMode;
+    property Width: integer read FWidth write SetWidth;
+  public
+    property OnDblClick : TDblClick read FOnDblClick write FOnDblClick;
+  end;
+implementation
+
+{ TMapBuilding }
+
+constructor TMapBuilding.Create(AOwner: TComponent);
+begin
+  inherited;
+  BuildingImage := TImage.Create(nil);
+  BuildingImage.Visible := True;
+  BuildingImage.ShowHint := True;
+  BuildingImage.OnDblClick := ImageDblClick;
+  BuildingImage.OnMouseDown := ImageMouseDown;
+  BuildingImage.OnMouseMove := ImageMouseMove;
+  BuildingImage.OnMouseUp := ImageMouseUp;
+  BuildingNameText:= TEdit.Create(nil);
+  BuildingNameText.Alignment := taLeftJustify;
+  BuildingNameText.AutoSize := False;
+  BuildingNameText.Width := 100;
+  BuildingNameText.BevelKind := bkFlat;
+  BuildingNameText.Color := clYellow;
+  BuildingNameText.Visible := False;
+  BuildingNameText.ReadOnly := True;
+end;
+
+destructor TMapBuilding.Destroy;
+begin
+  BuildingImage.Free;
+  inherited;
+end;
+
+procedure TMapBuilding.ImageDblClick(Sender: TObject);
+begin
+  if Not DblClickOn then Exit;
+  if Assigned(FOnDblClick) then
+  begin
+    OnDblClick(self,BuildingCode,BuildingName);
+  end;
+end;
+
+procedure TMapBuilding.ImageMouseDown(Sender: TObject; Button: TMouseButton;
+  Shift: TShiftState; X, Y: Integer);
+begin
+  if Not DragOn then Exit;
+  if (Button = mbLeft) and (MouseDowning = False) then
+  begin
+    //DRAG Point 저장
+    DragOrigin := Point(X,Y);
+    // Mouse Down = True 설정
+    MouseDowning := True;
+  end;
+end;
+
+procedure TMapBuilding.ImageMouseMove(Sender: TObject; Shift: TShiftState; X,
+  Y: Integer);
+begin
+  if Not DragOn then Exit;
+  // MOUSE DOWN = TRUE CHECK
+  if (MouseDowning = True) then
+  begin
+    if ((Sender as TJvGIFAnimator).Top + (Sender as TJvGIFAnimator).Height) >= ParentImageHeight then
+    begin
+      self.Top := ParentImageHeight - (Sender as TJvGIFAnimator).Height - 1;
+    end
+    else if ((Sender as TJvGIFAnimator).Left + (Sender as TJvGIFAnimator).Width) >= ParentImageWidth then
+    begin
+      self.Left := ParentImageWidth - (Sender as TJvGIFAnimator).Width - 1;
+    end
+    else
+    begin
+      // IMAGE TOP 위치 설정
+      self.Top := (Sender as TJvGIFAnimator).Top + Y - DragOrigin.Y;
+      // IMAGE LEFT 위치 설정
+      self.Left := (Sender as TJvGIFAnimator).Left + X - DragOrigin.X;
+    end;
+  end;
+
+end;
+
+procedure TMapBuilding.ImageMouseUp(Sender: TObject; Button: TMouseButton;
+  Shift: TShiftState; X, Y: Integer);
+begin
+  if Not DragOn then Exit;
+    // MOUSE DOWN = FALSE 설정
+    MouseDowning := False;
+
+end;
+
+procedure TMapBuilding.SetAlarmEvent(const Value: TAlarmEventState);
+begin
+  if FAlarmEvent = Value then Exit;
+  FAlarmEvent := Value;
+  case Value of
+    aeNormalEvent : begin
+      if FileExists(ImageNomalEventFile) then BuildingImage.Image.LoadFromFile(ImageNomalEventFile)
+      else BuildingImage.Image := nil;
+    end;
+    aeAlarmEvent : begin
+      if FileExists(ImageArmEventFile) then BuildingImage.Image.LoadFromFile(ImageArmEventFile)
+      else BuildingImage.Image := nil;
+    end;
+    else begin
+      case WatchMode of
+        cmArm : begin
+          if FileExists(ImageArmFile) then BuildingImage.Image.LoadFromFile(ImageArmFile)
+          else BuildingImage.Image := nil;
+        end;
+        else begin
+          if FileExists(ImageDisArmFile) then BuildingImage.Image.LoadFromFile(ImageDisArmFile)
+          else BuildingImage.Image := nil;
+        end;
+      end;
+    end;
+  end;
+end;
+
+procedure TMapBuilding.SetAnimate(const Value: Boolean);
+begin
+  //if FAnimate = Value then Exit;
+  FAnimate := Value;
+  BuildingImage.Animate := Value;
+end;
+
+procedure TMapBuilding.SetBuildingCode(const Value: string);
+begin
+  FBuildingCode := Value;
+end;
+
+procedure TMapBuilding.SetBuildingName(const Value: string);
+begin
+  if FBuildingName = Value then Exit;
+  FBuildingName := Value;
+  BuildingImage.Hint := Value;
+  BuildingNameText.Text := Value;
+end;
+
+procedure TMapBuilding.SetHeight(const Value: integer);
+begin
+  if FHeight = Value then Exit;
+  FHeight := Value;
+  BuildingImage.Height := Value;
+  BuildingNameText.Top := BuildingImage.Top + Value + 5;
+end;
+
+procedure TMapBuilding.SetImageFile(const Value: string);
+begin
+  if FImageFile = Value then Exit;
+  FImageFile := Value;
+  if Not FileExists(Value) then BuildingImage.Image := nil
+  else
+    BuildingImage.Image.LoadFromFile(Value);
+end;
+
+procedure TMapBuilding.SetLeft(const Value: integer);
+begin
+  if FLeft = Value then Exit;
+  FLeft := Value;
+  BuildingImage.Left := Value;
+  BuildingNameText.Left := Value - ((BuildingNameText.Width - BuildingImage.Width) div 2)  ;
+end;
+
+procedure TMapBuilding.SetNameVisible(const Value: Boolean);
+begin
+  if FNameVisible = Value then Exit;
+  FNameVisible := Value;
+  BuildingNameText.Visible := Value;
+end;
+
+procedure TMapBuilding.SetParent(const Value: TWinControl);
+begin
+  if FParent = Value then Exit;
+  FParent := Value;
+  BuildingImage.Parent := Value;
+  BuildingNameText.Parent := Value;
+end;
+
+procedure TMapBuilding.SetStretch(const Value: Boolean);
+begin
+  if FStretch = Value then Exit;
+  FStretch := Value;
+  BuildingImage.Stretch := Value;
+end;
+
+procedure TMapBuilding.SetTop(const Value: integer);
+begin
+  if FTop = Value then Exit;
+  FTop := Value;
+  BuildingImage.Top := Value;
+
+  BuildingNameText.Top := Value + BuildingImage.Height + 5;
+end;
+
+procedure TMapBuilding.SetWatchMode(const Value: TWatchMode);
+begin
+  if FWatchMode = Value then Exit;
+  FWatchMode := Value;
+  if AlarmEvent = aeAlarmEvent then Exit;
+  if AlarmEvent = aeNormalEvent then Exit;
+
+  case Value of
+    cmArm : begin
+      if FileExists(ImageArmFile) then BuildingImage.Image.LoadFromFile(ImageArmFile)
+      else BuildingImage.Image := nil;
+    end;
+    else begin
+      if FileExists(ImageDisArmFile) then BuildingImage.Image.LoadFromFile(ImageDisArmFile)
+      else BuildingImage.Image := nil;
+    end;
+  end;
+end;
+
+procedure TMapBuilding.SetWidth(const Value: integer);
+begin
+  if FWidth = Value then Exit;
+  FWidth := Value;
+  BuildingImage.Width := Value;
+  BuildingNameText.Left := BuildingImage.Left - ((BuildingNameText.Width - BuildingImage.Width) div 2)  ;
+end;
+
+end.

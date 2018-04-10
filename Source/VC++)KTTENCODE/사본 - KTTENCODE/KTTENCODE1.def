@@ -1,0 +1,11 @@
+; KTTENCODE1.def : Declares the module parameters for the DLL.
+
+LIBRARY      "KTTENCODE1"
+DESCRIPTION  'KTTENCODE1 Windows Dynamic Link Library'
+
+EXPORTS
+    ; Explicit exports can go here
+
+
+KTTEncode @1
+KTTDecode @2

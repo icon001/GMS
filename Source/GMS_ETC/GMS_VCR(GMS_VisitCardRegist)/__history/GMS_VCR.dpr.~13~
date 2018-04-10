@@ -1,0 +1,52 @@
+program GMS_VCR;
+
+uses
+  Vcl.Forms,
+  uMain in 'fmMain\uMain.pas' {fmMain},
+  uDataBase in '..\..\..\Lib\DataBase\uDataBase.pas' {dmDataBase: TDataModule},
+  uDataBaseConfig in '..\..\..\Lib\DataBase\uDataBaseConfig.pas' {fmDataBaseConfig},
+  uDBAlter in '..\..\..\Lib\DataBase\uDBAlter.pas' {dmDBAlter: TDataModule},
+  uDBCardPermit in '..\..\..\Lib\DataBase\uDBCardPermit.pas' {dmDBCardPermit: TDataModule},
+  uDBCreate in '..\..\..\Lib\DataBase\uDBCreate.pas' {dmDBCreate: TDataModule},
+  uDBDelete in '..\..\..\Lib\DataBase\uDBDelete.pas' {dmDBDelete: TDataModule},
+  uDBFormMessage in '..\..\..\Lib\DataBase\uDBFormMessage.pas' {dmFormMessage: TDataModule},
+  uDBFormName in '..\..\..\Lib\DataBase\uDBFormName.pas' {dmFormName: TDataModule},
+  uDBFunction in '..\..\..\Lib\DataBase\uDBFunction.pas' {dmDBFunction: TDataModule},
+  uDBInsert in '..\..\..\Lib\DataBase\uDBInsert.pas' {dmDBInsert: TDataModule},
+  uDBSelect in '..\..\..\Lib\DataBase\uDBSelect.pas' {dmDBSelect: TDataModule},
+  uDBUpdate in '..\..\..\Lib\DataBase\uDBUpdate.pas' {dmDBUpdate: TDataModule},
+  uDBVariable in '..\..\..\Lib\DataBase\uDBVariable.pas',
+  uCommonFunction in '..\..\..\Lib\Common\uCommonFunction.pas',
+  uCommonVariable in '..\..\..\Lib\Common\uCommonVariable.pas',
+  uFormVariable in '..\..\..\Lib\DockForm\uFormVariable.pas',
+  uLoginVariable in '..\..\..\Lib\Login\uLoginVariable.pas',
+  uDeviceFunction in '..\..\..\Lib\Device\uDeviceFunction.pas' {dmDeviceFunction: TDataModule},
+  uDeviceVariable in '..\..\..\Lib\Device\uDeviceVariable.pas',
+  uSolarLunar in '..\..\..\Lib\Date\uSolarLunar.pas',
+  u_winsock in '..\..\..\Lib\Device\Winsocket\u_winsock.pas',
+  u_types_constants in '..\..\..\Lib\Device\Winsockunits\u_types_constants.pas',
+  uCommonEvent in '..\..\..\Lib\Common\uCommonEvent.pas',
+  uDBRelay in '..\..\..\Lib\DataBase\uDBRelay.pas' {dmDBRelay: TDataModule},
+  uEmployeeRelay in '..\..\..\Lib\EmployeeRelay\uEmployeeRelay.pas' {dmEmployeeRelay: TDataModule},
+  uSubForm in '..\..\..\Lib\Form\uSubForm.pas' {fmASubForm},
+  uComPort in '..\..\..\Lib\Device\uComPort.pas' {dmComPort: TDataModule},
+  uClientConfig in 'fmClientConfig\uClientConfig.pas' {fmClientConfig},
+  uSupremaFinger in '..\..\..\Lib\FingerReader\uSupremaFinger.pas' {dmSupremaFinger: TDataModule},
+  uFingerVariable in '..\..\..\Lib\FingerReader\uFingerVariable.pas';
+
+{$R *.res}
+{$R manifest.RES}
+
+begin
+  Application.Initialize;
+  Application.MainFormOnTaskbar := True;
+  Application.CreateForm(TdmDataBase, dmDataBase);
+  Application.CreateForm(TfmMain, fmMain);
+  Application.CreateForm(TdmDBRelay, dmDBRelay);
+  Application.CreateForm(TdmEmployeeRelay, dmEmployeeRelay);
+  Application.CreateForm(TfmASubForm, fmASubForm);
+  Application.CreateForm(TdmComPort, dmComPort);
+  Application.CreateForm(TfmClientConfig, fmClientConfig);
+  Application.CreateForm(TdmSupremaFinger, dmSupremaFinger);
+  Application.Run;
+end.

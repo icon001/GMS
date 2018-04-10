@@ -1,0 +1,57 @@
+unit uFingerRegistDevice;
+
+interface
+
+uses
+  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
+  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.ExtCtrls, Vcl.Buttons, Vcl.StdCtrls;
+
+type
+  TfmFingerRegistDevice = class(TForm)
+    Label1: TLabel;
+    cmb_FingerPort: TComboBox;
+    btnRefresh: TButton;
+    Panel1: TPanel;
+    Image1: TImage;
+    Panel2: TPanel;
+    Image2: TImage;
+    panMessage: TPanel;
+    lb_Message: TLabel;
+    btn_Save: TBitBtn;
+    btn_Cancel: TBitBtn;
+    GetFingerTimer: TTimer;
+    MessageTimer: TTimer;
+    procedure btn_CancelClick(Sender: TObject);
+    procedure btn_SaveClick(Sender: TObject);
+  private
+    FSave: Boolean;
+    FFingerTemplate1_2: string;
+    FFingerTemplate1_1: string;
+    { Private declarations }
+  public
+    { Public declarations }
+    property Save : Boolean read FSave write FSave;
+    property FingerTemplate1_1 : string read FFingerTemplate1_1 write FFingerTemplate1_1;
+    property FingerTemplate1_2 : string read FFingerTemplate1_2 write FFingerTemplate1_2;
+  end;
+
+var
+  fmFingerRegistDevice: TfmFingerRegistDevice;
+
+implementation
+
+{$R *.dfm}
+
+procedure TfmFingerRegistDevice.btn_CancelClick(Sender: TObject);
+begin
+  Save := False;
+  Close;
+end;
+
+procedure TfmFingerRegistDevice.btn_SaveClick(Sender: TObject);
+begin
+  Save := True;
+  Close;
+end;
+
+end.

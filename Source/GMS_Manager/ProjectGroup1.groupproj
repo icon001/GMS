@@ -1,0 +1,48 @@
+﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+    <PropertyGroup>
+        <ProjectGuid>{9936A410-60A6-4DE1-A6B1-E677F8988B16}</ProjectGuid>
+    </PropertyGroup>
+    <ItemGroup>
+        <Projects Include="GMS_Manager.dproj">
+            <Dependencies/>
+        </Projects>
+        <Projects Include="..\..\..\..\[Component]\WindowsMedia\pkg_Windowsmediaplayer.dproj">
+            <Dependencies/>
+        </Projects>
+    </ItemGroup>
+    <ProjectExtensions>
+        <Borland.Personality>Default.Personality.12</Borland.Personality>
+        <Borland.ProjectType/>
+        <BorlandProject>
+            <Default.Personality/>
+        </BorlandProject>
+    </ProjectExtensions>
+    <Target Name="GMS_Manager">
+        <MSBuild Projects="GMS_Manager.dproj"/>
+    </Target>
+    <Target Name="GMS_Manager:Clean">
+        <MSBuild Projects="GMS_Manager.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="GMS_Manager:Make">
+        <MSBuild Projects="GMS_Manager.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="pkg_Windowsmediaplayer">
+        <MSBuild Projects="..\..\..\..\[Component]\WindowsMedia\pkg_Windowsmediaplayer.dproj"/>
+    </Target>
+    <Target Name="pkg_Windowsmediaplayer:Clean">
+        <MSBuild Projects="..\..\..\..\[Component]\WindowsMedia\pkg_Windowsmediaplayer.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="pkg_Windowsmediaplayer:Make">
+        <MSBuild Projects="..\..\..\..\[Component]\WindowsMedia\pkg_Windowsmediaplayer.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="Build">
+        <CallTarget Targets="GMS_Manager;pkg_Windowsmediaplayer"/>
+    </Target>
+    <Target Name="Clean">
+        <CallTarget Targets="GMS_Manager:Clean;pkg_Windowsmediaplayer:Clean"/>
+    </Target>
+    <Target Name="Make">
+        <CallTarget Targets="GMS_Manager:Make;pkg_Windowsmediaplayer:Make"/>
+    </Target>
+    <Import Project="$(BDS)\Bin\CodeGear.Group.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Group.Targets')"/>
+</Project>

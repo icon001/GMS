@@ -1,0 +1,129 @@
+unit uComPort;
+
+interface
+
+uses
+  System.SysUtils, System.Classes, CPort,
+  uDeviceEvent;
+
+type
+  TdmComPort = class(TDataModule)
+    ComPort1: TComPort;
+    procedure ComPort1RxChar(Sender: TObject; Count: Integer);
+  private
+    FOnCardReadEvent: TCardReadingEvent;
+    FComPort: integer;
+    { Private declarations }
+    procedure CardDataReadingProcessing(aData:string);
+    procedure CardReaderFormatChange(aType:string);
+    procedure SetComPort(const Value: integer);
+  public
+    { Public declarations }
+    property COMPORT : integer read FComPort write SetComPort;
+  public
+    ProPerty OnCardReadEvent : TCardReadingEvent read FOnCardReadEvent write FOnCardReadEvent;
+  end;
+
+var
+  dmComPort: TdmComPort;
+
+implementation
+
+uses
+  uCommonFunction,
+  uCommonVariable,
+  uDeviceFunction,
+  uDeviceVariable;
+
+{%CLASSGROUP 'System.Classes.TPersistent'}
+
+{$R *.dfm}
+
+procedure TdmComPort.CardDataReadingProcessing(aData:string);
+var
+  nIndex: Integer;
+  aCardNo:String;
+  bCardNo: int64;
+  stMsg : string;
+  stReaderType : string;
+begin
+  //STX 삭제
+  nIndex:= Pos(STX,aData);
+  if nIndex > 0 then Delete(aData,nIndex,1);
+  //ETX삭제
+  nIndex:= Pos(ETX,aData);
+  if nIndex > 0 then Delete(aData,nIndex,1);
+
+  if aData = 'F' then    //포맷 요청
+  begin
+    stReaderType := 'C';
+    if G_nSpecialProgram = 1 then stReaderType := 'K';
+    CardReaderFormatChange(stReaderType);
+    Exit;
+  end;
+  if (aData = 'Y') OR (aData = 'N') then Exit;
+
+  aCardNo := aData;
+  if G_nCardLengthType = 0 then  //고정길이 타입이면
+  begin
+    if G_bCardTypeNumeric then  //숫자변환이면
+    begin
+      if G_nSpecialProgram = 3 then  //KTTELECOP 스피드게이트용 3자리만 사용.
+      begin
+        bCardNo:= Hex2Dec64(copy(aData,1,6) + '00');
+        aCardNo := inttostr(bCardNo);
+      end else
+      begin
+        bCardNo:= Hex2Dec64(aData);
+        aCardNo := inttostr(bCardNo);
+      end;
+    end;
+  end
+  else
+  begin
+    if G_nCardLengthType = 1 then
+    begin
+      //변환 없이
+    end else if G_nCardLengthType = 2 then
+    begin
+      aCardNo := aCardNo;  //ASCII 로 데이터를 받으니까 그냥 처리
+    end;
+  end;
+
+  if (G_nCardLengthType = 0) and G_bCardTypeNumeric then  //고정이며 숫자변환이면
+     aCardNo:= FillZeroNumber(bCardNo,10);
+
+  aCardNo := dmDeviceFunction.GetFixedCardNoCheck(aCardNo,G_bCardLengthFixedUse,G_stCardFixedFillChar,G_nCardFixedPosition,G_nCardFixedLength);
+  if Trim(aCardNo) <> '' then
+  begin
+    if Assigned(FOnCardReadEvent) then
+    begin
+      OnCardReadEvent(Self,aCardNo);
+    end;
+
+  end;
+
+end;
+
+procedure TdmComPort.CardReaderFormatChange(aType: string);
+begin
+  if ComPort1.Connected then
+     ComPort1.WriteStr(STX + aType + ETX);
+end;
+
+procedure TdmComPort.ComPort1RxChar(Sender: TObject; Count: Integer);
+var
+  stBuffer:string;
+begin
+  TComPort(Sender).ReadStr(stBuffer, Count);
+  CardDataReadingProcessing(stBuffer);
+
+end;
+
+procedure TdmComPort.SetComPort(const Value: integer);
+begin
+  if FComPort = Value then Exit;
+  FComPort := Value;
+end;
+
+end.

@@ -1,0 +1,601 @@
+{*******************************************************}
+{                                                       }
+{       데몬과 통신 모듈                                }
+{                                                       }
+{*******************************************************}
+
+unit uClientSocket;
+
+interface
+
+uses
+  System.SysUtils, System.Classes, Web.Win.Sockets,ExtCtrls,Winapi.Windows,Forms,
+  System.SyncObjs,IdGlobal,ADODB,ActiveX,
+  uDeviceEvent;
+
+const
+    WSAEWOULDBLOCK = 10035;  //비동기 에러 메시지
+
+type
+  TReceiveMonitorThread = class(TThread)
+  private
+  protected
+    procedure Execute; override;
+  public
+  end;
+
+  TdmClientSocket = class(TDataModule)
+    TcpClient1: TTcpClient;
+    procedure DataModuleCreate(Sender: TObject);
+    procedure DataModuleDestroy(Sender: TObject);
+    procedure TcpClient1Connect(Sender: TObject);
+    procedure TcpClient1Disconnect(Sender: TObject);
+    procedure TcpClient1Error(Sender: TObject; SocketError: Integer);
+    procedure TcpClient1Receive(Sender: TObject; Buf: PAnsiChar;
+      var DataLen: Integer);
+  private
+    { Private declarations }
+    LastReceiveTime: TDatetime;
+    FReceiveTCS : TCriticalSection;
+    FTCSDeviceSender : TCriticalSection;
+    ReceiveDataList : TStringList;
+    L_bSocketReceiveBuffer : Boolean;
+    L_stSeverComBuffer : string;
+    SocketCheckTimer : TTimer;    //소켓 끊겼을때 재 접속 하는 타이머
+    SocketReadTimer : TTimer;     //접속 후 소켓 읽는 타이머
+    ServerReceiveTimer : TTimer;  //리딩 데이터 처리 하는 타이머
+    SocketLiveTimer : TTimer;     //서버에 소켓 살아 있다는 것을 알려 주는 타이머
+    procedure DaemonLive;
+    procedure DaemonRestart;
+    procedure DataReadingProcessing;
+    procedure DeviceAllFireRecovery;
+    procedure MonitorAlarmRefresh;
+    procedure ServerReceiveTimerTimer(Sender: TObject);
+    procedure SocketCheckTimerTimer(Sender: TObject);
+    procedure SocketLiveTimerTimer(Sender: TObject);
+    procedure SocketReadTimerTimer(Sender: TObject);
+  private
+    FStart: Boolean;
+    FServerConnected: Boolean;
+    FConnectIP: string;
+    FConnectPort: string;
+    FOnServerConnected: TDeviceConnected;
+    FOnServerRecvEvent: TComRecevieEvent;
+    FOnMonitorAlarmEventListClear: TMonitorAlarmEventListClear;
+    FOnDBAlarmEventAdd: TDBAlarmEventAdd;
+    procedure SetStart(const Value: Boolean);
+    procedure SetConnectIP(const Value: string);
+    procedure SetConnectPort(const Value: string);
+    procedure SetServerConnected(const Value: Boolean);
+  public
+    ReceiveThread :TReceiveMonitorThread;
+    procedure ReceiveThreadStart;
+    procedure ReceiveThreadStop;
+  public
+    procedure ServerDataProcessing(aData:string);
+    procedure SendDaemonPacket(aData : string);
+    function  ReceiveBuff(aDelayTime:integer):Boolean;
+  public
+    property OnDBAlarmEventAdd : TDBAlarmEventAdd read FOnDBAlarmEventAdd write FOnDBAlarmEventAdd;
+    property OnMonitorAlarmEventListClear : TMonitorAlarmEventListClear read FOnMonitorAlarmEventListClear write FOnMonitorAlarmEventListClear;
+    property OnServerConnected : TDeviceConnected read FOnServerConnected write FOnServerConnected;
+    property OnServerRecvEvent : TComRecevieEvent read FOnServerRecvEvent write FOnServerRecvEvent;
+  public
+    { Public declarations }
+    property ServerConnected : Boolean read FServerConnected write SetServerConnected;
+    property Start : Boolean read FStart write SetStart;
+    property ConnectIP:string read FConnectIP write SetConnectIP;
+    property ConnectPort:string read FConnectPort write SetConnectPort;
+  end;
+
+var
+  dmClientSocket: TdmClientSocket;
+
+implementation
+uses
+  uCommonFunction,
+  uCommonVariable,
+  uDataBase,
+  uDBSql,
+  uDeviceState,
+  uDeviceVariable;
+
+{%CLASSGROUP 'System.Classes.TPersistent'}
+
+{$R *.dfm}
+
+procedure TdmClientSocket.DaemonLive;
+begin
+
+end;
+
+procedure TdmClientSocket.DaemonRestart;
+begin
+
+end;
+
+procedure TdmClientSocket.DataModuleCreate(Sender: TObject);
+begin
+  FTCSDeviceSender := TCriticalSection.Create;
+  FReceiveTCS := TCriticalSection.Create;
+
+  SocketCheckTimer := TTimer.Create(nil);
+  SocketCheckTimer.Interval := 10000;
+  SocketCheckTimer.OnTimer := SocketCheckTimerTimer;
+  ServerConnected := False;
+  SocketReadTimer := TTimer.Create(nil);
+  SocketReadTimer.Interval := 500;
+  SocketReadTimer.OnTimer := SocketReadTimerTimer;
+
+  L_stSeverComBuffer := '';
+  ReceiveDataList := TStringList.Create;
+
+  ServerReceiveTimer := TTimer.Create(nil);
+  ServerReceiveTimer.Interval := 500;
+  ServerReceiveTimer.OnTimer := ServerReceiveTimerTimer;
+  ServerReceiveTimer.Enabled := True;
+  SocketLiveTimer := TTimer.Create(nil);
+  SocketLiveTimer.Interval := 100000;
+  SocketLiveTimer.OnTimer := SocketLiveTimerTimer;
+
+  ReceiveThreadStart;
+end;
+
+procedure TdmClientSocket.DataModuleDestroy(Sender: TObject);
+begin
+  ReceiveThreadStop;
+
+  SocketCheckTimer.Enabled := False;
+  SocketCheckTimer.Free;
+  ServerReceiveTimer.Enabled := False;
+  ServerReceiveTimer.Free;
+
+  ReceiveDataList.Free;
+  FTCSDeviceSender.Free;
+  FReceiveTCS.Free;
+end;
+
+procedure TdmClientSocket.DataReadingProcessing;
+var
+  stPacketData : string;
+  nLineEnd : integer;
+  bSearch : Boolean;
+  nIndex : integer;
+begin
+  repeat
+    if G_bApplicationTerminate then Exit;
+    {bSearch := False;
+    for nLineEnd := 1 to Length(L_stSeverComBuffer) do
+    begin
+      if L_stSeverComBuffer[nLineEnd] = LINEEND then
+      begin
+        bSearch := True;
+        Break;
+      end;
+    end;
+    if Not bSearch then Exit; }
+    nLineEnd := Pos(LINEEND,L_stSeverComBuffer);
+    if nLineEnd < 1 then Exit;
+
+
+    stPacketData:= Copy(L_stSeverComBuffer,1,nLineEnd);
+    Delete(L_stSeverComBuffer,1,nLineEnd);
+
+    nIndex := Pos('R',stPacketData);
+    if nIndex < 0 then      continue;
+    if nIndex > 1 then Delete(stPacketData,1,nIndex - 1);
+    if Length(Trim(stPacketData)) < 2 then continue;
+    ReceiveDataList.Add(stPacketData);
+    Application.ProcessMessages;
+  until pos(LINEEND,L_stSeverComBuffer) = 0;
+
+end;
+
+procedure TdmClientSocket.DeviceAllFireRecovery;
+begin
+//모니터링에서 화재복구 신호 전송 했다는 의미
+end;
+
+procedure TdmClientSocket.MonitorAlarmRefresh;
+var
+  i : integer;
+  stSql : string;
+  TempAdoQuery :TADOQuery;
+  stNodeNo : string;
+  stEcuID : string;
+  nIndex : integer;
+  stTime : string;
+  bAlarmView : Boolean;
+  bAlarmSound : Boolean;
+begin
+  if G_stAlarmViewType <> 'QUERY' then Exit; //QUERY 타입에서만 동작하자
+  if NODESTATELIST.Count < 1 then Exit;
+  if Assigned(FOnMonitorAlarmEventListClear) then
+  begin
+    OnMonitorAlarmEventListClear(Self);   //모니터링 화면의 Alarm List를 Clear 하자
+  end;
+  //Qury 조회 인경우 Alarm Refresh 하자
+  for i := 0 to NODESTATELIST.Count - 1 do
+  begin
+    TNodeState(NodeStateList.Objects[i]).AlarmAreaEventClear('','');
+  end;
+
+  stSql := dmDBSql.GetTB_ALARMEVENT_AlarmEventList(FormatDateTime('yyyymmdd',now - G_nAlarmRefreshDate));
+
+  Try
+    CoInitialize(nil);
+    TempAdoQuery := TADOQuery.Create(nil);
+    TempAdoQuery.Connection := dmDataBase.ADOConnection;
+    TempAdoQuery.DisableControls;
+
+    with TempAdoQuery do
+    begin
+      Close;
+      Sql.Clear;
+      Sql.Text := stSql;
+
+      Try
+        Open;
+      Except
+        Exit;
+      End;
+      if recordCount < 1 then Exit;
+      First;
+      while Not Eof do
+      begin
+        stNodeNo := FillZeroNumber(FindField('AC_NODENO').AsInteger,G_nNodeCodeLength);
+        stEcuID := FindField('AC_ECUID').AsString ;
+        nIndex := NODESTATELIST.IndexOf(stNodeNo);
+        if nIndex > -1 then
+        begin
+          stTime := FindField('AL_DATE').AsString + FindField('AL_TIME').AsString;
+          bAlarmView := False;
+          if Not FindField('AL_ISALARM').IsNull then
+          begin
+            if FindField('AL_ISALARM').AsString <> '0' then bAlarmView := True;
+          end;
+          bAlarmSound := False;
+          if Not FindField('AL_SOUND').IsNull then
+          begin
+            if FindField('AL_SOUND').AsString <> '0' then bAlarmSound := True;
+          end;
+
+          if Assigned(FOnDBAlarmEventAdd) then
+          begin
+            OnDBAlarmEventAdd(Self,FindField('AC_NODENO').AsInteger,
+                              FindField('AC_ECUID').AsString,
+                              'A',
+                              FindField('AL_MSGNO').AsString,
+                              stTime,
+                              FindField('AL_ALARMDEVICETYPECODE').AsString,
+                              FindField('AL_SUBADDR').AsString,
+                              FindField('AL_ZONECODE').AsString,
+                              FindField('AL_ALARMMODECODE').AsString,
+                              FindField('AL_ALARMSTATUSCODE').AsString,
+                              FindField('AL_ZONENO').AsString,
+                              FindField('AL_ZONESTATE').AsString,
+                              FindField('AL_OPERATOR').AsString,
+                              FindField('AL_STATUSCODE2').AsString,
+                              bAlarmView,
+                              bAlarmSound,
+                              inttostr(FindField('AL_COLOR').AsInteger)
+                              );   //모니터링 화면의 Alarm List를 Add 하자
+          end;
+        end;
+
+        next;
+      end;
+    end;
+  Finally
+    TempAdoQuery.EnableControls;
+    TempAdoQuery.Free;
+    CoUninitialize;
+  End;
+end;
+
+function TdmClientSocket.ReceiveBuff(aDelayTime: integer): Boolean;
+var
+  DelayTickCount : double;
+  stBuff : string;
+  buffByte : TBytes;
+  nReceiveLen : integer;
+  szBuf : array of char;
+
+begin
+  if L_bSocketReceiveBuffer then Exit;
+  if Not ServerConnected then Exit;
+
+  L_bSocketReceiveBuffer := True;
+  Try
+    DelayTickCount := GetTickCount + aDelayTime;
+    repeat
+      Try
+        SetLength(buffByte, 10240);
+        nReceiveLen := TCPClient1.ReceiveBuf(buffByte[0], 10240);
+        if nReceiveLen > 0 then
+        begin
+          L_stSeverComBuffer := L_stSeverComBuffer + BytesToAscii(buffByte,nReceiveLen); //BytesToStringRaw(btBuf); // BytesToString(TIdBytes(btBuf), TEncoding.UTF8);
+          DataReadingProcessing;
+        end;
+        //TCPClient1.ReceiveBuf(BuffByte, -1, false);
+        //stBuff := BytesToString(BuffByte, TEncoding.UTF8);
+      Finally
+        buffByte := nil;
+        Finalize(buffByte);
+      End;
+      //stBuff := TCPClient1.Receiveln(#$03);
+      if GetTickCount > DelayTickCount then Break;
+      Application.ProcessMessages;
+    until stBuff <> '';
+  Finally
+    L_bSocketReceiveBuffer := False;
+  End;
+end;
+
+procedure TdmClientSocket.ReceiveThreadStart;
+begin
+  if not(assigned(ReceiveThread)) then begin
+     ReceiveThread := TReceiveMonitorThread.Create(true) ;
+  end;
+  if (assigned(ReceiveThread)) and (ReceiveThread.Suspended  = true) then
+  begin
+   ReceiveThread.Resume ;
+  end;
+end;
+
+procedure TdmClientSocket.ReceiveThreadStop;
+begin
+   if (assigned(ReceiveThread)) and (ReceiveThread.Suspended  = false) then
+   begin
+      Try
+        ReceiveThread.Suspend ;
+      Except
+      End;
+   end;
+   // 쓰레드 객체 존재 확인
+   if assigned(ReceiveThread) then
+   begin
+     // 스레드가 잠시 suspend 증 이면
+     if ReceiveThread.Suspended  = true then
+     begin
+      ReceiveThread.Resume;
+     end;
+     //
+     ReceiveThread.Terminate ;
+     ReceiveThread.WaitFor ;
+     ReceiveThread.Free ;
+     ReceiveThread := nil ;
+   end;
+end;
+
+procedure TdmClientSocket.SendDaemonPacket(aData: string);
+begin
+  Try
+    FTCSDeviceSender.Enter;
+    if Not ServerConnected then Exit;
+
+    TcpClient1.Sendln(aData,LINEEND);
+  Finally
+    FTCSDeviceSender.Leave;
+  End;
+
+end;
+
+procedure TdmClientSocket.ServerDataProcessing(aData: string);
+var
+  stNodeNo : string;
+  stReceiveType : string; //'N'(노드),'E'(기기),'D'(도어),'A'(알람),'S'(데몬제어-재시작등)
+  stControlType: string;  //'C'(카드데이터 또는 'DV' 인경우 CONNECT 상태),'R'(원격제어),'S'(상태-출입문,알람),'F'(FTP다운로드 상태)
+  stDataType : string;    // 'CR'(카드리더등록),'PT'(방범데이터),'AC'(출입데이터),'AT'(근태데이터),'SV'(데몬서버데이터),'DV'(기기데이터)
+  nIndex : integer;
+begin
+  if aData[1] <> 'R' then Exit; //정상 수신 데이터가 아니다.
+  stReceiveType := aData[2];
+  stNodeNo := copy(aData,3,3);
+  stControlType := aData[14];
+  stDataType := copy(aData,12,2);
+  if stReceiveType = '' then Exit;
+  if Pos('FIRERECOVERY',aData) > 0 then
+  begin
+    DeviceAllFireRecovery;
+    Exit;
+  end;
+  case stReceiveType[1] of
+    'S' : begin
+        if Pos('RESTART',UpperCase(aData)) > 0  then
+        begin
+          DaemonRestart;
+        end else if Pos('ALARMREFRESH',UpperCase(aData)) > 0  then
+        begin
+          MonitorAlarmRefresh;
+        end else if stControlType = 'S' then
+        begin
+          nIndex := NODESTATELIST.IndexOf(stNodeNo);
+          if nIndex < 0 then Exit;
+          TNodeState(NODESTATELIST.Objects[nIndex]).DeviceAllStateCheckReceive(aData);
+        end else if stControlType = 'N' then
+        begin
+          nIndex := NODESTATELIST.IndexOf(stNodeNo);
+          if nIndex < 0 then Exit;
+          TNodeState(NODESTATELIST.Objects[nIndex]).DeviceStateCheckIIIReceive(aData);
+        end else if stDataType = 'BR' then
+        begin
+          if Pos('DAEMONLIVE',UpperCase(aData)) > 0 then DaemonLive;
+        end;
+    end;
+    else begin
+      nIndex := NODESTATELIST.IndexOf(stNodeNo);
+      if nIndex < 0 then Exit;
+      TNodeState(NODESTATELIST.Objects[nIndex]).ServerDataProcessing(aData);
+    end;
+  end;
+  if Assigned(FOnServerRecvEvent) then
+  begin
+    OnServerRecvEvent(Self,aData);
+  end;
+
+end;
+
+procedure TdmClientSocket.ServerReceiveTimerTimer(Sender: TObject);
+var
+  stTemp : string;
+  i : integer;
+begin
+  Try
+    ServerReceiveTimer.Enabled := False;
+    if G_bApplicationTerminate then Exit;
+    if ReceiveDataList.Count < 1 then Exit;
+    for i := 0 to ReceiveDataList.Count - 1 do
+    begin
+      stTemp := ReceiveDataList.Strings[0];
+      ReceiveDataList.Delete(0);
+      ServerDataProcessing(stTemp);
+    end;
+  Finally
+    ServerReceiveTimer.Enabled := Not G_bApplicationTerminate;
+  End;
+end;
+
+procedure TdmClientSocket.SetConnectIP(const Value: string);
+begin
+  FConnectIP := Value;
+  TcpClient1.RemoteHost := Value;
+end;
+
+procedure TdmClientSocket.SetConnectPort(const Value: string);
+begin
+  FConnectPort := Value;
+  TcpClient1.RemotePort := Value;
+end;
+
+procedure TdmClientSocket.SetServerConnected(const Value: Boolean);
+var
+  i : integer;
+begin
+  if FServerConnected = Value then Exit;
+  FServerConnected := Value;
+  if Assigned(FOnServerConnected) then
+  begin
+    OnServerConnected(Self,0,'00',Value);
+  end;
+  SocketReadTimer.Enabled := Value;
+  SocketLiveTimer.Enabled := Value;
+  if Value then
+  begin
+    LastReceiveTime := now;
+    SendDaemonPacket('DEVICEALLSTATE_III'+ DATADELIMITER);
+  end else
+  begin
+    for i := 0 to NODESTATELIST.Count - 1 do
+    begin
+      TNodeState(NODESTATELIST.Objects[i]).NodeConnected := Value;
+    end;
+  end;
+end;
+
+procedure TdmClientSocket.SetStart(const Value: Boolean);
+begin
+  FStart := Value;
+  SocketCheckTimer.Enabled := Value;
+end;
+
+procedure TdmClientSocket.SocketCheckTimerTimer(Sender: TObject);
+var
+  dtTimeOut: TDatetime;
+begin
+  if G_bApplicationTerminate then
+  begin
+    SocketCheckTimer.Enabled := False;
+    Exit;
+  end;
+  if Not ServerConnected then
+  begin
+    TcpClient1.Active := False;
+    if ConnectIP = '' then Exit;
+    if ConnectPORT = '' then Exit;
+    TcpClient1.Active := True;
+  end;
+  dtTimeOut := IncTime(LastReceiveTime,0,6,0,0);  //6분 경과 하면 소켓 재접속 하자.
+  if Now > dtTimeOut then
+  begin
+    TcpClient1.Active := False;
+    ServerConnected := False;
+  end;
+
+end;
+
+procedure TdmClientSocket.SocketLiveTimerTimer(Sender: TObject);
+begin
+  if G_bApplicationTerminate then Exit;
+  SendDaemonPacket('BROADCAST'+ DATADELIMITER + '000000000'+ DATADELIMITER + 'DAEMONLIVE' + DATADELIMITER);
+end;
+
+procedure TdmClientSocket.SocketReadTimerTimer(Sender: TObject);
+begin
+  Exit;  //Thread 로 처리 하자.
+  if G_bApplicationTerminate then Exit;
+  Try
+    SocketReadTimer.Enabled := False;
+    ReceiveBuff(1000);
+  Finally
+    SocketReadTimer.Enabled := ServerConnected;
+  End;
+end;
+
+procedure TdmClientSocket.TcpClient1Connect(Sender: TObject);
+begin
+  ServerConnected := True;
+  SocketCheckTimer.Enabled := False;
+end;
+
+procedure TdmClientSocket.TcpClient1Disconnect(Sender: TObject);
+begin
+  ServerConnected := False;
+  SocketCheckTimer.Enabled := Start;
+end;
+
+procedure TdmClientSocket.TcpClient1Error(Sender: TObject;
+  SocketError: Integer);
+begin
+  if SocketError = WSAEWOULDBLOCK then ServerConnected := True
+  else ServerConnected := False;
+  SocketCheckTimer.Enabled := Not ServerConnected;
+end;
+
+procedure TdmClientSocket.TcpClient1Receive(Sender: TObject; Buf: PAnsiChar;
+  var DataLen: Integer);
+var
+  btBuf: TBytes;
+begin
+  Try
+{    LastReceiveTime := Now;
+    Ascii2Bytes(Buf,DataLen,btBuf);
+    L_stSeverComBuffer := L_stSeverComBuffer + BytesToAscii(btBuf); //BytesToStringRaw(btBuf); // BytesToString(TIdBytes(btBuf), TEncoding.UTF8);
+    DataReadingProcessing;  }
+  Finally
+    btBuf := nil;
+    Finalize(btBuf);
+  End;
+end;
+
+{ TReceiveMonitorThread }
+
+procedure TReceiveMonitorThread.Execute;
+var
+  stTemp : string;
+begin
+  inherited;
+  while not (self.Terminated) do
+  begin
+    if G_bApplicationTerminate then Exit;
+    Try
+      dmClientSocket.FReceiveTCS.Enter;
+      dmClientSocket.ReceiveBuff(1000);
+    Finally
+      dmClientSocket.FReceiveTCS.Leave;
+    End;
+    sleep(200) ;
+  end;
+end;
+
+end.

@@ -1,0 +1,1042 @@
+unit uDBDelete;
+
+interface
+
+uses
+  System.SysUtils, System.Classes;
+
+type
+  TdmDBDelete = class(TDataModule)
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+    Function DeleteTB_ACCESSEVENT_ToDate(aDate:string):Boolean;
+    Function DeleteTB_ADMIN_UserID(aUserID:string):Boolean;
+    Function DeleteTB_ADMINDEVICE_DoorGrade(aUserID,aTYPE,aNodeNo,aECUID,aExtendID,aNo:string):Boolean;
+    Function DeleteTB_ADMINDEVICE_UserID(aUserID:string):Boolean;
+    Function DeleteTB_ADMINGRADECODE(aCode:string):Boolean;
+    Function DeleteTB_ADMINGRADEPROGRAM(aGradeCode,aProgramGubun,aProgramid:string):Boolean;
+    Function DeleteTB_ADMINGRADEPROGRAM_GRADECODE(aCode:string):Boolean; // 권한코드에 해당하는 모든 데이터 삭제
+    Function DeleteTB_ALARMEVENT_ToDate(aDate:string):Boolean;
+    Function DeleteTB_ANTIGROUPCODE_Value(aCode:string):Boolean;
+    Function DeleteTB_ARMAREA_ECUAll(aNodeNo,aEcuID:string):Boolean;
+    Function DeleteTB_ARMAREA_NodeAll(aNodeNo:string):Boolean;
+    Function DeleteTB_ATTENDCode_Value(aAWCode,aATCode:string):Boolean;
+    Function DeleteTB_ATTENDPOSITION_Code(aCode:string):Boolean;
+    Function DeleteTB_ATTENDWORKTYPE_Code(aCode:string):Boolean;
+    Function DeleteTB_CARD_CARDNO(aCardNo:string):Boolean;
+    Function DeleteTB_CARDPERMIT_CardNo(aCardNo:string):Boolean;
+    Function DeleteTB_CARDPERMIT_ECUAll(aNodeNo,aEcuID:string):Boolean;
+    Function DeleteTB_CARDPERMIT_NodeAll(aNodeNo:string):Boolean;
+    Function DeleteTB_CARDPERMITCOMPANYGROUP_ATType:Boolean;
+    Function DeleteTB_CARDPERMITCOMPANYGROUP_CompanyCode(aCompanyCode:string):Boolean;
+    Function DeleteTB_CARDPERMITCOMPANYGROUP_ECUAll(aNodeNo,aEcuID:string):Boolean;
+    Function DeleteTB_CARDPERMITCOMPANYGROUP_FDType:Boolean;
+    Function DeleteTB_CARDPERMITCOMPANYGROUP_NodeAll(aNodeNo:string):Boolean;
+    Function DeleteTB_CARDPERMITEMPLOYEECODE_CompanyCode(aCompanyCode:string):Boolean;   //해당 회사코드에 해당하는 사원정보의 권한 테이블을 삭제 한다. 재 입력 하기 위해 초기화 작업
+    Function DeleteTB_CARDPERMITEMPLOYEECODE_CompanyCodeLike(aCompanyCode:string):Boolean;   //해당 회사코드에 해당하는 사원정보의 권한 테이블을 삭제 한다. 재 입력 하기 위해 초기화 작업
+    Function DeleteTB_CARDPERMITEMPLOYEECODE_ECUAll(aNodeNo,EcuID:string):Boolean;
+    Function DeleteTB_CARDPERMITEMPLOYEECODE_EMCODEAll(aEmSeq:string):Boolean;
+    Function DeleteTB_CARDPERMITEMPLOYEECODE_EmGroupCodeLike(aEmGroupCode:string):Boolean;
+    Function DeleteTB_CARDPERMITEMPLOYEECODE_NodeAll(aNodeNo:string):Boolean;
+    Function DeleteTB_CARDPERMITEMPLOYEEGROUP_ATType:Boolean;
+    Function DeleteTB_CARDPERMITEMPLOYEEGROUP_ECUAll(aNodeNo,aEcuID:string):Boolean;
+    Function DeleteTB_CARDPERMITEMPLOYEEGROUP_EmGroupCode(aEmGroupCode:string):Boolean;
+    Function DeleteTB_CARDPERMITEMPLOYEEGROUP_NodeAll(aNodeNo:string):Boolean;
+    Function DeleteTB_CARDPERMITEMPLOYEEGROUP_FDType:Boolean;
+    Function DeleteTB_Decoder_Value(aDecoderNo:string):Boolean;
+    Function DeleteTB_DEVICE_ECUAll(aNodeNo,aEcuID:string):Boolean;
+    Function DeleteTB_DEVICE_NodeAll(aNodeNo:string):Boolean;
+    Function DeleteTB_DEVICERCV_ECUAll(aNodeNo,aEcuID:string):Boolean;
+    Function DeleteTB_DEVICERCV_NodeAll(aNodeNo:string):Boolean;
+    Function DeleteTB_DOOR_ECUAll(aNodeNo,aEcuID:string):Boolean;
+    Function DeleteTB_DOOR_NodeAll(aNodeNo:string):Boolean;
+    Function DeleteTB_DOORRCV_ECUAll(aNodeNo,aEcuID:string):Boolean;
+    Function DeleteTB_DOORRCV_NodeAll(aNodeNo:string):Boolean;
+    Function DeleteTB_EMPLOYEE_GuestID(aCompanyCode,aEmCode:string):Boolean; //방문자 인적사항은 삭제 처리하자.
+    Function DeleteTB_EMPLOYEEGUBUN(aCode:string):Boolean;
+    Function DeleteTB_FINGERDEVICE_Seq(aSeq:string):Boolean;
+    Function DeleteTB_FIREGROUP_Value(aGroupCode:string):Boolean;
+    Function DeleteTB_FoodCode_FDType(aFoodType:string):Boolean;
+    Function DeleteTB_FoodCode_Value(aFoodType,aFoodCode:string):Boolean;
+    Function DeleteTB_FOODTYPE_Value(aCode:string):Boolean;
+    Function DeleteTB_GUESTLIST_GLCode(aGlDate,aGlCode:string):Boolean;
+    Function DeleteTB_HOLIDAY_DayAll(aDate:string):Boolean;
+    Function DeleteTB_HOLIDAYDEVICE_DayAll(aDate:string):Boolean;
+    Function DeleteTB_HOLIDAYDEVICE_ECUAll(aNodeNo,aEcuID:string):Boolean;
+    Function DeleteTB_HOLIDAYDEVICE_NodeAll(aNodeNo:string):Boolean;
+    Function DeleteTB_NODE_NodeAll(aNodeNo:string):Boolean;
+    Function DeleteTB_NODERCV_NodeAll(aNodeNo:string):Boolean;
+    Function DeleteTB_POSICODE(aPosiCode:string):Boolean;
+    Function DeleteTB_READER_ECUAll(aNodeNo,aEcuID:string):Boolean;
+    Function DeleteTB_READER_NodeAll(aNodeNo:string):Boolean;
+    Function DeleteTB_READERRCV_ECUAll(aNodeNo,aEcuID:string):Boolean;
+    Function DeleteTB_READERRCV_NodeAll(aNodeNo:string):Boolean;
+    Function DeleteTB_TIMECODE_Building(aBuildingCode:string):Boolean;
+    Function DeleteTB_TIMECODE_BuildingChildAll(aBuildingCode:string):Boolean;
+    Function DeleteTB_TIMECODEDEVICE_BuildingChildAllDevice(aBuildingCode:string):Boolean;
+    Function DeleteTB_TIMECODEDEVICE_BuildingDevice(aBuildingCode:string):Boolean;
+    Function DeleteTB_TIMECODEDEVICE_DeviceAll(aNodeNo,aEcuID:string):Boolean;
+    Function DeleteTB_TIMECODEDEVICE_NodeAll(aNodeNo:string):Boolean;
+    Function DeleteTB_ZONE_ECUAll(aNodeNo,aEcuID:string):Boolean;
+    Function DeleteTB_ZONE_NodeAll(aNodeNo:string):Boolean;
+    Function DeleteTB_ZONEEXTENTION_ECUAll(aNodeNo,aEcuID:string):Boolean;
+    Function DeleteTB_ZONEEXTENTION_NodeAll(aNodeNo:string):Boolean;
+    Function DeleteTB_ZONERCV_ECUAll(aNodeNo,aEcuID:string):Boolean;
+    Function DeleteTB_ZONERCV_NodeAll(aNodeNo:string):Boolean;
+    Function DeleteVW_APPROVE_LABOR_Key(aJuminNo:string):Boolean;
+  end;
+
+var
+  dmDBDelete: TdmDBDelete;
+
+implementation
+
+{%CLASSGROUP 'System.Classes.TPersistent'}
+
+uses
+  uCommonVariable,
+  uDataBase;
+
+{$R *.dfm}
+
+{ TdmDBDelete }
+
+function TdmDBDelete.DeleteTB_ACCESSEVENT_ToDate(aDate: string): Boolean;
+var
+  stSql : string;
+begin
+  stSql := ' Delete From TB_ACCESSEVENT ';
+  stSql := stSql + ' Where AE_DATE <= ''' + aDate + ''' ';
+
+  result := dmDataBase.ProcessEventExecSQL(stSql);
+end;
+
+function TdmDBDelete.DeleteTB_ADMINDEVICE_DoorGrade(aUserID, aTYPE, aNodeNo,
+  aECUID, aExtendID, aNo: string): Boolean;
+var
+  stSql : string;
+begin
+  stSql := ' Delete From TB_ADMINDEVICE ';
+  stSql := stSql + ' Where GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  stSql := stSql + ' AND AD_USERID = ''' + aUserID + ''' ';
+  stSql := stSql + ' AND AG_TYPE = ''' + aTYPE + ''' ';
+  stSql := stSql + ' AND ND_NODENO = ' + aNodeNo + ' ';
+  stSql := stSql + ' AND DE_ECUID = ''' + aECUID + ''' ';
+  stSql := stSql + ' AND DE_EXTENDID = ' + aExtendID + ' ';
+  stSql := stSql + ' AND AG_NO = ' + aNo + ' ';
+
+  result := dmDataBase.ProcessEventExecSQL(stSql);
+end;
+
+function TdmDBDelete.DeleteTB_ADMINDEVICE_UserID(aUserID: string): Boolean;
+var
+  stSql : string;
+begin
+  stSql := ' Delete From TB_ADMINDEVICE ';
+  stSql := stSql + ' Where GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  stSql := stSql + ' AND AD_USERID = ''' + aUserID + ''' ';
+
+  result := dmDataBase.ProcessEventExecSQL(stSql);
+end;
+
+function TdmDBDelete.DeleteTB_ADMINGRADECODE(aCode: string): Boolean;
+var
+  stSql : string;
+begin
+  stSql := ' Delete From TB_ADMINGRADECODE ';
+  stSql := stSql + ' Where AG_GRADECODE = ''' + aCode + ''' ';
+
+  result := dmDataBase.ProcessEventExecSQL(stSql);
+end;
+
+function TdmDBDelete.DeleteTB_ADMINGRADEPROGRAM(aGradeCode, aProgramGubun,
+  aProgramid: string): Boolean;
+var
+  stSql : string;
+begin
+  stSql := ' Delete From TB_ADMINGRADEPROGRAM ';
+  stSql := stSql + ' Where GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  stSql := stSql + ' AND AG_GRADECODE = ''' + aGradeCode + ''' ';
+  stSql := stSql + ' AND FN_PROGRAMGUBUN = ''' + aProgramGubun + ''' ';
+  stSql := stSql + ' AND FN_NAMECODE = ''' + aProgramid + ''' ';
+
+  result := dmDataBase.ProcessEventExecSQL(stSql);
+
+end;
+
+function TdmDBDelete.DeleteTB_ADMINGRADEPROGRAM_GRADECODE(
+  aCode: string): Boolean;
+var
+  stSql : string;
+begin
+  stSql := ' Delete From TB_ADMINGRADEPROGRAM ';
+  stSql := stSql + ' Where AG_GRADECODE = ''' + aCode + ''' ';
+
+  result := dmDataBase.ProcessEventExecSQL(stSql);
+end;
+
+function TdmDBDelete.DeleteTB_ADMIN_UserID(aUserID: string): Boolean;
+var
+  stSql : string;
+begin
+  stSql := ' Delete From TB_ADMIN ';
+  stSql := stSql + ' Where GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  stSql := stSql + ' AND AD_USERID = ''' + aUserID + ''' ';
+
+  result := dmDataBase.ProcessEventExecSQL(stSql);
+
+end;
+
+function TdmDBDelete.DeleteTB_ALARMEVENT_ToDate(aDate: string): Boolean;
+var
+  stSql : string;
+begin
+  stSql := ' Delete From TB_ALARMEVENT ';
+  stSql := stSql + ' Where AE_DATE <= ''' + aDate + ''' ';
+
+  result := dmDataBase.ProcessEventExecSQL(stSql);
+end;
+
+function TdmDBDelete.DeleteTB_ANTIGROUPCODE_Value(aCode: string): Boolean;
+var
+  stSql : string;
+begin
+  stSql := ' Delete From TB_ANTIGROUPCODE ';
+  stSql := stSql + ' Where GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  stSql := stSql + ' AND AG_CODE = ' + aCode + ' ';
+
+  result := dmDataBase.ProcessEventExecSQL(stSql);
+end;
+
+function TdmDBDelete.DeleteTB_ARMAREA_ECUAll(aNodeNo, aEcuID: string): Boolean;
+var
+  stSql : string;
+begin
+  stSql := ' Delete From TB_ARMAREA ';
+  stSql := stSql + ' Where GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  stSql := stSql + ' AND ND_NODENO = ' + aNodeNo + ' ';
+  stSql := stSql + ' AND DE_ECUID = ''' + aEcuID + ''' ';
+
+  result := dmDataBase.ProcessEventExecSQL(stSql);
+end;
+
+function TdmDBDelete.DeleteTB_ARMAREA_NodeAll(aNodeNo: string): Boolean;
+var
+  stSql : string;
+begin
+  stSql := ' Delete From TB_ARMAREA ';
+  stSql := stSql + ' Where GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  stSql := stSql + ' AND ND_NODENO = ' + aNodeNo + ' ';
+
+  result := dmDataBase.ProcessEventExecSQL(stSql);
+end;
+
+function TdmDBDelete.DeleteTB_ATTENDCode_Value(aAWCode,
+  aATCode: string): Boolean;
+var
+  stSql : string;
+begin
+  stSql := ' Delete From TB_ATTENDCODE ';
+  stSql := stSql + ' Where GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  stSql := stSql + ' AND AW_CODE = ' + aAWCode + ' ';
+  stSql := stSql + ' AND AT_ATCODE = ' + aATCode + ' ';
+
+  result := dmDataBase.ProcessEventExecSQL(stSql);
+end;
+
+function TdmDBDelete.DeleteTB_ATTENDPOSITION_Code(aCode: string): Boolean;
+var
+  stSql : string;
+begin
+  stSql := ' Delete From TB_ATTENDPOSITION ';
+  stSql := stSql + ' Where GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  stSql := stSql + ' AND AP_CODE = ' + aCode + ' ';
+
+  result := dmDataBase.ProcessEventExecSQL(stSql);
+end;
+
+function TdmDBDelete.DeleteTB_ATTENDWORKTYPE_Code(aCode: string): Boolean;
+var
+  stSql : string;
+begin
+  stSql := ' Delete From TB_ATTENDWORKTYPE ';
+  stSql := stSql + ' Where GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  stSql := stSql + ' AND AW_CODE = ' + aCode + ' ';
+
+  result := dmDataBase.ProcessEventExecSQL(stSql);
+
+end;
+
+function TdmDBDelete.DeleteTB_CARDPERMITCOMPANYGROUP_ATType: Boolean;
+var
+  stSql : string;
+begin
+  //AT Type 은 근태 그룹에서 조회 하지 말자.
+  stSql := ' DELETE TB_CARDPERMITCOMPANYGROUP  ';
+  stSql := stSql + ' FROM TB_DOOR ';
+  stSql := stSql + ' Where TB_CARDPERMITCOMPANYGROUP.ND_NODENO = TB_DOOR.ND_NODENO ';
+  stSql := stSql + ' AND TB_CARDPERMITCOMPANYGROUP.DE_ECUID = TB_DOOR.DE_ECUID ';
+  stSql := stSql + ' AND TB_CARDPERMITCOMPANYGROUP.CP_TYPE = ''1'' ';
+  stSql := stSql + ' AND TB_CARDPERMITCOMPANYGROUP.CP_NUMBER = TB_DOOR.DO_DOORNO ';
+  stSql := stSql + ' AND TB_DOOR.DO_ATTYPE = ''1'' ';
+
+result := dmDataBase.ProcessExecSQL(stSql);
+
+end;
+
+function TdmDBDelete.DeleteTB_CARDPERMITCOMPANYGROUP_CompanyCode(
+  aCompanyCode: string): Boolean;
+var
+  stSql : string;
+begin
+  stSql := ' Delete From TB_CARDPERMITCOMPANYGROUP ';
+  stSql := stSql + ' Where GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  stSql := stSql + ' AND CO_COMPANYCODE = ''' + aCompanyCode + ''' ';
+
+  result := dmDataBase.ProcessEventExecSQL(stSql);
+end;
+
+function TdmDBDelete.DeleteTB_CARDPERMITCOMPANYGROUP_ECUAll(aNodeNo,
+  aEcuID: string): Boolean;
+var
+  stSql : string;
+begin
+  stSql := ' Delete From TB_CARDPERMITCOMPANYGROUP ';
+  stSql := stSql + ' Where GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  stSql := stSql + ' AND ND_NODENO = ' + aNodeNo + ' ';
+  stSql := stSql + ' AND DE_ECUID = ''' + aEcuID + ''' ';
+
+  result := dmDataBase.ProcessEventExecSQL(stSql);
+
+end;
+
+function TdmDBDelete.DeleteTB_CARDPERMITCOMPANYGROUP_FDType: Boolean;
+var
+  stSql : string;
+begin
+  //FD Type 은 근태 그룹에서 조회 하지 말자.
+  stSql := ' DELETE TB_CARDPERMITCOMPANYGROUP  ';
+  stSql := stSql + ' FROM TB_DOOR ';
+  stSql := stSql + ' Where TB_CARDPERMITCOMPANYGROUP.ND_NODENO = TB_DOOR.ND_NODENO ';
+  stSql := stSql + ' AND TB_CARDPERMITCOMPANYGROUP.DE_ECUID = TB_DOOR.DE_ECUID ';
+  stSql := stSql + ' AND TB_CARDPERMITCOMPANYGROUP.CP_TYPE = ''1'' ';
+  stSql := stSql + ' AND TB_CARDPERMITCOMPANYGROUP.CP_NUMBER = TB_DOOR.DO_DOORNO ';
+  stSql := stSql + ' AND TB_DOOR.DO_FDTYPE = ''1'' ';
+
+  result := dmDataBase.ProcessExecSQL(stSql);
+end;
+
+function TdmDBDelete.DeleteTB_CARDPERMITCOMPANYGROUP_NodeAll(
+  aNodeNo: string): Boolean;
+var
+  stSql : string;
+begin
+  stSql := ' Delete From TB_CARDPERMITCOMPANYGROUP ';
+  stSql := stSql + ' Where GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  stSql := stSql + ' AND ND_NODENO = ' + aNodeNo + ' ';
+
+  result := dmDataBase.ProcessEventExecSQL(stSql);
+end;
+
+function TdmDBDelete.DeleteTB_CARDPERMITEMPLOYEECODE_CompanyCode(
+  aCompanyCode: string): Boolean;
+var
+  stSql : string;
+begin
+  stSql := ' Delete From TB_CARDPERMITEMPLOYEECODE ';
+  stSql := stSql + ' Where GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  stSql := stSql + ' AND EM_SEQ IN ( ';
+  stSql := stSql + ' Select EM_SEQ from TB_EMPLOYEE ';
+  stSql := stSql + ' Where GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  stSql := stSql + ' AND EM_GRADETYPE = 1 '; //권한 타입이 회사코드 타입인 경우만 삭제 하자고...
+  stSql := stSql + ' AND CO_COMPANYCODE = ''' + aCompanyCode + ''') ';
+
+  result := dmDataBase.ProcessEventExecSQL(stSql);
+
+end;
+
+function TdmDBDelete.DeleteTB_CARDPERMITEMPLOYEECODE_CompanyCodeLike(
+  aCompanyCode: string): Boolean;
+var
+  stSql : string;
+begin
+  stSql := ' Delete From TB_CARDPERMITEMPLOYEECODE ';
+  stSql := stSql + ' Where GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  stSql := stSql + ' AND EM_SEQ IN ( ';
+  stSql := stSql + ' Select EM_SEQ from TB_EMPLOYEE ';
+  stSql := stSql + ' Where GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  stSql := stSql + ' AND EM_GRADETYPE = 1 '; //권한 타입이 회사코드 타입인 경우만 삭제 하자고...
+  stSql := stSql + ' AND CO_COMPANYCODE Like ''' + aCompanyCode + '%'') ';
+
+  result := dmDataBase.ProcessEventExecSQL(stSql);
+end;
+
+function TdmDBDelete.DeleteTB_CARDPERMITEMPLOYEECODE_ECUAll(aNodeNo,
+  EcuID: string): Boolean;
+var
+  stSql : string;
+begin
+  stSql := ' Delete From TB_CARDPERMITEMPLOYEECODE ';
+  stSql := stSql + ' Where GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  stSql := stSql + ' AND ND_NODENO = ' + aNodeNo + ' ';
+  stSql := stSql + ' AND DE_ECUID = ''' + EcuID + ''' ';
+
+  result := dmDataBase.ProcessEventExecSQL(stSql);
+end;
+
+function TdmDBDelete.DeleteTB_CARDPERMITEMPLOYEECODE_EMCODEAll(
+  aEmSeq: string): Boolean;
+var
+  stSql : string;
+begin
+  stSql := ' Delete From TB_CARDPERMITEMPLOYEECODE ';
+  stSql := stSql + ' Where GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  stSql := stSql + ' AND EM_SEQ = ' + aEmSeq + ' ';
+
+  result := dmDataBase.ProcessEventExecSQL(stSql);
+end;
+
+function TdmDBDelete.DeleteTB_CARDPERMITEMPLOYEECODE_EmGroupCodeLike(
+  aEmGroupCode: string): Boolean;
+var
+  stSql : string;
+begin
+  stSql := ' Delete From TB_CARDPERMITEMPLOYEECODE ';
+  stSql := stSql + ' Where GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  stSql := stSql + ' AND EM_SEQ IN ( ';
+  stSql := stSql + ' Select EM_SEQ from TB_EMPLOYEE ';
+  stSql := stSql + ' Where GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  stSql := stSql + ' AND EM_GRADETYPE = 2 '; //권한 타입이 사원그룹코드 타입인 경우만 삭제 하자고...
+  stSql := stSql + ' AND EM_GROUPCODE Like ''' + aEmGroupCode + '%'') ';
+
+  result := dmDataBase.ProcessEventExecSQL(stSql);
+end;
+
+function TdmDBDelete.DeleteTB_CARDPERMITEMPLOYEECODE_NodeAll(
+  aNodeNo: string): Boolean;
+var
+  stSql : string;
+begin
+  stSql := ' Delete From TB_CARDPERMITEMPLOYEECODE ';
+  stSql := stSql + ' Where GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  stSql := stSql + ' AND ND_NODENO = ' + aNodeNo + ' ';
+
+  result := dmDataBase.ProcessEventExecSQL(stSql);
+end;
+
+function TdmDBDelete.DeleteTB_CARDPERMITEMPLOYEEGROUP_ATType: Boolean;
+var
+  stSql : string;
+begin
+  //AT Type 은 근태 그룹에서 조회 하지 말자.
+  stSql := ' DELETE TB_CARDPERMITEMPLOYEEGROUP  ';
+  stSql := stSql + ' FROM TB_DOOR ';
+  stSql := stSql + ' Where TB_CARDPERMITEMPLOYEEGROUP.ND_NODENO = TB_DOOR.ND_NODENO ';
+  stSql := stSql + ' AND TB_CARDPERMITEMPLOYEEGROUP.DE_ECUID = TB_DOOR.DE_ECUID ';
+  stSql := stSql + ' AND TB_CARDPERMITEMPLOYEEGROUP.CP_TYPE = ''1'' ';
+  stSql := stSql + ' AND TB_CARDPERMITEMPLOYEEGROUP.CP_NUMBER = TB_DOOR.DO_DOORNO ';
+  stSql := stSql + ' AND TB_DOOR.DO_ATTYPE = ''1'' ';
+
+  result := dmDataBase.ProcessExecSQL(stSql);
+end;
+
+function TdmDBDelete.DeleteTB_CARDPERMITEMPLOYEEGROUP_ECUAll(aNodeNo,
+  aEcuID: string): Boolean;
+var
+  stSql : string;
+begin
+  stSql := ' Delete From TB_CARDPERMITEMPLOYEEGROUP ';
+  stSql := stSql + ' Where GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  stSql := stSql + ' AND ND_NODENO = ' + aNodeNo + ' ';
+  stSql := stSql + ' AND DE_ECUID = ''' + aEcuID + ''' ';
+
+  result := dmDataBase.ProcessEventExecSQL(stSql);
+end;
+
+function TdmDBDelete.DeleteTB_CARDPERMITEMPLOYEEGROUP_EmGroupCode(
+  aEmGroupCode: string): Boolean;
+var
+  stSql : string;
+begin
+  stSql := ' Delete From TB_CARDPERMITEMPLOYEEGROUP ';
+  stSql := stSql + ' Where GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  stSql := stSql + ' AND EM_GROUPCODE = ''' + aEmGroupCode + ''' ';
+
+  result := dmDataBase.ProcessEventExecSQL(stSql);
+end;
+
+function TdmDBDelete.DeleteTB_CARDPERMITEMPLOYEEGROUP_FDType: Boolean;
+var
+  stSql : string;
+begin
+  //FD Type 은 근태 그룹에서 조회 하지 말자.
+  stSql := ' DELETE TB_CARDPERMITEMPLOYEEGROUP  ';
+  stSql := stSql + ' FROM TB_DOOR ';
+  stSql := stSql + ' Where TB_CARDPERMITEMPLOYEEGROUP.ND_NODENO = TB_DOOR.ND_NODENO ';
+  stSql := stSql + ' AND TB_CARDPERMITEMPLOYEEGROUP.DE_ECUID = TB_DOOR.DE_ECUID ';
+  stSql := stSql + ' AND TB_CARDPERMITEMPLOYEEGROUP.CP_TYPE = ''1'' ';
+  stSql := stSql + ' AND TB_CARDPERMITEMPLOYEEGROUP.CP_NUMBER = TB_DOOR.DO_DOORNO ';
+  stSql := stSql + ' AND TB_DOOR.DO_FDTYPE = ''1'' ';
+
+  result := dmDataBase.ProcessExecSQL(stSql);
+end;
+
+function TdmDBDelete.DeleteTB_CARDPERMITEMPLOYEEGROUP_NodeAll(
+  aNodeNo: string): Boolean;
+var
+  stSql : string;
+begin
+  stSql := ' Delete From TB_CARDPERMITEMPLOYEEGROUP ';
+  stSql := stSql + ' Where GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  stSql := stSql + ' AND ND_NODENO = ' + aNodeNo + ' ';
+
+  result := dmDataBase.ProcessEventExecSQL(stSql);
+end;
+
+function TdmDBDelete.DeleteTB_CARDPERMIT_CardNo(aCardNo: string): Boolean;
+var
+  stSql : string;
+begin
+  stSql := ' Delete From TB_CARDPERMIT ';
+  stSql := stSql + ' Where GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  stSql := stSql + ' AND CA_CARDNO = ''' + aCardNo + ''' ';
+
+  result := dmDataBase.ProcessEventExecSQL(stSql);
+end;
+
+function TdmDBDelete.DeleteTB_CARDPERMIT_ECUAll(aNodeNo,
+  aEcuID: string): Boolean;
+var
+  stSql : string;
+begin
+  stSql := ' Delete From TB_CARDPERMIT ';
+  stSql := stSql + ' Where GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  stSql := stSql + ' AND ND_NODENO = ' + aNodeNo + ' ';
+  stSql := stSql + ' AND DE_ECUID = ''' + aEcuID + ''' ';
+
+  result := dmDataBase.ProcessEventExecSQL(stSql);
+end;
+
+function TdmDBDelete.DeleteTB_CARDPERMIT_NodeAll(aNodeNo: string): Boolean;
+var
+  stSql : string;
+begin
+  stSql := ' Delete From TB_CARDPERMIT ';
+  stSql := stSql + ' Where GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  stSql := stSql + ' AND ND_NODENO = ' + aNodeNo + ' ';
+
+  result := dmDataBase.ProcessEventExecSQL(stSql);
+end;
+
+function TdmDBDelete.DeleteTB_CARD_CARDNO(aCardNo: string): Boolean;
+var
+  stSql : string;
+begin
+//  stSql := ' Delete From TB_CARD ';
+  stSql := stSql + ' update TB_CARD set CA_STATECODE = ''0'' ';
+  stSql := stSql + ' Where GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  stSql := stSql + ' AND CA_CARDNO = ''' + aCardNo + ''' ';
+
+  result := dmDataBase.ProcessEventExecSQL(stSql);
+end;
+
+function TdmDBDelete.DeleteTB_Decoder_Value(aDecoderNo: string): Boolean;
+var
+  stSql : string;
+begin
+  stSql := ' Delete From TB_Decoder ';
+  stSql := stSql + ' Where GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  stSql := stSql + ' AND ND_DECODERNO = ' + aDecoderNo + ' ';
+
+  result := dmDataBase.ProcessEventExecSQL(stSql);
+end;
+
+function TdmDBDelete.DeleteTB_DEVICERCV_ECUAll(aNodeNo,
+  aEcuID: string): Boolean;
+var
+  stSql : string;
+begin
+  stSql := ' Delete From TB_DEVICERCV ';
+  stSql := stSql + ' Where GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  stSql := stSql + ' AND ND_NODENO = ' + aNodeNo + ' ';
+  stSql := stSql + ' AND DE_ECUID = ''' + aEcuID + ''' ';
+
+  result := dmDataBase.ProcessEventExecSQL(stSql);
+end;
+
+function TdmDBDelete.DeleteTB_DEVICERCV_NodeAll(aNodeNo: string): Boolean;
+var
+  stSql : string;
+begin
+  stSql := ' Delete From TB_DEVICERCV ';
+  stSql := stSql + ' Where GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  stSql := stSql + ' AND ND_NODENO = ' + aNodeNo + ' ';
+
+  result := dmDataBase.ProcessEventExecSQL(stSql);
+end;
+
+function TdmDBDelete.DeleteTB_DEVICE_ECUAll(aNodeNo, aEcuID: string): Boolean;
+var
+  stSql : string;
+begin
+  stSql := ' Delete From TB_DEVICE ';
+  stSql := stSql + ' Where GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  stSql := stSql + ' AND ND_NODENO = ' + aNodeNo + ' ';
+  stSql := stSql + ' AND DE_ECUID = ''' + aEcuID + ''' ';
+
+  result := dmDataBase.ProcessEventExecSQL(stSql);
+end;
+
+function TdmDBDelete.DeleteTB_DEVICE_NodeAll(aNodeNo: string): Boolean;
+var
+  stSql : string;
+begin
+  stSql := ' Delete From TB_DEVICE ';
+  stSql := stSql + ' Where GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  stSql := stSql + ' AND ND_NODENO = ' + aNodeNo + ' ';
+
+  result := dmDataBase.ProcessEventExecSQL(stSql);
+end;
+
+function TdmDBDelete.DeleteTB_DOORRCV_ECUAll(aNodeNo, aEcuID: string): Boolean;
+var
+  stSql : string;
+begin
+  stSql := ' Delete From TB_DOORRCV ';
+  stSql := stSql + ' Where GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  stSql := stSql + ' AND ND_NODENO = ' + aNodeNo + ' ';
+  stSql := stSql + ' AND DE_ECUID = ''' + aEcuID + ''' ';
+
+  result := dmDataBase.ProcessEventExecSQL(stSql);
+end;
+
+function TdmDBDelete.DeleteTB_DOORRCV_NodeAll(aNodeNo: string): Boolean;
+var
+  stSql : string;
+begin
+  stSql := ' Delete From TB_DOORRCV ';
+  stSql := stSql + ' Where GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  stSql := stSql + ' AND ND_NODENO = ' + aNodeNo + ' ';
+
+  result := dmDataBase.ProcessEventExecSQL(stSql);
+end;
+
+function TdmDBDelete.DeleteTB_DOOR_ECUAll(aNodeNo, aEcuID: string): Boolean;
+var
+  stSql : string;
+begin
+  stSql := ' Delete From TB_DOOR ';
+  stSql := stSql + ' Where GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  stSql := stSql + ' AND ND_NODENO = ' + aNodeNo + ' ';
+  stSql := stSql + ' AND DE_ECUID = ''' + aEcuID + ''' ';
+
+  result := dmDataBase.ProcessEventExecSQL(stSql);
+end;
+
+function TdmDBDelete.DeleteTB_DOOR_NodeAll(aNodeNo: string): Boolean;
+var
+  stSql : string;
+begin
+  stSql := ' Delete From TB_DOOR ';
+  stSql := stSql + ' Where GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  stSql := stSql + ' AND ND_NODENO = ' + aNodeNo + ' ';
+
+  result := dmDataBase.ProcessEventExecSQL(stSql);
+end;
+
+function TdmDBDelete.DeleteTB_EMPLOYEEGUBUN(aCode: string): Boolean;
+var
+  stSql : string;
+begin
+  stSql := ' Delete From TB_EMPLOYEEGUBUN ';
+  stSql := stSql + ' Where GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  stSql := stSql + ' AND EM_GUBUNCODE = ' + aCode + ' ';
+
+  result := dmDataBase.ProcessEventExecSQL(stSql);
+end;
+
+function TdmDBDelete.DeleteTB_EMPLOYEE_GuestID(aCompanyCode,
+  aEmCode: string): Boolean;
+var
+  stSql : string;
+begin
+  stSql := ' Delete From TB_EMPLOYEE ';
+  stSql := stSql + ' Where GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  stSql := stSql + ' AND CO_COMPANYCODE = ''' + aCompanyCode + ''' ';
+  stSql := stSql + ' AND EM_CODE = ''' + aEmCode + ''' ';
+
+  result := dmDataBase.ProcessEventExecSQL(stSql);
+end;
+
+function TdmDBDelete.DeleteTB_FINGERDEVICE_Seq(aSeq: string): Boolean;
+var
+  stSql : string;
+begin
+  stSql := ' Delete From TB_FINGERDEVICE ';
+  stSql := stSql + ' Where GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  stSql := stSql + ' AND FN_DEVICESEQ = ' + aSeq + ' ';
+
+  result := dmDataBase.ProcessEventExecSQL(stSql);
+end;
+
+function TdmDBDelete.DeleteTB_FIREGROUP_Value(aGroupCode: string): Boolean;
+var
+  stSql : string;
+begin
+  stSql := ' Delete From TB_FIREGROUP ';
+  stSql := stSql + ' Where GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  stSql := stSql + ' AND FG_GROUPCODE = ''' + aGroupCode + ''' ';
+
+  result := dmDataBase.ProcessEventExecSQL(stSql);
+end;
+
+function TdmDBDelete.DeleteTB_FoodCode_FDType(aFoodType: string): Boolean;
+var
+  stSql : string;
+begin
+  stSql := ' Delete From TB_FOODCODE ';
+  stSql := stSql + ' Where GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  stSql := stSql + ' AND RE_FDTYPE = ''' + aFoodType + ''' ';
+
+  result := dmDataBase.ProcessEventExecSQL(stSql);
+end;
+
+function TdmDBDelete.DeleteTB_FoodCode_Value(aFoodType,
+  aFoodCode: string): Boolean;
+var
+  stSql : string;
+begin
+  stSql := ' Delete From TB_FOODCODE ';
+  stSql := stSql + ' Where GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  stSql := stSql + ' AND RE_FDTYPE = ''' + aFoodType + ''' ';
+  stSql := stSql + ' AND FO_CODE = ' + aFoodCode + ' ';
+
+  result := dmDataBase.ProcessEventExecSQL(stSql);
+end;
+
+function TdmDBDelete.DeleteTB_FOODTYPE_Value(aCode: string): Boolean;
+var
+  stSql : string;
+begin
+  stSql := ' Delete From TB_FOODTYPE ';
+  stSql := stSql + ' Where GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  stSql := stSql + ' AND RE_FDTYPE = ''' + aCode + ''' ';
+
+  result := dmDataBase.ProcessEventExecSQL(stSql);
+end;
+
+function TdmDBDelete.DeleteTB_GUESTLIST_GLCode(aGlDate,aGlCode: string): Boolean;
+var
+  stSql : string;
+begin
+  stSql := ' Delete From TB_GUESTLIST ';
+  stSql := stSql + ' Where GL_CODE = ''' + aGlCode + ''' ';
+  stSql := stSql + ' AND GL_DATE = ''' + aGlDate + ''' ';
+
+  result := dmDataBase.ProcessEventExecSQL(stSql);
+end;
+
+function TdmDBDelete.DeleteTB_HOLIDAYDEVICE_DayAll(aDate: string): Boolean;
+var
+  stSql : string;
+begin
+  stSql := ' Delete From TB_HOLIDAYDEVICE ';
+  stSql := stSql + ' Where GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  stSql := stSql + ' AND HO_DAY = ''' + aDate + ''' ';
+
+  result := dmDataBase.ProcessEventExecSQL(stSql);
+end;
+
+function TdmDBDelete.DeleteTB_HOLIDAYDEVICE_ECUAll(aNodeNo,
+  aEcuID: string): Boolean;
+var
+  stSql : string;
+begin
+  stSql := ' Delete From TB_HOLIDAYDEVICE ';
+  stSql := stSql + ' Where GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  stSql := stSql + ' AND ND_NODENO = ' + aNodeNo + ' ';
+  stSql := stSql + ' AND DE_ECUID = ''' + aEcuID + ''' ';
+
+  result := dmDataBase.ProcessEventExecSQL(stSql);
+end;
+
+function TdmDBDelete.DeleteTB_HOLIDAYDEVICE_NodeAll(aNodeNo: string): Boolean;
+var
+  stSql : string;
+begin
+  stSql := ' Delete From TB_HOLIDAYDEVICE ';
+  stSql := stSql + ' Where GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  stSql := stSql + ' AND ND_NODENO = ' + aNodeNo + ' ';
+
+  result := dmDataBase.ProcessEventExecSQL(stSql);
+
+end;
+
+function TdmDBDelete.DeleteTB_HOLIDAY_DayAll(aDate: string): Boolean;
+var
+  stSql : string;
+begin
+  stSql := ' Delete From TB_HOLIDAY ';
+  stSql := stSql + ' Where GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  stSql := stSql + ' AND HO_DAY = ''' + aDate + ''' ';
+
+  result := dmDataBase.ProcessEventExecSQL(stSql);
+end;
+
+function TdmDBDelete.DeleteTB_NODERCV_NodeAll(aNodeNo: string): Boolean;
+var
+  stSql : string;
+begin
+  stSql := ' Delete From TB_NODERCV ';
+  stSql := stSql + ' Where GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  stSql := stSql + ' AND ND_NODENO = ' + aNodeNo + ' ';
+
+  result := dmDataBase.ProcessEventExecSQL(stSql);
+end;
+
+function TdmDBDelete.DeleteTB_NODE_NodeAll(aNodeNo: string): Boolean;
+var
+  stSql : string;
+begin
+  stSql := ' Delete From TB_NODE ';
+  stSql := stSql + ' Where GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  stSql := stSql + ' AND ND_NODENO = ' + aNodeNo + ' ';
+
+  result := dmDataBase.ProcessEventExecSQL(stSql);
+end;
+
+function TdmDBDelete.DeleteTB_POSICODE(aPosiCode: string): Boolean;
+var
+  stSql : string;
+begin
+  stSql := ' Delete From TB_POSICODE ';
+  stSql := stSql + ' Where GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  stSql := stSql + ' AND PO_POSICODE = ''' + aPosiCode + ''' ';
+
+  result := dmDataBase.ProcessEventExecSQL(stSql);
+end;
+
+function TdmDBDelete.DeleteTB_READERRCV_ECUAll(aNodeNo,
+  aEcuID: string): Boolean;
+var
+  stSql : string;
+begin
+  stSql := ' Delete From TB_READERRCV ';
+  stSql := stSql + ' Where GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  stSql := stSql + ' AND ND_NODENO = ' + aNodeNo + ' ';
+  stSql := stSql + ' AND DE_ECUID = ''' + aEcuID + ''' ';
+
+  result := dmDataBase.ProcessEventExecSQL(stSql);
+end;
+
+function TdmDBDelete.DeleteTB_READERRCV_NodeAll(aNodeNo: string): Boolean;
+var
+  stSql : string;
+begin
+  stSql := ' Delete From TB_READERRCV ';
+  stSql := stSql + ' Where GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  stSql := stSql + ' AND ND_NODENO = ' + aNodeNo + ' ';
+
+  result := dmDataBase.ProcessEventExecSQL(stSql);
+end;
+
+function TdmDBDelete.DeleteTB_READER_ECUAll(aNodeNo, aEcuID: string): Boolean;
+var
+  stSql : string;
+begin
+  stSql := ' Delete From TB_READER ';
+  stSql := stSql + ' Where GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  stSql := stSql + ' AND ND_NODENO = ' + aNodeNo + ' ';
+  stSql := stSql + ' AND DE_ECUID = ''' + aEcuID + ''' ';
+
+  result := dmDataBase.ProcessEventExecSQL(stSql);
+end;
+
+function TdmDBDelete.DeleteTB_READER_NodeAll(aNodeNo: string): Boolean;
+var
+  stSql : string;
+begin
+  stSql := ' Delete From TB_READER ';
+  stSql := stSql + ' Where GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  stSql := stSql + ' AND ND_NODENO = ' + aNodeNo + ' ';
+
+  result := dmDataBase.ProcessEventExecSQL(stSql);
+end;
+
+function TdmDBDelete.DeleteTB_TIMECODEDEVICE_BuildingChildAllDevice(
+  aBuildingCode: string): Boolean;
+var
+  stSql : string;
+begin
+  stSql := ' Delete From TB_TIMECODEDEVICE ';
+  stSql := stSql + ' Where TB_TIMECODEDEVICE.GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  stSql := stSql + ' AND EXISTS ';
+  stSql := stSql + ' (SELECT * FROM TB_DEVICE  ';
+  stSql := stSql + ' WHERE TB_TIMECODEDEVICE.GROUP_CODE = TB_DEVICE.GROUP_CODE ';
+  stSql := stSql + ' AND TB_TIMECODEDEVICE.ND_NODENO = TB_DEVICE.ND_NODENO ';
+  stSql := stSql + ' AND TB_TIMECODEDEVICE.DE_ECUID = TB_DEVICE.DE_ECUID  ';
+  stSql := stSql + ' AND TB_DEVICE.DE_EXTENDID = 0  ';
+  stSql := stSql + ' AND TB_DEVICE.BC_BUILDINGCODE Like ''' + aBuildingCode + '%'' ';
+  stSql := stSql + ' AND TB_DEVICE.DE_TIMECODETYPE = 0 )  ';
+(*  if G_nDBType = MSSQL then
+  begin
+    stSql := stSql + ' AND CONVERT(varchar,a.ND_NODENO) = b.DO_DOORNO  ';
+  end else
+  begin
+    stSql := stSql + ' AND CAST(a.ND_NODENO AS varchar) = b.DO_DOORNO  ';
+  end;           *)
+
+  result := dmDataBase.ProcessEventExecSQL(stSql);
+end;
+
+function TdmDBDelete.DeleteTB_TIMECODEDEVICE_BuildingDevice(
+  aBuildingCode: string): Boolean;
+var
+  stSql : string;
+begin
+  stSql := ' Delete From TB_TIMECODEDEVICE ';
+  stSql := stSql + ' Where TB_TIMECODEDEVICE.GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  stSql := stSql + ' AND EXISTS ';
+  stSql := stSql + ' (SELECT * FROM TB_DEVICE  ';
+  stSql := stSql + ' WHERE TB_TIMECODEDEVICE.GROUP_CODE = TB_DEVICE.GROUP_CODE ';
+  stSql := stSql + ' AND TB_TIMECODEDEVICE.ND_NODENO = TB_DEVICE.ND_NODENO ';
+  stSql := stSql + ' AND TB_TIMECODEDEVICE.DE_ECUID = TB_DEVICE.DE_ECUID  ';
+  stSql := stSql + ' AND TB_DEVICE.DE_EXTENDID = 0  ';
+  stSql := stSql + ' AND TB_DEVICE.BC_BUILDINGCODE = ''' + aBuildingCode + ''' ';
+  stSql := stSql + ' AND TB_DEVICE.DE_TIMECODETYPE = 0 )  ';
+
+  result := dmDataBase.ProcessEventExecSQL(stSql);
+
+end;
+
+function TdmDBDelete.DeleteTB_TIMECODEDEVICE_DeviceAll(aNodeNo,
+  aEcuID: string): Boolean;
+var
+  stSql : string;
+begin
+  stSql := ' Delete From TB_TIMECODEDEVICE ';
+  stSql := stSql + ' Where GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  stSql := stSql + ' AND ND_NODENO = ' + aNodeNo + ' ';
+  stSql := stSql + ' AND DE_ECUID = ''' + aEcuID + ''' ';
+
+  result := dmDataBase.ProcessEventExecSQL(stSql);
+end;
+
+function TdmDBDelete.DeleteTB_TIMECODEDEVICE_NodeAll(aNodeNo: string): Boolean;
+var
+  stSql : string;
+begin
+  stSql := ' Delete From TB_TIMECODEDEVICE ';
+  stSql := stSql + ' Where GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  stSql := stSql + ' AND ND_NODENO = ' + aNodeNo + ' ';
+
+  result := dmDataBase.ProcessEventExecSQL(stSql);
+end;
+
+function TdmDBDelete.DeleteTB_TIMECODE_Building(aBuildingCode: string): Boolean;
+var
+  stSql : string;
+begin
+  stSql := ' Delete From TB_TIMECODE ';
+  stSql := stSql + ' Where GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  stSql := stSql + ' AND BC_BUILDINGCODE = ''' + aBuildingCode + ''' ';
+
+  result := dmDataBase.ProcessEventExecSQL(stSql);
+end;
+
+function TdmDBDelete.DeleteTB_TIMECODE_BuildingChildAll(
+  aBuildingCode: string): Boolean;
+var
+  stSql : string;
+begin
+  stSql := ' Delete From TB_TIMECODE ';
+  stSql := stSql + ' Where GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  stSql := stSql + ' AND BC_BUILDINGCODE Like ''' + aBuildingCode + '%'' ';
+
+  result := dmDataBase.ProcessEventExecSQL(stSql);
+end;
+
+function TdmDBDelete.DeleteTB_ZONEEXTENTION_ECUAll(aNodeNo,
+  aEcuID: string): Boolean;
+var
+  stSql : string;
+begin
+  stSql := ' Delete From TB_ZONEEXTENTION ';
+  stSql := stSql + ' Where GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  stSql := stSql + ' AND ND_NODENO = ' + aNodeNo + ' ';
+  stSql := stSql + ' AND DE_ECUID = ''' + aEcuID + ''' ';
+
+  result := dmDataBase.ProcessEventExecSQL(stSql);
+end;
+
+function TdmDBDelete.DeleteTB_ZONEEXTENTION_NodeAll(aNodeNo: string): Boolean;
+var
+  stSql : string;
+begin
+  stSql := ' Delete From TB_ZONEEXTENTION ';
+  stSql := stSql + ' Where GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  stSql := stSql + ' AND ND_NODENO = ' + aNodeNo + ' ';
+
+  result := dmDataBase.ProcessEventExecSQL(stSql);
+end;
+
+function TdmDBDelete.DeleteTB_ZONERCV_ECUAll(aNodeNo, aEcuID: string): Boolean;
+var
+  stSql : string;
+begin
+  stSql := ' Delete From TB_ZONERCV ';
+  stSql := stSql + ' Where GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  stSql := stSql + ' AND ND_NODENO = ' + aNodeNo + ' ';
+  stSql := stSql + ' AND DE_ECUID = ''' + aEcuID + ''' ';
+
+  result := dmDataBase.ProcessEventExecSQL(stSql);
+end;
+
+function TdmDBDelete.DeleteTB_ZONERCV_NodeAll(aNodeNo: string): Boolean;
+var
+  stSql : string;
+begin
+  stSql := ' Delete From TB_ZONERCV ';
+  stSql := stSql + ' Where GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  stSql := stSql + ' AND ND_NODENO = ' + aNodeNo + ' ';
+
+  result := dmDataBase.ProcessEventExecSQL(stSql);
+end;
+
+function TdmDBDelete.DeleteTB_ZONE_ECUAll(aNodeNo, aEcuID: string): Boolean;
+var
+  stSql : string;
+begin
+  stSql := ' Delete From TB_ZONE ';
+  stSql := stSql + ' Where GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  stSql := stSql + ' AND ND_NODENO = ' + aNodeNo + ' ';
+  stSql := stSql + ' AND DE_ECUID = ''' + aEcuID + ''' ';
+
+  result := dmDataBase.ProcessEventExecSQL(stSql);
+
+end;
+
+function TdmDBDelete.DeleteTB_ZONE_NodeAll(aNodeNo: string): Boolean;
+var
+  stSql : string;
+begin
+  stSql := ' Delete From TB_ZONE ';
+  stSql := stSql + ' Where GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  stSql := stSql + ' AND ND_NODENO = ' + aNodeNo + ' ';
+
+  result := dmDataBase.ProcessEventExecSQL(stSql);
+end;
+
+function TdmDBDelete.DeleteVW_APPROVE_LABOR_Key(aJuminNo: string): Boolean;
+var
+  stSql : string;
+begin
+  stSql := ' Delete From VW_APPROVE_LABOR ';
+  stSql := stSql + ' Where JUMIN_NO = ''' + aJuminNo + ''' ';
+
+  result := dmDataBase.ProcessEventExecSQL(stSql);
+end;
+
+end.

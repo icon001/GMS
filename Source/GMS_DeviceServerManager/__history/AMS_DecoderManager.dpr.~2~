@@ -1,0 +1,75 @@
+program AMS_DecoderManager;
+
+uses
+  Classes,
+  IniFiles,
+  System.SysUtils,
+  Windows,
+  Winapi.Messages,
+  Vcl.Forms,
+  uMain in 'fmMain\uMain.pas' {fmMain},
+  uSharedMemory in '..\..\Lib\common\SharedMemory\uSharedMemory.pas',
+  uCommonFunction in '..\..\Lib\common\uCommonFunction.pas',
+  uCommonVariable in '..\..\Lib\common\uCommonVariable.pas',
+  uDataBase in '..\..\Lib\DataBase\uDataBase.pas' {dmDataBase: TDataModule},
+  uDataBaseConfig in '..\..\Lib\DataBase\uDataBaseConfig.pas' {fmDataBaseConfig},
+  uDBCreate in '..\..\Lib\DataBase\uDBCreate.pas' {dmDBCreate: TDataModule},
+  uDBFunction in '..\..\Lib\DataBase\uDBFunction.pas' {dmDBFunction: TDataModule},
+  uDBInsert in '..\..\Lib\DataBase\uDBInsert.pas' {dmDBInsert: TDataModule},
+  uFormMessage in '..\..\Lib\Form\uFormMessage.pas' {dmFormMessage: TDataModule},
+  uFormName in '..\..\Lib\Form\uFormName.pas' {dmFormName: TDataModule},
+  uSubForm in '..\..\Lib\Form\uSubForm.pas' {fmASubForm},
+  u_c_basic_object in '..\..\Lib\WinSock\Winsockclasses\u_c_basic_object.pas',
+  u_c_byte_buffer in '..\..\Lib\WinSock\Winsockclasses\u_c_byte_buffer.pas',
+  u_c_display in '..\..\Lib\WinSock\Winsockclasses\u_c_display.pas',
+  u_c_log in '..\..\Lib\WinSock\Winsockclasses\u_c_log.pas',
+  uWinSockClient in '..\..\Lib\WinSock\WinSockClient\uWinSockClient.pas' {dmWinSockClient: TDataModule},
+  u_winsock in '..\..\Lib\WinSock\Winsocket\u_winsock.pas',
+  u_c_server_client_socket_list in '..\..\Lib\WinSock\WinSockServer\u_c_server_client_socket_list.pas',
+  u_characters in '..\..\Lib\WinSock\Winsockunits\u_characters.pas',
+  u_dir in '..\..\Lib\WinSock\Winsockunits\u_dir.pas',
+  u_display_hex_2 in '..\..\Lib\WinSock\Winsockunits\u_display_hex_2.pas',
+  u_file in '..\..\Lib\WinSock\Winsockunits\u_file.pas',
+  u_strings in '..\..\Lib\WinSock\Winsockunits\u_strings.pas',
+  u_types_constants in '..\..\Lib\WinSock\Winsockunits\u_types_constants.pas',
+  uDecoderServer in 'DataModule\uDecoderServer.pas' {dmDecoderServer: TDataModule},
+  uPCComMonitoring in 'fmPCComMonitoring\uPCComMonitoring.pas' {fmPCComMonitoring};
+
+{$R *.res}
+
+var
+hMutex : LongInt;
+ini_fun : TiniFile;
+DaemonGubun:string;
+FindHandle: THandle;
+ProcessList : TStringList;
+i : integer;
+ProcId: DWORD;
+hProcess: THandle;
+//TermSucc: BOOL;
+pSelfID : DWORD;
+begin
+  ini_fun := TiniFile.Create(ExtractFileDir(Application.ExeName) + '\Config.INI');
+  G_nDecoderNo := ini_fun.ReadInteger('DECODER','NO',1);
+
+  ProcessList := TStringList.Create;
+  ProcessList.Clear;
+  Process32List(ProcessList);
+  GetWindowThreadProcessId(Application.Handle, @pSelfID);
+  for i := 0 to ProcessList.Count - 1 do
+  begin
+    if ProcessList.Strings[i] = ExtractFileName(Application.ExeName) then  //실행 되고 있으면
+    begin
+      ProcId := DWORD(ProcessList.Objects[i]);
+      if ProcID <> pSelfID then
+      begin
+        Exit; //실행 시키지 말자...
+      end;
+    end;
+  end;
+  Application.Initialize;
+  Application.MainFormOnTaskbar := True;
+  Application.CreateForm(TdmDataBase, dmDataBase);
+  Application.CreateForm(TfmMain, fmMain);
+  Application.Run;
+end.

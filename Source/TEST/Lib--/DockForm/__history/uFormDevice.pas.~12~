@@ -1,0 +1,177 @@
+unit uFormDevice;
+
+interface
+
+uses
+  System.SysUtils, System.Classes,Vcl.StdCtrls,Data.Win.ADODB,Winapi.ActiveX;
+
+type
+  TdmFormDevice = class(TDataModule)
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+    procedure LoadDeviceCode(aNodeNo:string;cmbBox:TComboBox;aList:TStringList;aAll:Boolean);
+    procedure LoadNodeName(cmbBox:TComboBox;aList:TStringList;aAll:Boolean);
+    procedure LoadFingerDevice(cmbBox:TComboBox;aList:TStringList;aAll:Boolean);
+  end;
+
+var
+  dmFormDevice: TdmFormDevice;
+
+implementation
+
+uses
+  uCommonFunction,
+  uCommonVariable,
+  uDataBase;
+
+{%CLASSGROUP 'System.Classes.TPersistent'}
+
+{$R *.dfm}
+
+{ TdmFormDevice }
+
+procedure TdmFormDevice.LoadDeviceCode(aNodeNo: string; cmbBox: TComboBox;
+  aList: TStringList; aAll: Boolean);
+var
+  stSql : string;
+  TempAdoQuery : TADOQuery;
+begin
+  cmbBox.Items.Clear;
+  aList.Clear;
+  if aAll then
+  begin
+    cmbBox.Items.Add('전체');
+    aList.Add('');
+    cmbBox.ItemIndex := 0;
+    if aNodeNo = '' then Exit;
+  end;
+
+  Try
+    CoInitialize(nil);
+    TempAdoQuery := TADOQuery.Create(nil);
+    TempAdoQuery.Connection := dmDataBase.ADOConnection;
+    stSql := 'SELECT ND_NODENO,DE_ECUID FROM TB_DEVICE ';
+    stSql := stSql + ' Where GROUP_CODE = ''' + G_stGroupCode + '''';
+    if aNodeNo <> '' then
+      stSql := stSql + ' AND ND_NODENO = ' + aNodeNo + '';
+    stSql := stSql + ' AND DE_DEVICEUSE = ''1'' ';
+    stSql := stSql + ' ORDER BY ND_NODENO,DE_ECUID  ';
+    with TempAdoQuery do
+    begin
+      Close;
+      sql.Text := stSql;
+      Try
+        Open;
+      Except
+        Exit;
+      End;
+      if recordcount < 1 then Exit;
+      while Not Eof do
+      begin
+        cmbBox.Items.Add(FillZeroNumber(FindField('ND_NODENO').AsInteger,G_nNodeCodeLength) + ':' + FindField('DE_ECUID').AsString);
+        aList.Add(FillZeroNumber(FindField('ND_NODENO').AsInteger,G_nNodeCodeLength) + FindField('DE_ECUID').AsString);
+        Next;
+      end;
+      if cmbBox.Items.Count > 0 then cmbBox.ItemIndex := 0;
+    end;
+  Finally
+    TempAdoQuery.Free;
+    CoUninitialize;
+  End;
+end;
+
+procedure TdmFormDevice.LoadFingerDevice(cmbBox: TComboBox; aList: TStringList;
+  aAll: Boolean);
+var
+  stSql : string;
+  TempAdoQuery : TADOQuery;
+begin
+  cmbBox.Items.Clear;
+  aList.Clear;
+  if aAll then
+  begin
+    cmbBox.Items.Add('전체');
+    aList.Add('');
+    cmbBox.ItemIndex := 0;
+  end;
+
+  Try
+    CoInitialize(nil);
+    TempAdoQuery := TADOQuery.Create(nil);
+    TempAdoQuery.Connection := dmDataBase.ADOConnection;
+    stSql := 'SELECT * FROM TB_FINGERDEVICE ';
+    stSql := stSql + ' Where GROUP_CODE = ''' + G_stGroupCode + '''';
+    stSql := stSql + '  ORDER BY FN_DEVICESEQ  ';
+    with TempAdoQuery do
+    begin
+      Close;
+      sql.Text := stSql;
+      Try
+        Open;
+      Except
+        Exit;
+      End;
+      if recordcount < 1 then Exit;
+      while Not Eof do
+      begin
+        cmbBox.Items.Add(FillZeroNumber(FindField('FN_DEVICESEQ').AsInteger,G_nNodeCodeLength) + ':' + FindField('FN_DEVICENAME').AsString);
+        aList.Add(FindField('FN_DEVICEIP').AsString);
+        Next;
+      end;
+      if cmbBox.Items.Count > 0 then cmbBox.ItemIndex := 0;
+    end;
+  Finally
+    TempAdoQuery.Free;
+    CoUninitialize;
+  End;
+end;
+
+procedure TdmFormDevice.LoadNodeName(cmbBox: TComboBox; aList: TStringList;
+  aAll: Boolean);
+var
+  stSql : string;
+  TempAdoQuery : TADOQuery;
+begin
+  cmbBox.Items.Clear;
+  aList.Clear;
+  if aAll then
+  begin
+    cmbBox.Items.Add('전체');
+    aList.Add('');
+    cmbBox.ItemIndex := 0;
+  end;
+
+  Try
+    CoInitialize(nil);
+    TempAdoQuery := TADOQuery.Create(nil);
+    TempAdoQuery.Connection := dmDataBase.ADOConnection;
+    stSql := 'SELECT * FROM TB_NODE ';
+    stSql := stSql + ' Where GROUP_CODE = ''' + G_stGroupCode + '''';
+    stSql := stSql + '  ORDER BY ND_NODENO  ';
+    with TempAdoQuery do
+    begin
+      Close;
+      sql.Text := stSql;
+      Try
+        Open;
+      Except
+        Exit;
+      End;
+      if recordcount < 1 then Exit;
+      while Not Eof do
+      begin
+        cmbBox.Items.Add(FillZeroNumber(FindField('ND_NODENO').AsInteger,G_nNodeCodeLength) + ':' + FindField('ND_NODENAME').AsString);
+        aList.Add(FillZeroNumber(FindField('ND_NODENO').AsInteger,G_nNodeCodeLength));
+        Next;
+      end;
+      if cmbBox.Items.Count > 0 then cmbBox.ItemIndex := 0;
+    end;
+  Finally
+    TempAdoQuery.Free;
+    CoUninitialize;
+  End;
+end;
+
+end.

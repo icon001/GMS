@@ -1,0 +1,94 @@
+unit uDoor;
+
+interface
+
+uses
+  System.SysUtils, System.Classes,
+  uDevice;
+
+type
+  TDeviceDoor = Class(TComponent)
+  private
+    FDoorUse: Boolean;
+    FDoorNo: integer;
+    FDevice: TDevice;
+    FREMOTEDISARMDOOROPEN: string;
+    FDOORTYPE: string;
+    FARMAREANO: integer;
+    FLOCKTYPE: string;
+    FDSCHECKUSE: string;
+    FARMDSCHECK: string;
+    FFIREDOOROPEN: string;
+    FDOORNAME: string;
+    FSCHEDULEUSE: string;
+    FDOORMODE: string;
+    FDOORSTATE: string;
+    FDSCHECKTIME: string;
+    FLONGOPENTIME: string;
+    FCARDMODE: string;
+    FLONGOPENALARM: string;
+    FDSOPENSTATE: string;
+    FCONTROLTIME: string;
+    procedure SetDOORTYPE(const Value: string);
+    procedure SetFIREDOOROPEN(const Value: string);
+    procedure SetSCHEDULEUSE(const Value: string);
+    { Private declarations }
+  published
+    property Device : TDevice read FDevice write FDevice;
+    property DoorNo : integer read FDoorNo write FDoorNo;
+    property DoorUse : Boolean read FDoorUse write FDoorUse; //출입문사용유무
+    property DOORNAME : string read FDOORNAME write FDOORNAME;
+    property DOORTYPE : string read FDOORTYPE write SetDOORTYPE;
+    property CARDMODE : string read FCARDMODE write FCARDMODE;
+    property DOORMODE : string read FDOORMODE write FDOORMODE;
+    property CONTROLTIME : string read FCONTROLTIME write FCONTROLTIME;
+    property LONGOPENTIME : string read FLONGOPENTIME write FLONGOPENTIME;
+    property LONGOPENALARM : string read FLONGOPENALARM write FLONGOPENALARM;
+    property DOORSTATE : string read FDOORSTATE write FDOORSTATE;
+    property SCHEDULEUSE : string read FSCHEDULEUSE write SetSCHEDULEUSE;
+    property FIREDOOROPEN : string read FFIREDOOROPEN write SetFIREDOOROPEN;
+    property LOCKTYPE : string read FLOCKTYPE write FLOCKTYPE;
+    property DSOPENSTATE : string read FDSOPENSTATE write FDSOPENSTATE;
+    property REMOTEDISARMDOOROPEN : string read FREMOTEDISARMDOOROPEN write FREMOTEDISARMDOOROPEN;
+    property ARMAREANO : integer read FARMAREANO write FARMAREANO;
+    property DSCHECKUSE : string read FDSCHECKUSE write FDSCHECKUSE;
+    property DSCHECKTIME : string read FDSCHECKTIME write FDSCHECKTIME;
+    property ARMDSCHECK : string read FARMDSCHECK write FARMDSCHECK;
+  public
+    { Public declarations }
+  end;
+
+  TdmDoor = class(TDataModule)
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+  end;
+
+var
+  dmDoor: TdmDoor;
+
+implementation
+
+{%CLASSGROUP 'System.Classes.TPersistent'}
+
+{$R *.dfm}
+
+{ TDeviceDoor }
+
+procedure TDeviceDoor.SetDOORTYPE(const Value: string);
+begin
+  FDOORTYPE := Value;
+end;
+
+procedure TDeviceDoor.SetFIREDOOROPEN(const Value: string);
+begin
+  FFIREDOOROPEN := Value;
+end;
+
+procedure TDeviceDoor.SetSCHEDULEUSE(const Value: string);
+begin
+  FSCHEDULEUSE := Value;
+end;
+
+end.

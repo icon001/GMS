@@ -1,0 +1,32 @@
+unit uTelEventRegist;
+
+interface
+
+uses
+  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
+  Vcl.Controls, Vcl.Forms, Vcl.Dialogs;
+
+type
+  TfmTelEventRegist = class(TForm)
+  private
+    FSelectAccessEventTime: string;
+    FSelectEcuID: string;
+    FSelectNodeNo: string;
+    FSelectDoorNO: string;
+    { Private declarations }
+  public
+    { Public declarations }
+    property SelectAccessEventTime : string read FSelectAccessEventTime write FSelectAccessEventTime;
+    property SelectNodeNo : string read FSelectNodeNo write FSelectNodeNo;
+    property SelectEcuID : string read FSelectEcuID write FSelectEcuID;
+    property SelectDoorNO : string read FSelectDoorNO write FSelectDoorNO;
+  end;
+
+var
+  fmTelEventRegist: TfmTelEventRegist;
+
+implementation
+
+{$R *.dfm}
+
+end.

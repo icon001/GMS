@@ -1,0 +1,41 @@
+unit uNodeThread;
+
+
+interface
+uses
+  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
+  Dialogs, StdCtrls;
+
+
+Type
+
+TNodeThread = class(TThread)
+private
+procedure Execute ; override;
+public
+  constructor Create;
+  destructor Destroy ; override;
+end;
+
+implementation
+
+{ TNodeThread }
+
+constructor TNodeThread.Create;
+begin
+
+end;
+
+destructor TNodeThread.Destroy;
+begin
+
+  inherited;
+end;
+
+procedure TNodeThread.Execute;
+begin
+  inherited;
+
+end;
+
+end.

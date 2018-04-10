@@ -1,0 +1,33 @@
+unit uATReSummary;
+
+interface
+
+uses
+  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
+  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls, Vcl.ComCtrls;
+
+type
+  TfmAtResummery = class(TForm)
+    Label1: TLabel;
+    dmDate: TDateTimePicker;
+    Button1: TButton;
+    procedure FormShow(Sender: TObject);
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+  end;
+
+var
+  fmAtResummery: TfmAtResummery;
+
+implementation
+
+{$R *.dfm}
+
+procedure TfmAtResummery.FormShow(Sender: TObject);
+begin
+  dmDate.DateTime := now;
+end;
+
+end.

@@ -1,0 +1,67 @@
+unit uBuildingState;
+
+interface
+uses  System.Classes,System.SysUtils,
+      uDeviceEvent,uDeviceVariable;
+type
+  TBuildingState = Class(TComponent)
+  public
+    constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
+  private
+    BuildingDoorList : TStringList;
+    BuildingAlarmAreaList : TStringList;
+  private
+    FBuildingName: string;
+    FBuildingCode: string;
+  public
+    procedure BuildingAlarmAreaAdd(aNodeNo,aEcuID,aAlarmArea:string);
+    procedure BuildingDoorAdd(aNodeNo,aEcuID,aDoorNo:string);
+  public
+    property BuildingCode : string read FBuildingCode write FBuildingCode;
+    property BuildingName : string read FBuildingName write FBuildingName;
+  end;
+
+implementation
+uses
+  uCommonFunction,
+  uCommonVariable;
+
+{ TBuildingState }
+
+procedure TBuildingState.BuildingAlarmAreaAdd(aNodeNo, aEcuID,
+  aAlarmArea: string);
+var
+  stAlarmAreaCode : string;
+  nIndex : integer;
+begin
+  stAlarmAreaCode := FillZeroNumber(strtoint(aNodeNo),G_nNodeCodeLength) + aEcuID + aAlarmArea;
+  nIndex := BuildingAlarmAreaList.IndexOf(stAlarmAreaCode);
+  if nIndex < 0 then BuildingAlarmAreaList.Add(stAlarmAreaCode);
+end;
+
+procedure TBuildingState.BuildingDoorAdd(aNodeNo, aEcuID, aDoorNo: string);
+var
+  stDoorCode : string;
+  nIndex : integer;
+begin
+  stDoorCode := FillZeroNumber(strtoint(aNodeNo),G_nNodeCodeLength) + aEcuID + aDoorNo;
+  nIndex := BuildingDoorList.IndexOf(stDoorCode);
+  if nIndex < 0 then BuildingDoorList.Add(stDoorCode);
+end;
+
+constructor TBuildingState.Create(AOwner: TComponent);
+begin
+  inherited;
+  BuildingDoorList := TStringList.Create;
+  BuildingAlarmAreaList := TStringList.Create;
+end;
+
+destructor TBuildingState.Destroy;
+begin
+  BuildingDoorList.Free;
+  BuildingAlarmAreaList.Free;
+  inherited;
+end;
+
+end.

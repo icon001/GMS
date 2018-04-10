@@ -1,0 +1,439 @@
+unit uDevicePacket;
+
+interface
+
+uses
+  System.SysUtils, System.Classes;
+
+type
+  TdmDevicePacket = class(TDataModule)
+  private
+    { Private declarations }
+    procedure ClearBitB(var b:byte; BitToClear: integer);
+    function CheckDataPacket(aData: RawByteString;aProgramType:integer; var aLeavePacketData:RawByteString;var aPacketData:RawByteString):integer;
+    function CheckDecorderDataPacket(aData: String;var aLeavePacketData: String;var aPacketData:string):integer;
+    Function DataConvert1(aMakeValue:Byte;aData:String):String;
+    Function DataConvert2(aMakeValue:Byte;aData:String):String;
+    function getCheckSumData(aData: RawByteString;aLength:integer): String;
+  public
+    { Public declarations }
+    function ChekCSData(aData: RawByteString;aLength,aProgramType:integer): Boolean;
+    function EncodeData(aKey:Byte; aData: String): String;
+    function GetCardDataPacketData(aCardType,aCardNo,aPositionNum:string;aCardPermit:Boolean;aDoorPermit,aArmAreaPermit,aRegDate,aEndDate,aTimeCodeUse,
+                                   aTimeCode,aTimeGroup,aWeekCode,aEmState:string):string;
+    function GetFixedCardNoCheck(aCardNo:string;bCardFixedUse:Boolean;
+             aCardFixedFillChar:string;nCardFixedPosition,nCardFixedLength:integer):string;
+    Function MakeCSData(aData: RawByteString;nCSType:integer=0;aLength:integer=-1):String;
+    function MakeSum(aData:RawByteString;nCSType:integer=0;aLength:integer=-1):Char;
+    function PacketCreate(aProgramType:integer;aLen,aVer,aDeviceID,aCmd,aData,aMsgNo:string;aKey:char;var aPacket:string):string;
+    function PacketFormatCheck(aData: RawByteString;aProgramType:integer; var aLeavePacketData,aPacketData: String): integer;
+  end;
+
+var
+  dmDevicePacket: TdmDevicePacket;
+
+implementation
+
+uses
+  uCommonFunction,
+  uCommonVariable,
+  uDeviceVariable;
+
+{%CLASSGROUP 'System.Classes.TPersistent'}
+
+{$R *.dfm}
+
+{ TdmDevicePacket }
+
+function TdmDevicePacket.CheckDataPacket(aData: RawByteString; aProgramType: integer;
+  var aLeavePacketData, aPacketData: RawByteString): integer;
+var
+  stLen: String;
+  nDefinedDataLength: Integer;
+  stBuff: String;
+  stTemp : RawByteString;
+  aKey: Byte;
+begin
+  result := -1; //비정상 전문
+
+  aPacketData:= '';
+  if Length(aData) < 5 then
+  begin
+    result := -2; //자릿수가 작게 들어온 경우
+    aLeavePacketData:= aData;           //한자리 삭제 후  리턴
+    Exit;
+  end;
+
+  stLen:= Copy(aData,2,3);
+  //데이터 길이 위치 데이터가 숫자가 아니면...
+  if not isDigit(stLen) then
+  begin
+    //Delete(aData,1,1);       //1'st STX 삭제
+    aLeavePacketData:= aData;           //한자리 삭제 후  리턴
+    Exit;
+  end;
+
+  //패킷에 정의된 길이
+  nDefinedDataLength:= StrtoInt(stLen);
+  //패킷에 정의된 길이보다 실제 데이터가 작으면
+  if Length(aData) < nDefinedDataLength then
+  begin
+    result := -2; //자릿수가 작게 들어온 경우
+    aLeavePacketData:= aData;
+    Exit;
+  end;
+
+  // 정의된 길이 마지막 데이터가 ETX가 맞는가?
+  if aData[nDefinedDataLength] = ETX then
+  begin
+
+    stBuff:= Copy(aData,1,nDefinedDataLength);
+    // 2010.11.22 패킷 체크 부분에서 체크썸까지 체크로 변경 하기 위해서 작업 함.
+    //31:Q++()./,-**s*S^**+()./,-()
+    aKey:= Ord(stBuff[5]);
+    //stTemp:= Copy(stBuff,1,5) + EncodeData(aKey,Copy(stBuff,6,Length(stBuff)-6))+stBuff[Length(stBuff)];
+    stTemp:= Copy(stBuff,1,5) + EncodeData(aKey,Copy(stBuff,6,nDefinedDataLength-6))+stBuff[nDefinedDataLength];
+
+    if Not ChekCSData(stTemp,nDefinedDataLength,aProgramType) then   //2014.02.07 DL09 같은 경우 체크섬을 체크 하지 못함
+    begin
+      //Delete(aData,1,1);
+      aLeavePacketData:= aData;
+      Exit;
+    end;
+
+    result := 1; //STX 포맷이 맞다
+    Delete(aData, 1, nDefinedDataLength);
+    aLeavePacketData:= aData;
+    aPacketData:=stTemp;
+  end else
+  begin
+    aLeavePacketData:= aData;
+  end;
+end;
+
+function TdmDevicePacket.CheckDecorderDataPacket(aData: String;
+  var aLeavePacketData, aPacketData: RawByteString): integer;
+var
+  stLen: String;
+  nDefinedDataLength: Integer;
+  stBuff: String;
+begin
+  result := -1;
+
+  aPacketData:= '';
+  stLen:= Copy(aData,2,3);
+  //데이터 길이 위치 데이터가 숫자가 아니면...
+  if not isDigit(stLen) then
+  begin
+    aLeavePacketData:= aData;
+    Exit;
+  end;
+
+  //패킷에 정의된 길이
+  nDefinedDataLength:= StrtoInt(stLen);
+  //패킷에 정의된 길이보다 실제 데이터가 작으면
+  if Length(aData) < nDefinedDataLength then
+  begin
+    result := -2;  // 2010.11.25 수정 작게 들어 온 상태
+    aLeavePacketData:= aData;
+    Exit;
+  end;
+
+  // 정의된 길이 마지막 데이터가 ETX가 맞는가?
+  if aData[nDefinedDataLength] = EOH then
+  begin
+    result := 2; //Decorder Format 이 맞음
+    stBuff:= Copy(aData,1,nDefinedDataLength);
+    aPacketData:=stBuff;
+    Delete(aData, 1, nDefinedDataLength);
+    aLeavePacketData:= aData;
+  end else
+  begin
+    aLeavePacketData:= aData;
+  end;
+end;
+
+
+function TdmDevicePacket.ChekCSData(aData: RawByteString; aLength,
+  aProgramType: integer): Boolean;
+var
+  stCheckSum : string;
+  stMakeCS : string;
+begin
+  result := False;
+  stCheckSum := getCheckSumData(aData,aLength);
+  stMakeCS := MakeCSData(copy(aData,1,aLength - 3) + ETX,aProgramType,aLength);
+  if stMakeCS = stCheckSum then result := True;
+
+end;
+
+procedure TdmDevicePacket.ClearBitB(var b: byte; BitToClear: integer);
+begin
+  if (BitToClear < 0) or (BitToClear > 7) then exit;
+  b := b and not (1 shl BitToClear);
+end;
+
+{난수 번호만(BIT4,BIT3,BIT2,BIT1,BIT0) 을 data와 XOR 한다.}
+function TdmDevicePacket.DataConvert1(aMakeValue: Byte; aData: String): String;
+var
+  I: Integer;
+  bData: String;
+begin
+  bData:= aData;
+  for I:= 1 to Length(bData) do
+  begin
+    bData[I]:= Char(ord(bData[I]) XOR aMakeValue);
+  end;
+  Result:= bData;
+end;
+
+{ 난수 번호만(BIT4,BIT3,BIT2,BIT1,BIT0) 을 data와 XOR 후 Message No의 하위 Nibble과 다시 XOR 한다.}
+function TdmDevicePacket.DataConvert2(aMakeValue: Byte; aData: String): String;
+var
+  I: Integer;
+  bMakeValue: Byte;
+  bData: String;
+  TempByte: Byte;
+begin
+  bData:= aData;
+  {13번쩨 Byte 가 MessageNo}
+  bMakeValue:= Ord(aData[13]) and $F;
+  Result:= '';
+  for I:= 1 to Length(bData) do
+  begin
+    if I <> 13 then
+    begin
+      TempByte:= ord(bData[I]) XOR aMakeValue;
+      bData[I]:= Char(TempByte XOR bMakeValue);
+    end;
+  end;
+  Result:= bData;
+end;
+
+function TdmDevicePacket.EncodeData(aKey: Byte; aData: String): String;
+var
+  Encodetype: Integer;
+  aMakeValue: Byte;
+  I: Integer;
+begin
+  EncodeType:= aKey SHR 6; //7,6 번 Bit가 엔코딩 타입
+  aMakeValue:= aKey;
+  for I:= 5 to 7 do ClearBitB(aMakeValue,I); //1,2,3,4,5 Bit가 난수번호
+
+  case EncodeType of
+    0: Result:= DataConvert1(aMakeValue,aData);
+    1: Result:= DataConvert2(aMakeValue,aData);
+    else Result:= aData;
+  end;
+end;
+
+function TdmDevicePacket.GetCardDataPacketData(aCardType, aCardNo, aPositionNum:string;aCardPermit:Boolean;
+  aDoorPermit, aArmAreaPermit, aRegDate, aEndDate, aTimeCodeUse,
+  aTimeCode, aTimeGroup, aWeekCode,aEmState: string): string;
+var
+  stCardData : string;
+  nCardLength : integer;
+  stCardPositionNum : string;
+  stPermitCMD : string;
+  stArmAccessType : string;   //0.출입,1.방범,2.방범+출입
+  stDoorRegCode : string;     //0.1+2,1.1번출입권한,2.2번출입권한
+  nDoorCount : integer;
+  stDoorPermit : string;
+  stArmAreaPermit : string;
+  stTimeCode : string;
+  stCardWeekCode : string;
+begin
+  result := '';
+  nCardLength := 0;
+
+  if (aCardType = AUTOKT811) or (aCardType = COMMON811) then
+  begin
+    aCardNo := copy(aCardNo,1,8);
+    stCardData := EncodeCardNo(aCardNo);
+  end else if (aCardType = KT811) then
+  begin
+    if aCardNo[10] = '*' then //시리얼 타입 이면
+      aCardNo := copy(aCardNo,1,8) + '0**';
+    aCardNo := copy(aCardNo,1,11);
+    if Length(aCardNo) <> 11 then aCardNo := FillCharString(aCardNo,'*',11,False);
+    stCardData := Ascii2Hex(aCardNo);
+    nCardLength := Length(stCardData);
+  end else if (aCardType = UNIVER811) then
+  begin
+    stCardData := aCardNo;
+    if Length(stCardData) <> 16 then stCardData := FillCharString(stCardData,'*',16,False);
+    nCardLength := Length(stCardData);
+  end else if (aCardType = MERGECARD) then
+  begin
+    stCardData := aCardNo;
+    if Length(stCardData) <> 16 then stCardData := FillCharString(stCardData,'*',16,False);
+    nCardLength := Length(stCardData);
+  end else
+  begin
+    Exit;
+  end;
+
+  if Length(aEndDate) <> 8 then aEndDate := '000000'
+  else aEndDate := copy(aEndDate,3,6);
+
+  if Not IsDigit(aEndDate) then aEndDate := '000000';
+  stCardPositionNum := FillCharString(aPositionNum,'0',5,True);
+
+  if Not aCardPermit then stPermitCMD := 'N'
+  else
+  begin
+    if G_bCardPositionUse then stPermitCMD := 'J'
+    else stPermitCMD := 'L';
+  end;
+  if aEmState <> '1' then stPermitCMD := 'N'; //재직상태가 아니면 권한삭제
+
+  stArmAccessType := '0';
+  stDoorRegCode := '0';
+  nDoorCount := Length(aDoorPermit);
+  if Pos('1',aDoorPermit) > 0 then //출입권한이 있고
+  begin
+    if Pos('1',aArmAreaPermit) > 0 then stArmAccessType := '2' //방범권한이 있으면  방범 + 출입
+    else stArmAccessType := '0'; //출입전용
+    if (aDoorPermit[nDoorCount] = '1') and (aDoorPermit[nDoorCount - 1] = '1') then stDoorRegCode := '0'
+    else if aDoorPermit[nDoorCount] = '1' then stDoorRegCode := '1'
+    else if aDoorPermit[nDoorCount-1] = '1' then stDoorRegCode := '2'
+    else stDoorRegCode := '3';
+  end else
+  begin
+    if Pos('1',aArmAreaPermit) > 0 then stArmAccessType := '1' //방범권한이 있으면   방범전용
+    else stPermitCMD := 'N';
+  end;
+
+  stDoorPermit := Hex2ASCII(BinaryToHex('0100' + copy(aDoorPermit,1,4)) + BinaryToHex('0100' + copy(aDoorPermit,5,4)));
+  stArmAreaPermit := Hex2ASCII(BinaryToHex('0100' + copy(aArmAreaPermit,1,4)) + BinaryToHex('0100' + copy(aArmAreaPermit,5,4)));
+  if aTimeCodeUse = '' then aTimeCodeUse := '0';
+  if Length(aTimeCode) <> 4 then aTimeCode := FillCharString(aTimeCode,'0',4,True);
+  stTimeCode := BinaryToHex(aTimeCode);
+  if aTimeGroup = '' then aTimeGroup := '0';
+  if Length(aWeekCode) <> 7 then aWeekCode := FillCharString(aWeekCode,'0',7,False);
+  stCardWeekCode := aTimeCodeUse[1] + aWeekCode;
+  stCardWeekCode := BinaryToHex(stCardWeekCode);
+
+  result := stPermitCMD +
+          '0'+
+          stDoorRegCode+                  //등록코드(0:1,2   1:1번문,  2:2번문, 3:방범전용)
+          '  '+                           //RecordCount #$20 #$20
+          '0'+                            //예비
+          FillZeroNumber(nCardLength,2) + //카드길이
+          stCardData +                    //카드번호
+          aEndDate+                       //유효기간
+          '0'+                            //등록 결과
+          stArmAccessType+                //카드권한(0:출입전용,1:방범전용,2:방범+출입)
+          stTimeCode +                     //타임패턴
+          stCardPositionNum +                    //카드 id 번호
+          stArmAreaPermit +               //방범구역권한
+          stDoorPermit +                //출입문 권한
+          aTimeGroup +
+          stTimeCode +
+          stCardWeekCode +
+          '24';                          //유효기간 시간 추가
+
+
+end;
+
+function TdmDevicePacket.getCheckSumData(aData: RawByteString;
+  aLength: integer): String;
+begin
+  result := copy(aData,aLength - 2,2);
+end;
+
+function TdmDevicePacket.GetFixedCardNoCheck(aCardNo: string;
+  bCardFixedUse: Boolean; aCardFixedFillChar: string; nCardFixedPosition,
+  nCardFixedLength: integer): string;
+var
+  bFront : Boolean;
+begin
+  result := aCardNo;
+  if Not bCardFixedUse then Exit; //고정길이 사용하지 않으면 원 카드데이터 리턴
+  bFront := True;
+  if nCardFixedPosition <> 0 then bFront := False;//뒤에 채움문자 채우는 경우
+  result := FillCharString(aCardNo,aCardFixedFillChar[1],nCardFixedLength,bFront);
+
+end;
+
+function TdmDevicePacket.MakeCSData(aData: RawByteString; nCSType: integer=0;aLength:integer=-1): String;
+var
+  aSum: Integer;
+  st: string;
+begin
+  aSum:= Ord(MakeSum(aData,nCSType,aLength));
+  aSum:= aSum*(-1);
+  st:= Dec2Hex(aSum,2);
+
+  Result:= copy(st,Length(st)-1,2);
+end;
+
+function TdmDevicePacket.MakeSum(aData: RawByteString; nCSType: integer=0;aLength:integer=-1): Char;
+var
+  i: Integer;
+  aBcc: Byte;
+  BCC: string;
+  nOrd : integer;
+//  nSumOrd : integer;
+  stAnsiTemp : WideString;
+  bs : TBytesStream;
+begin
+  if aLength = -1 then
+  begin
+    bs := TBytesStream.Create(BytesOf(aData));
+    aLength := bs.Size;
+    bs.Free;
+  end;
+
+  nOrd := Ord(aData[1]);
+  aBcc := nOrd;
+  for i := 2 to aLength do
+  begin
+    nOrd := Ord(aData[i]);
+//    nSumOrd := nSumOrd + nOrd;
+    aBcc := aBcc + nOrd; //Ord(st[i]);
+  end;
+  if nCSType = 1 then
+  begin
+    aBcc := aBcc + Ord(#$A7);
+  end else if nCSType = 2 then
+  begin
+    aBcc := aBcc + Ord(#$9E);
+  end;
+  BCC := Chr(aBcc);
+  Result := BCC[1];
+end;
+
+function TdmDevicePacket.PacketCreate(aProgramType: integer; aLen, aVer,
+  aDeviceID, aCmd, aData, aMsgNo: string;aKey:char;var aPacket:string): string;
+var
+  stPacket : string;
+  nKey : integer;
+begin
+  stPacket := STX + aLen + aKey + aVer + aDeviceID + aCmd + aMsgNo + aData;
+  stPacket  := stPacket + MakeCSData(stPacket + ETX,aProgramType) + ETX;
+  aPacket := stPacket;
+  nKey    := ord(aKey);
+  result := Copy(stPacket, 1, 5) + EncodeData(nKey,
+    Copy(stPacket, 6, Length(stPacket) - 6)) + ETX;
+end;
+
+function TdmDevicePacket.PacketFormatCheck(aData: RawByteString; aProgramType: integer;
+  var aLeavePacketData, aPacketData: RawByteString): integer;
+begin
+  aPacketData := '';
+  result := -1; //비정상 전문
+
+  if aData[1] = SOH then
+  begin
+    result := CheckDecorderDataPacket(aData,aLeavePacketData,aPacketData);
+  end else if aData[1] = STX then
+  begin
+    result:= CheckDataPacket(aData,aProgramType,aLeavePacketData,aPacketData);
+  end else
+  begin
+    aLeavePacketData := aData;
+  end;
+end;
+
+end.

@@ -1,0 +1,25 @@
+unit uAlarmCode;
+
+interface
+
+uses
+  System.SysUtils, System.Classes;
+
+type
+  TdmAlarmCode = class(TDataModule)
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+  end;
+
+var
+  dmAlarmCode: TdmAlarmCode;
+
+implementation
+
+{%CLASSGROUP 'System.Classes.TPersistent'}
+
+{$R *.dfm}
+
+end.

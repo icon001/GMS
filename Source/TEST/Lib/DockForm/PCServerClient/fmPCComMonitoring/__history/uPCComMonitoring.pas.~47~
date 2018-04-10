@@ -1,0 +1,320 @@
+﻿unit uPCComMonitoring;
+
+interface
+
+uses
+  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
+  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, W7Classes, W7Panels, AdvOfficeTabSet,
+  AdvOfficeTabSetStylers, AdvSmoothPanel, Vcl.ExtCtrls, AdvSmoothLabel,
+  Vcl.StdCtrls, AdvEdit, Vcl.Buttons, Vcl.Grids, AdvObj, BaseGrid, AdvGrid,
+  AdvToolBtn,ADODB,ActiveX, uSubForm, CommandArray, AdvCombo, AdvGroupBox,
+  Vcl.Mask, AdvSpin, AdvOfficeButtons, AdvPanel, Vcl.ComCtrls, AdvListV,
+  Vcl.ImgList, Vcl.Menus, AdvMenus, AdvExplorerTreeview, paramtreeview,
+  AdvToolBar, AdvToolBarStylers, AdvAppStyler, AdvGlowButton, AdvOfficePager,
+  Vcl.Imaging.pngimage, AdvOfficePagerStylers;
+
+
+type
+  TfmPCComMonitoring = class(TfmASubForm)
+    pan_CardListHeader: TAdvSmoothPanel;
+    ImageList1: TImageList;
+    pop_PermitAdd: TAdvPopupMenu;
+    mn_addpermitListDelete: TMenuItem;
+    toolslist: TImageList;
+    sg_ComMonitoring: TAdvStringGrid;
+    SearchTimer: TTimer;
+    SaveDialog1: TSaveDialog;
+    AdvSmoothLabel1: TAdvSmoothLabel;
+    ed_PCIP: TAdvEdit;
+    AdvOfficePager1: TAdvOfficePager;
+    AdvOfficePage1: TAdvOfficePage;
+    btn_minimize: TAdvGlowButton;
+    btn_Close: TAdvGlowButton;
+    lb_List: TLabel;
+    btnStart: TAdvGlowButton;
+    btn_Clear: TAdvGlowButton;
+    btn_FileSave: TAdvGlowButton;
+    AdvOfficePagerOfficeStyler1: TAdvOfficePagerOfficeStyler;
+    AdvFormStyler1: TAdvFormStyler;
+    AdvOfficeTabSetOfficeStyler1: TAdvOfficeTabSetOfficeStyler;
+    procedure FormClose(Sender: TObject; var Action: TCloseAction);
+    procedure FormCreate(Sender: TObject);
+    procedure FormShow(Sender: TObject);
+    procedure ed_AddNameKeyPress(Sender: TObject; var Key: Char);
+    procedure FormActivate(Sender: TObject);
+    procedure btn_ClearClick(Sender: TObject);
+    procedure btnStartClick(Sender: TObject);
+    procedure btn_FileSaveClick(Sender: TObject);
+    procedure FormResize(Sender: TObject);
+    procedure btn_CloseClick(Sender: TObject);
+    procedure btn_minimizeClick(Sender: TObject);
+  private
+    L_bStart : Boolean;
+    L_bClear : Boolean;
+    L_stMenuID : string;
+    L_stButtonCloseCaption : string;
+    L_stButtonPlayName : string;
+    L_stButtonStopName : string;
+
+    NodeCodeList : TStringList;
+    DeviceCodeList : TStringList;
+    DisplayList : TStringList;
+    { Private declarations }
+  private
+    Function FormNameSetting:Boolean;
+    procedure FontSetting;
+
+  public
+    { Public declarations }
+    procedure Form_Close;
+    procedure ClientPacketView(aClientIP,aTxRx,aData,aResult:string);   //PC Packet
+    procedure FormGradeRefresh;
+    procedure FormIDSetting(aID:string);
+    procedure FormCaptionSetting(aCaption:string);
+  end;
+
+var
+  fmPCComMonitoring: TfmPCComMonitoring;
+
+implementation
+uses
+  uCommonFunction,
+  uCommonVariable,
+  uDataBase,
+  uDBFunction,
+  uDBVariable,
+  uFormVariable,
+  uFormUtil,
+  uMain;
+
+{$R *.dfm}
+
+
+procedure TfmPCComMonitoring.btnStartClick(Sender: TObject);
+begin
+  inherited;
+  if btnStart.Caption = L_stButtonStopName then
+  begin
+    btnStart.Caption := L_stButtonPlayName;
+    if Not FileExists(G_stExeFolder + '\pccomstart.png') then
+    begin
+      Img_Start.Picture.SaveToFile(G_stExeFolder + '\pccomstart.png');
+    end;
+    btnStart.Picture.LoadFromFile(G_stExeFolder + '\pccomstart.png');
+  end else
+  begin
+    btnStart.Caption := L_stButtonStopName;
+    if Not FileExists(G_stExeFolder + '\pccomstop.png') then
+    begin
+      Img_Stop.Picture.SaveToFile(G_stExeFolder + '\pccomstop.png');
+    end;
+    btnStart.Picture.LoadFromFile(G_stExeFolder + '\pccomstop.png');
+  end;
+end;
+
+procedure TfmPCComMonitoring.btn_ClearClick(Sender: TObject);
+begin
+  inherited;
+  L_bClear := True;
+  GridInitialize(sg_ComMonitoring);
+
+end;
+
+procedure TfmPCComMonitoring.btn_CloseClick(Sender: TObject);
+begin
+  inherited;
+  Close;
+end;
+
+procedure TfmPCComMonitoring.btn_FileSaveClick(Sender: TObject);
+var
+  stSaveFileName : string;
+begin
+  inherited;
+  SaveDialog1.FileName := pan_CardListHeader.Caption.Text;
+  if SaveDialog1.Execute then
+  begin
+    stSaveFileName := SaveDialog1.FileName;
+
+    if SaveDialog1.FileName <> '' then
+    begin
+      //sg_Report.SaveToXLS(stSaveFileName,True);
+      if fileexists(stSaveFileName) then
+        deletefile(stSaveFileName);
+      sg_ComMonitoring.SaveToXLS(stSaveFileName);
+//      advgridexcelio1.XLSExport(stSaveFileName);
+    end;
+  end;
+
+end;
+
+procedure TfmPCComMonitoring.btn_minimizeClick(Sender: TObject);
+begin
+  inherited;
+  windowState := wsNormal;
+end;
+
+procedure TfmPCComMonitoring.ClientPacketView(aClientIP, aTxRx, aData,
+  aResult: string);
+begin
+  if btnStart.Caption <> L_stButtonStopName then Exit;
+
+  if ed_PCIP.Text <> '' then
+    if copy(aClientIP,1,Length(ed_PCIP.Text)) <> ed_PCIP.Text  then Exit;
+
+
+  with sg_ComMonitoring do
+  begin
+    if RowCount >= 10000 then  rowCount := 9999;
+
+    if Not L_bClear then InsertRows(1,1);
+    L_bClear := False;
+
+    Cells[0,1] := aClientIP;
+    Cells[1,1] :=  FormatDateTime('hh:nn:ss',now) ;
+    Cells[2,1] :=  aTxRx ;
+    Cells[3,1] :=  aData ;
+    if UpperCase(aTxRx) = 'RX' then
+    begin
+      RowColor[1] := $00EACAB6;
+    end;
+    if UpperCase(aResult) = 'ER' then RowColor[1] := clYellow;
+
+  end;
+
+end;
+
+procedure TfmPCComMonitoring.ed_AddNameKeyPress(Sender: TObject;
+  var Key: Char);
+begin
+  inherited;
+  if Key = #13 then
+  begin
+    Perform(WM_NEXTDLGCTL,0,0);
+  end;
+end;
+
+procedure TfmPCComMonitoring.FontSetting;
+begin
+(*  dmFormUtil.TravelFormFontSetting(self,G_stFontName,inttostr(G_nFontSize));
+  dmFormUtil.TravelAdvOfficeTabSetOfficeStylerFontSetting(AdvOfficeTabSetOfficeStyler1, G_stFontName,inttostr(G_nFontSize));
+  dmFormUtil.FormAdvOfficeTabSetOfficeStylerSetting(AdvOfficeTabSetOfficeStyler1,G_stFormStyle);
+  dmFormUtil.FormAdvToolBarOfficeStylerSetting(AdvToolBarOfficeStyler1,G_stFormStyle);
+  dmFormUtil.FormStyleSetting(self,AdvToolBarOfficeStyler1);
+*)
+end;
+
+procedure TfmPCComMonitoring.FormActivate(Sender: TObject);
+begin
+  inherited;
+  WindowState := wsMaximized;
+end;
+
+procedure TfmPCComMonitoring.FormCaptionSetting(aCaption: string);
+begin
+  Caption := aCaption;
+end;
+
+procedure TfmPCComMonitoring.FormClose(Sender: TObject;
+  var Action: TCloseAction);
+begin
+  NodeCodeList.Free;
+  DeviceCodeList.Free;
+  DisplayList.Free;
+
+  fmMain.FORMENABLE(conFORMPCCOMMONITORING,'FALSE');
+
+  Action := caFree;
+end;
+
+procedure TfmPCComMonitoring.FormCreate(Sender: TObject);
+var
+  stNodeNo : string;
+begin
+
+  NodeCodeList := TStringList.Create;
+  DeviceCodeList := TStringList.Create;
+  DisplayList := TStringList.Create;
+
+  L_bClear := True;
+  L_bStart := True;
+  FontSetting;
+  if Not FileExists(G_stExeFolder + '\pccomstop.png') then
+  begin
+    Img_Stop.Picture.SaveToFile(G_stExeFolder + '\pccomstop.png');
+  end;
+  btnStart.Picture.LoadFromFile(G_stExeFolder + '\pccomstop.png');
+  if Not FileExists(G_stExeFolder + '\Excel-a.png') then
+  begin
+    ExcelEnImage.Picture.SaveToFile(G_stExeFolder + '\Excel-a.png');
+  end;
+  btn_FileSave.Picture.LoadFromFile(G_stExeFolder + '\Excel-a.png');
+
+  sg_ComMonitoring.ColWidths[3] := 1024; //처음에만
+end;
+
+
+procedure TfmPCComMonitoring.FormGradeRefresh;
+begin
+
+end;
+
+procedure TfmPCComMonitoring.FormIDSetting(aID: string);
+begin
+  L_stMenuID := aID;
+end;
+
+function TfmPCComMonitoring.FormNameSetting: Boolean;
+begin
+  Caption := dmFormFunction.GetFormName('2','1','BM3_015');
+  lb_List.Caption := dmFormFunction.GetFormName('2','2','BM3_015List');
+  L_stButtonCloseCaption := dmFormFunction.GetFormName('0','2','BUTTONMENU001');
+  btn_Clear.Caption := dmFormFunction.GetFormName('0','2','BUTTONCLEAR001');
+  L_stButtonPlayName := dmFormFunction.GetFormName('0','2','BUTTONPLAY001');
+  L_stButtonStopName := dmFormFunction.GetFormName('0','2','BUTTONPLAY002');
+  btn_FileSave.Caption := dmFormFunction.GetFormName('0','2','BUTTONFILESAVE002');
+
+  btnStart.Caption := L_stButtonStopName;
+end;
+
+procedure TfmPCComMonitoring.FormResize(Sender: TObject);
+begin
+  inherited;
+  sg_ComMonitoring.Top := btnStart.Top + btnStart.Height + 10;
+  sg_ComMonitoring.Left := 5;
+  sg_ComMonitoring.Width := pan_CardListHeader.Width - (sg_ComMonitoring.Left * 2);
+  sg_ComMonitoring.Height := pan_CardListHeader.Height - sg_ComMonitoring.Top - 5;
+
+  btn_Close.Left := AdvOfficePager1.Width - btn_Close.Width - 10;
+  btn_minimize.Left := btn_Close.Left - btn_minimize.Width - 2;
+
+  if Windowstate = wsMaximized then
+  begin
+    btn_minimize.Visible := True;
+    btn_Close.Visible := True;
+  end else
+  begin
+    btn_minimize.Visible := False;
+    btn_Close.Visible := False;
+  end;
+
+end;
+
+procedure TfmPCComMonitoring.FormShow(Sender: TObject);
+begin
+  fmMain.FORMENABLE(conFORMPCCOMMONITORING,'TRUE');
+  FormNameSetting;
+end;
+
+procedure TfmPCComMonitoring.Form_Close;
+begin
+  Close;
+end;
+
+
+initialization
+  RegisterClass(TfmPCComMonitoring);
+Finalization
+  UnRegisterClass(TfmPCComMonitoring);
+
+end.

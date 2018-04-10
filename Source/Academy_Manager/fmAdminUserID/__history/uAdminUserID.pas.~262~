@@ -1,0 +1,632 @@
+﻿unit uAdminUserID;
+
+interface
+
+uses
+  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
+  Vcl.Controls, Vcl.Forms, Vcl.Dialogs,uSubForm, AdvOfficeTabSet,
+  AdvOfficeTabSetStylers, CommandArray, Vcl.Grids, AdvObj, BaseGrid, AdvGrid,
+  Vcl.StdCtrls, AdvEdit, Vcl.Buttons, AdvSmoothLabel, AdvSmoothPanel, W7Classes,
+  W7Panels, AdvGlassButton,ADODB,ActiveX, AdvGroupBox, Vcl.ExtCtrls,
+  AdvSmoothScrollBar, Vcl.ComCtrls, AdvEdBtn, AdvOfficeButtons, Vcl.ImgList,
+  AdvToolBar, AdvToolBarStylers, Vcl.Imaging.pngimage, AdvGlowButton,
+  AdvOfficePager, Vcl.Menus, AdvAppStyler, AdvOfficePagerStylers,JclMime;
+
+const
+  con_LocalCompanyImageIndex = 0;
+  con_LocalEmployeeImageIndex = 1;
+  con_LocalBuildingImageIndex = 2;
+
+type
+  TfmAdminUserID = class(TfmASubForm)
+    List: TAdvSmoothPanel;
+    lb_SearchName: TAdvSmoothLabel;
+    ed_SearchName: TAdvEdit;
+    sg_List: TAdvStringGrid;
+    btn_Search: TAdvGlassButton;
+    Add: TAdvSmoothPanel;
+    lb_AddName: TAdvSmoothLabel;
+    ed_AdminName: TAdvEdit;
+    lb_AddID: TAdvSmoothLabel;
+    ed_AdminID: TAdvEdit;
+    lb_Addpw: TAdvSmoothLabel;
+    ed_AdminPassword: TAdvEdit;
+    gb_Grade: TAdvGroupBox;
+    lb_AdminCompanyClass: TAdvSmoothLabel;
+    btn_Device: TSpeedButton;
+    tv_AddCompanyCode: TTreeView;
+    eb_CompanyName: TAdvEditBtn;
+    chk_Master: TAdvOfficeCheckBox;
+    MenuImageList16: TImageList;
+    ed_CompanyCode: TAdvEdit;
+    AdvOfficePager1: TAdvOfficePager;
+    AdvOfficePage1: TAdvOfficePage;
+    btn_minimize: TAdvGlowButton;
+    btn_Close: TAdvGlowButton;
+    lb_List: TLabel;
+    btn_Add: TAdvGlowButton;
+    btn_Update: TAdvGlowButton;
+    btn_Delete: TAdvGlowButton;
+    pm_Work: TPopupMenu;
+    pm_AddCode: TMenuItem;
+    pm_UpdateCode: TMenuItem;
+    pm_DeleteCode: TMenuItem;
+    btn_Save: TAdvGlowButton;
+    btn_Cancel: TAdvGlowButton;
+    lb_WorkType: TLabel;
+    AdvOfficePagerOfficeStyler1: TAdvOfficePagerOfficeStyler;
+    AdvFormStyler1: TAdvFormStyler;
+    AdvOfficeTabSetOfficeStyler1: TAdvOfficeTabSetOfficeStyler;
+    AdvSmoothLabel1: TAdvSmoothLabel;
+    ed_Handphone: TAdvEdit;
+    AdvSmoothLabel2: TAdvSmoothLabel;
+    ed_email: TAdvEdit;
+    AdvSmoothLabel3: TAdvSmoothLabel;
+    ed_ETC: TAdvEdit;
+    tv_AddCompanyName: TTreeView;
+    procedure FormShow(Sender: TObject);
+    procedure FormClose(Sender: TObject; var Action: TCloseAction);
+    procedure btn_AddClick(Sender: TObject);
+    procedure FormResize(Sender: TObject);
+    procedure btn_SearchClick(Sender: TObject);
+    procedure FormCreate(Sender: TObject);
+    procedure sg_ListCheckBoxClick(Sender: TObject; ACol, ARow: Integer;
+      State: Boolean);
+    procedure sg_ListDblClick(Sender: TObject);
+    procedure ed_SearchNameChange(Sender: TObject);
+    procedure btn_DeleteClick(Sender: TObject);
+    procedure ed_AdminNameKeyPress(Sender: TObject; var Key: Char);
+    procedure chk_MasterClick(Sender: TObject);
+    procedure tv_AddCompanyNameDblClick(Sender: TObject);
+    procedure eb_CompanyNameClickBtn(Sender: TObject);
+    procedure pm_AddCodeClick(Sender: TObject);
+    procedure btn_UpdateClick(Sender: TObject);
+    procedure pm_UpdateCodeClick(Sender: TObject);
+    procedure pm_DeleteCodeClick(Sender: TObject);
+    procedure btn_SaveClick(Sender: TObject);
+    procedure btn_CancelClick(Sender: TObject);
+    procedure btn_CloseClick(Sender: TObject);
+    procedure btn_minimizeClick(Sender: TObject);
+  private
+    L_nPageListMaxCount : integer;
+    L_nCheckCount : integer;
+    L_stAllName : string;
+    L_stWork : string;
+    L_stMenuID :string;
+    L_stButtonCloseCaption : string;
+    L_stButtonPrevCaption : string;
+    CompanyCodeList : TStringList;
+    JijumCodeList : TStringList;
+    DepartCodeList : TStringList;
+    BuildingCodeList : TStringList;
+    FloorCodeList : TStringList;
+    AreaCodeList : TStringList;
+    AdminClassCodeList : TStringList;
+    { Private declarations }
+    Function FormNameSetting:Boolean;
+    procedure FontSetting;
+    Function SearchList(aCurrentCode:string;aTopRow:integer = 0):Boolean;
+  private
+    procedure AdvStrinGridSetAllCheck(Sender: TObject;bchkState:Boolean);
+
+  public
+    { Public declarations }
+    procedure FormChangeEvent(aFormName:integer);
+    procedure FormGradeRefresh;
+    procedure FormIDSetting(aID:string);
+  end;
+
+var
+  fmAdminUserID: TfmAdminUserID;
+
+implementation
+uses
+  uComboBoxCodeLoad,
+  uCommonFunction,
+  uCommonVariable,
+  uDataBase,
+  uDBDelete,
+  uDBInsert,
+  uDBUpdate,
+  uDBFunction,
+  uDBSelect,
+  uDBFormMessage,
+  uFormFunction,
+  uFormVariable,
+  uFormUtil,
+  uMain;
+{$R *.dfm}
+
+procedure TfmAdminUserID.AdvStrinGridSetAllCheck(Sender: TObject;
+  bchkState: Boolean);
+var
+  i : integer;
+begin
+    for i:= 1 to (Sender as TAdvStringGrid).RowCount - 1  do
+    begin
+      (Sender as TAdvStringGrid).SetCheckBoxState(0,i,bchkState);
+    end;
+
+end;
+
+procedure TfmAdminUserID.btn_AddClick(Sender: TObject);
+begin
+  inherited;
+  pm_AddCodeClick(pm_AddCode);
+end;
+
+procedure TfmAdminUserID.btn_CancelClick(Sender: TObject);
+begin
+  inherited;
+  Add.Visible := False;
+end;
+
+procedure TfmAdminUserID.btn_CloseClick(Sender: TObject);
+begin
+  inherited;
+  Close;
+end;
+
+procedure TfmAdminUserID.btn_minimizeClick(Sender: TObject);
+begin
+  inherited;
+  windowState := wsNormal;
+end;
+
+procedure TfmAdminUserID.btn_DeleteClick(Sender: TObject);
+begin
+  inherited;
+  pm_DeleteCodeClick(pm_DeleteCode);
+end;
+
+procedure TfmAdminUserID.btn_SaveClick(Sender: TObject);
+var
+  bResult : boolean;
+  stMaster : string;
+  stMessage : string;
+begin
+
+  if chk_Master.Checked then stMaster := '1'
+  else stMaster := '0';
+
+  if UpperCase(L_stWork) = 'ADD' then
+  begin
+    if dmDBFunction.CheckTB_ADMIN_UserID(ed_AdminID.Text) = 1 then
+    begin
+      stMessage := dmFormMessage.GetMessage('DBDATADUP');
+      Application.MessageBox(PChar(stMessage),'Error',MB_OK);
+      Exit;
+    end;
+    bResult := dmDBInsert.InsertIntoTB_ADMIN_Academy(ed_AdminID.Text,MimeEncodeString(ed_AdminPassword.Text),ed_AdminName.Text,stMaster,'1',
+                              ed_CompanyCode.Text,'0',inttostr(0),'0',ed_Handphone.text,ed_email.text,ed_ETC.text);
+  end else if UpperCase(L_stWork) = 'UPDATE' then
+  begin
+    dmDBUpdate.UpdateTB_ADMIN_Field_StringValue(ed_AdminID.Text,'AD_USERNAME',ed_AdminName.Text);
+    dmDBUpdate.UpdateTB_ADMIN_Field_StringValue(ed_AdminID.Text,'AD_USERPW',MimeEncodeString(ed_AdminPassword.Text));
+    dmDBUpdate.UpdateTB_ADMIN_Field_StringValue(ed_AdminID.Text,'AD_MASTER',stMaster);
+    dmDBUpdate.UpdateTB_ADMIN_Field_StringValue(ed_AdminID.Text,'CO_COMPANYCODE',ed_CompanyCode.Text);
+    dmDBUpdate.UpdateTB_ADMIN_Field_StringValue(ed_AdminID.Text,'AD_HANDPHONE',ed_Handphone.Text);
+    dmDBUpdate.UpdateTB_ADMIN_Field_StringValue(ed_AdminID.Text,'AD_EMAIL',ed_email.Text);
+    bResult := dmDBUpdate.UpdateTB_ADMIN_Field_StringValue(ed_AdminID.Text,'AD_ETC',ed_ETC.Text);
+  end;
+  if bResult then
+  begin
+    fmMain.FORMCHANGE(con_FormBMOSADMINUSERID,'');
+    L_stWork := '';
+    Add.Visible := False;
+    SearchList(ed_AdminID.Text);
+  end else showmessage(dmFormMessage.GetMessage('SAVEFAIL'));
+
+end;
+
+procedure TfmAdminUserID.btn_SearchClick(Sender: TObject);
+begin
+  inherited;
+  SearchList('');
+end;
+
+procedure TfmAdminUserID.btn_UpdateClick(Sender: TObject);
+begin
+  inherited;
+  sg_ListDblClick(sg_List);
+end;
+
+procedure TfmAdminUserID.chk_MasterClick(Sender: TObject);
+begin
+  inherited;
+    lb_AdminCompanyClass.Enabled := Not chk_Master.Checked;
+  eb_CompanyName.Enabled := Not chk_Master.Checked;
+end;
+
+procedure TfmAdminUserID.eb_CompanyNameClickBtn(Sender: TObject);
+begin
+  inherited;
+  tv_AddCompanyName.Visible := Not tv_AddCompanyName.Visible;
+  tv_AddCompanyName.Top := gb_Grade.Top + eb_CompanyName.Top - tv_AddCompanyName.Height;
+  tv_AddCompanyName.Left := gb_Grade.Left + eb_CompanyName.Left;
+
+end;
+
+procedure TfmAdminUserID.ed_AdminNameKeyPress(Sender: TObject; var Key: Char);
+begin
+  inherited;
+  if key = #13 then
+  begin
+    key := #0;
+    Perform(WM_NEXTDLGCTL,0,0);
+  end;
+
+end;
+
+procedure TfmAdminUserID.ed_SearchNameChange(Sender: TObject);
+begin
+  inherited;
+  SearchList('');
+end;
+
+procedure TfmAdminUserID.FontSetting;
+begin
+(*  dmFormUtil.TravelFormFontSetting(self,G_stFontName,inttostr(G_nFontSize));
+  dmFormUtil.TravelAdvOfficeTabSetOfficeStylerFontSetting(AdvOfficeTabSetOfficeStyler1, G_stFontName,inttostr(G_nFontSize));
+  dmFormUtil.FormAdvOfficeTabSetOfficeStylerSetting(AdvOfficeTabSetOfficeStyler1,G_stFormStyle);
+  dmFormUtil.FormAdvToolBarOfficeStylerSetting(AdvToolBarOfficeStyler1,G_stFormStyle);
+  dmFormUtil.FormStyleSetting(self,AdvToolBarOfficeStyler1);
+*)
+end;
+
+procedure TfmAdminUserID.FormChangeEvent(aFormName: integer);
+var
+  stCode : string;
+  nIndex : integer;
+begin
+
+end;
+
+procedure TfmAdminUserID.FormClose(Sender: TObject; var Action: TCloseAction);
+begin
+  inherited;
+  fmMain.FORMENABLE(con_FormBMOSADMINUSERID,'FALSE');
+
+  CompanyCodeList.Free;
+  JijumCodeList.Free;
+  DepartCodeList.Free;
+  BuildingCodeList.Free;
+  FloorCodeList.Free;
+  AreaCodeList.Free;
+  AdminClassCodeList.Free;
+
+  Action := caFree;
+end;
+
+procedure TfmAdminUserID.FormCreate(Sender: TObject);
+begin
+  inherited;
+  L_nPageListMaxCount := 17;
+  CompanyCodeList := TStringList.Create;
+  JijumCodeList := TStringList.Create;
+  DepartCodeList := TStringList.Create;
+  BuildingCodeList := TStringList.Create;
+  FloorCodeList := TStringList.Create;
+  AreaCodeList := TStringList.Create;
+  AdminClassCodeList := TStringList.Create;
+  FontSetting;
+end;
+
+procedure TfmAdminUserID.FormGradeRefresh;
+begin
+  btn_Add.Enabled := IsInsertGrade;
+  btn_Update.Enabled := IsUpdateGrade;
+  btn_Delete.Enabled := IsDeleteGrade;
+end;
+
+procedure TfmAdminUserID.FormIDSetting(aID: string);
+begin
+  L_stMenuID := aID;
+end;
+
+function TfmAdminUserID.FormNameSetting: Boolean;
+var
+  stSql : string;
+  nCommonLength : integer;
+  nButtonLength : integer;
+  nMenuLength : integer;
+  TempAdoQuery : TADOQuery;
+begin
+  AdvOfficePage1.Caption := dmFormFunction.GetFormName('0','2','BUTTONMENU002');
+  lb_List.Caption := dmFormFunction.GetFormName('2','2','BM5_012List');//dmFormFunction.GetFormName('0','2','COMMONLIST01');
+  pm_AddCode.Caption := dmFormFunction.GetFormName('0','2','BUTTONADD001');
+  btn_Add.Caption := dmFormFunction.GetFormName('0','2','BUTTONADD001');
+  pm_DeleteCode.Caption := dmFormFunction.GetFormName('0','2','BUTTONDEL001');
+  btn_Delete.Caption := dmFormFunction.GetFormName('0','2','BUTTONDEL001');
+  pm_UpdateCode.Caption := dmFormFunction.GetFormName('0','2','BUTTONUPDATE001');
+  btn_Update.Caption := dmFormFunction.GetFormName('0','2','BUTTONUPDATE001');
+  btn_Save.Caption := dmFormFunction.GetFormName('0','2','BUTTONSAVE001');
+  btn_Cancel.Caption := dmFormFunction.GetFormName('0','2','BUTTONCANCEL001');
+  lb_SearchName.Caption.Text := dmFormFunction.GetFormName('0','2','COMMONMANGERNAME');
+  lb_AddName.Caption.Text := dmFormFunction.GetFormName('0','2','COMMONMANGERNAME');
+  sg_List.Cells[2,0] := dmFormFunction.GetFormName('0','2','COMMONMANGERNAME');
+  lb_AddID.Caption.Text := dmFormFunction.GetFormName('0','2','COMMONMANGERID');
+  sg_List.Cells[1,0] := dmFormFunction.GetFormName('0','2','COMMONMANGERID');
+  sg_List.Cells[3,0] := '핸드폰번호';
+  lb_Addpw.Caption.Text := dmFormFunction.GetFormName('0','2','COMMONMANGERPW');
+  sg_List.Cells[5,0] := dmFormFunction.GetFormName('0','2','COMMONMASTER');
+  chk_Master.Caption := dmFormFunction.GetFormName('0','2','COMMONMASTER');
+  sg_List.Cells[4,0] := dmFormFunction.GetFormName('0','2','COMMONADMINGRADENAME');
+  lb_AdminCompanyClass.Caption.Text := dmFormFunction.GetFormName('0','2','COMMONCOMPANYNAME');
+  L_stButtonCloseCaption := dmFormFunction.GetFormName('0','2','BUTTONMENU001');
+  lb_WorkType.Caption := dmFormFunction.GetFormName('0','2','BUTTONMENU003');
+  L_stButtonPrevCaption := dmFormFunction.GetFormName('0','2','BUTTONMENU004');
+  L_stAllName := dmFormFunction.GetFormName('0','2','COMMONALLNAME');
+  gb_Grade.Caption := dmFormFunction.GetFormName('0','2','COMMONADMINGRADENAME');
+end;
+
+procedure TfmAdminUserID.FormResize(Sender: TObject);
+begin
+  inherited;
+  btn_Close.Left := AdvOfficePager1.Width - btn_Close.Width - 10;
+  btn_minimize.Left := btn_Close.Left - btn_minimize.Width - 2;
+
+  sg_List.Height := List.Height - sg_List.Top - 30;
+  sg_List.Width := List.Width - (sg_List.Left * 2);
+  sg_List.ColWidths[5] := sg_List.Width - (sg_List.ColWidths[0] + sg_List.ColWidths[1] + sg_List.ColWidths[2] + sg_List.ColWidths[3] + sg_List.ColWidths[4]);
+  if sg_List.ColWidths[5] < 100 then sg_List.ColWidths[5] := 100;
+
+
+  Add.Left := (Width div 2) - (Add.Width div 2);
+  Add.top := (Height div 2) - (Add.Height div 2);
+
+  if Windowstate = wsMaximized then
+  begin
+    btn_minimize.Visible := True;
+    btn_Close.Visible := True;
+  end else
+  begin
+    btn_minimize.Visible := False;
+    btn_Close.Visible := False;
+  end;
+
+end;
+
+procedure TfmAdminUserID.FormShow(Sender: TObject);
+begin
+  inherited;
+  WindowState := wsMaximized;
+
+  FormNameSetting;
+  fmMain.FORMENABLE(con_FormBMOSADMINUSERID,'TRUE');
+
+  SearchList('');
+  LoadCompanyTreeView('',tv_AddCompanyName,tv_AddCompanyCode,con_LocalCompanyImageIndex);
+  tv_AddCompanyNameDblClick(Self);
+
+end;
+
+procedure TfmAdminUserID.pm_AddCodeClick(Sender: TObject);
+var
+  stBuildingCode : string;
+begin
+  inherited;
+  L_stWork := 'ADD';
+  Add.Visible := True;
+  ed_AdminID.Enabled := True;
+  ed_AdminID.Text := '';
+  ed_AdminPassword.Text := '';
+  ed_AdminName.Text := '';
+  stBuildingCode := '';
+  chk_Master.Checked := False;
+  chk_MasterClick(Sender);
+
+  lb_WorkType.Caption := pm_AddCode.Caption;
+
+  tv_AddCompanyNameDblClick(tv_AddCompanyName);
+
+end;
+
+procedure TfmAdminUserID.pm_DeleteCodeClick(Sender: TObject);
+var
+  i : integer;
+  bChkState : Boolean;
+  stMessage : string;
+begin
+  inherited;
+  stMessage := dmFormMessage.GetMessage('SELECTERROR');
+  stMessage := stringReplace(stMessage,'$WORK',pm_DeleteCode.Caption,[rfReplaceAll]);
+  if L_nCheckCount = 0 then
+  begin
+    Application.MessageBox(PChar(stMessage),'Information',MB_OK);
+    Exit;
+  end;
+  stMessage := stringReplace(dmFormMessage.GetMessage('WORKMESSAGE'),'$WORK',pm_DeleteCode.Caption,[rfReplaceAll]);
+  if (Application.MessageBox(PChar(stMessage),'Information',MB_OKCANCEL) = IDCANCEL)  then Exit;
+  With sg_List do
+  begin
+    for i := 1 to RowCount - 1 do
+    begin
+      GetCheckBoxState(0,i, bChkState);
+      if bChkState then
+      begin
+        dmDBDelete.DeleteTB_ADMIN_UserID(cells[1,i]);
+        dmDBDelete.DeleteTB_ADMINDEVICE_UserID(cells[1,i]); //해당 권한 모두 삭제 하자
+      end;
+    end;
+  end;
+  SearchList('');
+
+end;
+
+procedure TfmAdminUserID.pm_UpdateCodeClick(Sender: TObject);
+begin
+  inherited;
+  sg_ListDblClick(sg_List);
+end;
+
+function TfmAdminUserID.SearchList(aCurrentCode:string;aTopRow:integer = 0): Boolean;
+var
+  stSql : string;
+  TempAdoQuery : TADOQuery;
+  nRow : integer;
+begin
+  GridInit(sg_List,6,2,true);
+  stSql := dmDBSelect.SelectTB_ADMIN_UserName(ed_SearchName.Text);
+  L_nCheckCount := 0;
+
+  Try
+    CoInitialize(nil);
+    TempAdoQuery := TADOQuery.Create(nil);
+    TempAdoQuery.Connection := dmDataBase.ADOConnection;
+    TempAdoQuery.DisableControls;
+
+    with TempAdoQuery do
+    begin
+      Close;
+      sql.Text := stSql;
+      Try
+        Open;
+      Except
+        dmDataBase.DBConnected := False;
+        Exit;
+      End;
+      if recordcount < 1 then Exit;
+      with sg_List do
+      begin
+        nRow := 1;
+        RowCount := RecordCount + 1;
+        while Not Eof do
+        begin
+          AddCheckBox(0,nRow,False,False);
+          cells[1,nRow] := FindField('AD_USERID').AsString;
+          cells[2,nRow] := FindField('AD_USERNAME').AsString;
+          cells[3,nRow] := FindField('AD_HANDPHONE').AsString;
+          cells[4,nRow] := FindField('AD_EMAIL').AsString;
+          cells[5,nRow] := FindField('AD_ETC').AsString;
+          cells[6,nRow] := FindField('AG_GRADECODE').AsString;
+          cells[7,nRow] := FindField('AD_MASTER').AsString;
+          cells[8,nRow] := FindField('CO_COMPANYCODE').AsString;
+          cells[9,nRow] := FindField('BC_BUILDINGCODE').AsString;
+          cells[10,nRow] := FindField('AD_BUILDINGTYPE').AsString;
+          cells[11,nRow] := FindField('EM_GROUPCODE').AsString;
+          cells[12,nRow] := MimeDecodeString(FindField('AD_USERPW').AsString);
+          if (FindField('AD_USERID').AsString )  = aCurrentCode then
+          begin
+            SelectRows(nRow,1);
+          end;
+
+          nRow := nRow + 1;
+          Next;
+        end;
+        if aTopRow = 0 then
+        begin
+          if Row > (L_nPageListMaxCount - 1) then TopRow := Row - L_nPageListMaxCount;
+        end else
+        begin
+          TopRow := aTopRow;
+        end;
+      end;
+    end;
+  Finally
+    TempAdoQuery.EnableControls;
+    TempAdoQuery.Free;
+    CoUninitialize;
+  End;
+end;
+
+
+procedure TfmAdminUserID.sg_ListCheckBoxClick(Sender: TObject; ACol,
+  ARow: Integer; State: Boolean);
+begin
+  inherited;
+  if ARow = 0 then //전체선택 또는 해제
+  begin
+    if State then L_nCheckCount := (Sender as TAdvStringGrid).RowCount - 1
+    else L_nCheckCount := 0;
+    AdvStrinGridSetAllCheck(Sender,State);
+  end else
+  begin
+    if State then L_nCheckCount := L_nCheckCount + 1
+    else L_nCheckCount := L_nCheckCount - 1 ;
+  end;
+end;
+
+procedure TfmAdminUserID.sg_ListDblClick(Sender: TObject);
+var
+  nIndex : integer;
+  vNode1: TTreeNode;
+  stMessage : string;
+begin
+  inherited;
+(*
+          cells[1,nRow] := FindField('AD_USERID').AsString;
+          cells[2,nRow] := FindField('AD_USERNAME').AsString;
+          cells[3,nRow] := FindField('AD_HANDPHONE').AsString;
+          cells[4,nRow] := FindField('AD_EMAIL').AsString;
+          cells[5,nRow] := FindField('AD_ETC').AsString;
+          cells[6,nRow] := FindField('AG_GRADECODE').AsString;
+          cells[7,nRow] := FindField('AD_MASTER').AsString;
+          cells[8,nRow] := FindField('CO_COMPANYCODE').AsString;
+          cells[9,nRow] := FindField('BC_BUILDINGCODE').AsString;
+          cells[10,nRow] := FindField('AD_BUILDINGTYPE').AsString;
+          cells[11,nRow] := FindField('EM_GROUPCODE').AsString;
+          cells[12,nRow] := MimeDecodeString(FindField('AD_USERPW').AsString);
+*)
+  if Not IsUpdateGrade then Exit;
+  L_stWork := 'UPDATE';
+  Try
+    with sg_List do
+    begin
+      if cells[1,Row] = '' then
+      begin
+        stMessage := dmFormMessage.GetMessage('SELECTERROR');
+        stMessage := stringReplace(stMessage,'$WORK',btn_Update.Caption,[rfReplaceAll]);
+        showmessage(stMessage);
+        Exit;
+      end;
+      Add.Visible := True;
+      ed_AdminID.Enabled := False;
+      ed_AdminID.Text := cells[1,Row];
+      ed_AdminName.Text := cells[2,Row];
+      ed_Handphone.Text := cells[3,Row];
+      ed_email.Text := cells[4,Row];
+      ed_etc.Text := cells[5,Row];
+      ed_AdminPassword.Text := cells[12,Row];
+      if cells[7,Row] = '1' then
+      begin
+        chk_Master.Checked := True;
+        chk_MasterClick(chk_Master);
+      end else
+      begin
+        chk_Master.Checked := False;
+        chk_MasterClick(chk_Master);
+      end;
+      ed_CompanyCode.Text := cells[8,Row];
+      vNode1:= GetNodeByText(tv_AddCompanyCode,cells[8,Row],True);
+      if vNode1 <> nil then
+      begin
+        eb_CompanyName.Text := tv_AddCompanyName.Items.Item[vNode1.AbsoluteIndex].Text;
+        tv_AddCompanyName.Selected := tv_AddCompanyName.Items.Item[vNode1.AbsoluteIndex];
+      end;
+
+      tv_AddCompanyNameDblClick(tv_AddCompanyName);
+    end;
+    lb_WorkType.Caption := btn_Update.Caption;
+  Except
+    Exit;
+  End;
+end;
+
+procedure TfmAdminUserID.tv_AddCompanyNameDblClick(Sender: TObject);
+begin
+  inherited;
+  if tv_AddCompanyName.Selected = nil then tv_AddCompanyName.Items[0].Selected := True;
+
+  ed_CompanyCode.Text := tv_AddCompanyCode.Items.Item[tv_AddCompanyName.Selected.AbsoluteIndex].Text;
+  eb_CompanyName.Text := tv_AddCompanyName.Selected.Text;
+  tv_AddCompanyName.Visible := False;
+
+end;
+
+initialization
+  RegisterClass(TfmAdminUserID);
+Finalization
+  UnRegisterClass(TfmAdminUserID);
+
+end.

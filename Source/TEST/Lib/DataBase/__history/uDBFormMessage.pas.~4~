@@ -1,0 +1,210 @@
+unit uDBFormMessage;
+
+interface
+
+uses
+  System.SysUtils, System.Classes,Winapi.ActiveX,Data.Win.ADODB,DB;
+
+type
+  TdmFormMessage = class(TDataModule)
+  private
+    { Private declarations }
+    Function GetTableFormMessageVersion:integer;
+    function MessageTable_0001_VersionMake:Boolean;
+    function MessageTable_0002_VersionMake:Boolean;
+    function MessageTable_0003_VersionMake:Boolean;
+    function MessageTable_0004_VersionMake:Boolean;
+    function MessageTable_0005_VersionMake:Boolean;
+  public
+    { Public declarations }
+    Function FormMessageVersionCheck:Boolean;
+
+    function GetMessage(aCode:string):string;
+  end;
+
+var
+  dmFormMessage: TdmFormMessage;
+
+implementation
+
+{%CLASSGROUP 'System.Classes.TPersistent'}
+
+uses
+  uCommonVariable,
+  uDataBase,
+  uDBInsert,
+  uDBUpdate;
+
+{$R *.dfm}
+
+{ TdmFormMessage }
+
+function TdmFormMessage.FormMessageVersionCheck: Boolean;
+var
+  nTableVersion : integer;
+begin
+  result := False;
+  nTableVersion := GetTableFormMessageVersion;
+  if nTableVersion < 1 then MessageTable_0001_VersionMake;
+  if nTableVersion < 2 then MessageTable_0002_VersionMake;
+  if nTableVersion < 3 then MessageTable_0003_VersionMake;
+  if nTableVersion < 4 then MessageTable_0004_VersionMake;
+
+  result := True;
+end;
+
+function TdmFormMessage.GetMessage(aCode: string): string;
+var
+  stSql : string;
+  TempAdoQuery :TADOQuery;
+begin
+  result := '';
+  stSql := 'select FM_MESSAGENAME' + inttostr(G_nFormLanguageType) + ' as MESSAGE from TB_FORMMESSAGE ';
+  stSql := stSql + ' Where  GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  stSql := stSql + ' AND FM_MESSAGECODE = ''' + aCode + ''' ';
+
+  Try
+    CoInitialize(nil);
+    TempAdoQuery := TADOQuery.Create(nil);
+    TempAdoQuery.Connection := dmDataBase.ADOConnection;
+    TempAdoQuery.DisableControls;
+
+    with TempAdoQuery do
+    begin
+      Close;
+      Sql.Clear;
+      Sql.Text := stSql;
+
+      Try
+        Open;
+      Except
+        Exit;
+      End;
+      if recordCount < 1 then Exit;
+      result := FindField('MESSAGE').AsString;
+    end;
+  Finally
+    TempAdoQuery.EnableControls;
+    TempAdoQuery.Free;
+    CoUninitialize;
+  End;
+end;
+
+function TdmFormMessage.GetTableFormMessageVersion: integer;
+var
+  stSql : string;
+begin
+  result := 0;
+  stSql := 'select * from TB_CONFIG ';
+  stSql := stSql + ' where CO_CONFIGGROUP = ''COMMON'' ';
+  stSql := stSql + ' AND CO_CONFIGCODE = ''FORMMESSAGE_VER'' ';
+  with dmDataBase.ADOTempQuery do
+  begin
+    Close;
+    Sql.Clear;
+    Sql.Text := stSql;
+    Try
+      Open;
+    Except
+      Exit;
+    End;
+    if recordCount < 1 then Exit;
+    Try
+      result := strtoint(FindField('CO_CONFIGVALUE').AsString);
+    Except
+      Exit;
+    End;
+  end;
+end;
+
+function TdmFormMessage.MessageTable_0001_VersionMake: Boolean;
+begin
+  dmDBInsert.InsertIntoTB_CONFIG_All('COMMON','FORMMESSAGE_VER','1','메시지테이블 버젼');
+
+  dmDBInsert.InsertIntoTB_FORMMESSAGE_All('BLANKFIELD','$WORK 데이터가 비어 있습니다.','$WORK Data is Empty');
+  dmDBInsert.InsertIntoTB_FORMMESSAGE_All('CARDGRADEDELETE','카드 권한이 모두 삭제 됩니다.계속 하시겠습니까?','Do You Want Access privileges Delete?');
+  dmDBInsert.InsertIntoTB_FORMMESSAGE_All('CARDDUP','해당 카드를 사번($EMCODE) 이름($NAME)에서 사용중입니다. 카드를 변경 하시겠습니까?','$EMCODE - $NAME Card Use. Card Change?');
+  dmDBInsert.InsertIntoTB_FORMMESSAGE_All('DATATYPEFAIL','데이터 타입이 틀립니다.','Data Type Fail!');
+  dmDBInsert.InsertIntoTB_FORMMESSAGE_All('DBDATADUP','데이터가 중복으로 존재합니다.','Data Duplication');
+  dmDBInsert.InsertIntoTB_FORMMESSAGE_All('DBSAVEERROR','데이터 $WORK 실패.','Data $WORK Error');
+  dmDBInsert.InsertIntoTB_FORMMESSAGE_All('EMCODEDUP','해당 사번으로 이름($NAME)에서 사용중입니다. 계속 진행 하시겠습니까?','The employee number is busy. Do you want to continue?');
+  dmDBInsert.InsertIntoTB_FORMMESSAGE_All('EMCODEDUPSYSTEM','해당 사번이 근태/식수 시스템에서 사용중입니다. 정보를 읽어 들여 작업하시겠습니까?','Do you want to read the information work?');
+  dmDBInsert.InsertIntoTB_FORMMESSAGE_All('FINGERCARDCHANGE','사번($EMCODE) 이름($NAME) 지문카드변경으로 지문데이터 전송작업을 수행하세요.','$EMCODE - $NAME Finger Card ReSend!');
+  dmDBInsert.InsertIntoTB_FORMMESSAGE_All('LOGINMESSAGE','로그인 성공!!! 작업 버튼을 클릭 하여 해당 작업을 수행 하세요.','Login Success!!!');
+  dmDBInsert.InsertIntoTB_FORMMESSAGE_All('LOGOUTMESSAGE','START 버튼을 클릭하여 로그인 후 작업하세요','Please Login to Work!');
+  dmDBInsert.InsertIntoTB_FORMMESSAGE_All('NAMEERROR','$NAME가(이) 올바르지 않습니다.','$NAME Error');
+  dmDBInsert.InsertIntoTB_FORMMESSAGE_All('NODEDELETEMESSAGE','해당 노드를 삭제 하시면 모든권한이삭제됩니다. 정말 삭제 하시겠습니까?','Do You Realy Delete?');
+  dmDBInsert.InsertIntoTB_FORMMESSAGE_All('NOTSELECTDATA','$WORK 데이터를 선택 하세요.','Select the $WORK data!!');
+  dmDBInsert.InsertIntoTB_FORMMESSAGE_All('PASSWORDCHECKERROR','비밀번호 체크 에러.','Password Check Error!');
+  dmDBInsert.InsertIntoTB_FORMMESSAGE_All('SAVINGMESSAGE','데이터를 저장중입니다.','To store the data.');
+  dmDBInsert.InsertIntoTB_FORMMESSAGE_All('SELECTERROR','$WORK 데이터를 선택 하세요.','Do not select $WORK data!');
+  dmDBInsert.InsertIntoTB_FORMMESSAGE_All('WORKCOUNTINFO','$COUNT건의 $WORK를(을) 수행하시겠습니까?','Do you want to $WORK?');
+  dmDBInsert.InsertIntoTB_FORMMESSAGE_All('WORKMESSAGE','$WORK를(을) 수행하시겠습니까?','Do you want to $WORK?');
+  dmDBInsert.InsertIntoTB_FORMMESSAGE_All('EMPPOSIUSE','직위코드를 사용하는 사원정보가 존재 합니다.','Jobtitle to use the code, there are employee information');
+  dmDBInsert.InsertIntoTB_FORMMESSAGE_All('FINGERSENSOR','지문입력센서에 손가락을 대십시오.','Your finger on the sensor');
+  dmDBInsert.InsertIntoTB_FORMMESSAGE_All('CLICKPICTURE','클릭하여 사진등록.','Click the Add Picture');
+
+end;
+
+function TdmFormMessage.MessageTable_0002_VersionMake: Boolean;
+begin
+  dmDBInsert.InsertIntoTB_FORMMESSAGE_All('CLIPDATACOPY','$DATA가 ClipBoard에 복사 되었습니다.','$DATA가 ClipBoard에 복사 되었습니다.');
+  dmDBInsert.InsertIntoTB_FORMMESSAGE_All('SERVERDISCONNECT','서버와 통신연결이 끊어 졌습니다.','서버와 통신연결이 끊어 졌습니다.');
+  dmDBInsert.InsertIntoTB_FORMMESSAGE_All('SENDFAIL','전송실패','전송실패');
+  dmDBInsert.InsertIntoTB_FORMMESSAGE_All('SELECTDEVICENOTDOOR','현재 선택된 기기가 출입문이 아닙니다.','현재 선택된 기기가 출입문이 아닙니다.');
+  dmDBInsert.InsertIntoTB_FORMMESSAGE_All('SERVERDISCONNECTWORK','서버와 통신연결이 끊어졌습니다. $WORK는 통신이 연결된 상태에서만 설정 가능합니다.','서버와 통신연결이 끊어졌습니다. $WORK는 통신이 연결된 상태에서만 설정 가능합니다.');
+  dmDBInsert.InsertIntoTB_FORMMESSAGE_All('DBCONNECTFAIL','데이터베이스 접속 실패.데이터베이스접속 환경설정을 다시 하세요.','DataBase Connected Fail.');
+
+  dmDBUpdate.UpdateTB_CONFIG_Field_StringValue('COMMON','FORMMESSAGE_VER','CO_CONFIGVALUE','2');
+end;
+
+function TdmFormMessage.MessageTable_0003_VersionMake: Boolean;
+begin
+  dmDBInsert.InsertIntoTB_FORMMESSAGE_All('INCORRECTAUTHKEY','인증키값이 틀립니다.','Authentication key is invalid.');
+  dmDBInsert.InsertIntoTB_FORMMESSAGE_All('EXPIRAUTHKEY','인증키의 유효기간이 만료되었습니다.','Authentication key has expired');
+  dmDBInsert.InsertIntoTB_FORMMESSAGE_All('WORKEXCUTE','$WORK 작업을 수행합니다.','Start $WORK');
+//  dmDBInsert.InsertIntoTB_FORMMESSAGE_All('SERVERDISCONNECT','서버와 통신연결이 끊어졌습니다.','서버와 통신연결이 끊어졌습니다.');
+  dmDBInsert.InsertIntoTB_FORMMESSAGE_All('SAVEFAIL','저장 실패','Failed to save');
+  dmDBInsert.InsertIntoTB_FORMMESSAGE_All('NOTSAVEWORK','저장하지 않은 작업이 있습니다.계속하시겠습니까?','There is a work that has not been saved. Do you want to continue?');
+  dmDBInsert.InsertIntoTB_FORMMESSAGE_All('FINGERSAVESUCCESS','지문입력성공.등록버튼으로 저장하세요.','Succeeded fingerprint.');
+  dmDBInsert.InsertIntoTB_FORMMESSAGE_All('FINGERREADEROPENFAIL','지문등록기 오픈 실패.','Failed to fingerprint open');
+  dmDBInsert.InsertIntoTB_FORMMESSAGE_All('CARDTAGREADER','카드를 지문리더에 태그하여 주세요.','Please Touch the fingerprint.');
+  dmDBInsert.InsertIntoTB_FORMMESSAGE_All('CARDREADFAILED','카드읽기 실패.','Failed to read card.');
+  dmDBInsert.InsertIntoTB_FORMMESSAGE_All('FINGERSAVEFAILED','지문입력실패. 다시 시도하세요.','Failed fingerprint.Please try again.');
+  dmDBInsert.InsertIntoTB_FORMMESSAGE_All('CARDGROUPCHANGE','선택된 사원의 카드권한을 그룹권한으로 변경하시겠습니까?','Do you want to change the permissions of the group rights of the card of the selected employee?');
+  dmDBInsert.InsertIntoTB_FORMMESSAGE_All('CARDGROUPCHANGEGRADE','그룹권한 변경시 현재 권한이 모두 바뀔 수 있습니다. 그래도 그룹권한으로 변경하시겠습니까?','This permission can be changed at all to change the current group permissions. Do you want to change the group permission yet?');
+  dmDBInsert.InsertIntoTB_FORMMESSAGE_All('NOTSELECTARMAREA','방범구역을 선택해 주셔야 합니다.','You will need to select the security area.');
+  dmDBInsert.InsertIntoTB_FORMMESSAGE_All('COMPANYEXISTEMPLOYEE','해당 소속의 사원정보가 존재합니다. 사원정보의 소속을 변경 후 작업 하시기 바랍니다.','Information of employees that belong there. Please working after you have changed the affiliation of employee information.');
+  dmDBInsert.InsertIntoTB_FORMMESSAGE_All('PARENTCOMPNYGRADE','상위 소속코드의 권한을 승계 받으시면 현재 권한 정보는 삭제 됩니다. 계속 하시겠습니까?','Once you have received the inheritance rights of top affiliation code, formal current information will be deleted. Do you want to continue? ');
+  dmDBInsert.InsertIntoTB_FORMMESSAGE_All('NOTSELECTDOOR','출입문을 선택해 주셔야 합니다.','You will need to select the Door. ');
+  dmDBInsert.InsertIntoTB_FORMMESSAGE_All('PARENTGROUPGRADE','상위 그룹코드의 권한을 승계 받으시면 현재 권한 정보는 삭제 됩니다. 계속 하시겠습니까?','Once you have received the inheritance rights of the parent group code, formal current information will be deleted. Do you want to continue? ');
+  dmDBInsert.InsertIntoTB_FORMMESSAGE_All('NOTSELECTEMPLOYEE','사원을 선택 하셔야 합니다.','Please select employees');
+  dmDBInsert.InsertIntoTB_FORMMESSAGE_All('TRYAGAINFINGER','다시 한번 손가락을 대십시오.','I will rely on the finger again.');
+  dmDBInsert.InsertIntoTB_FORMMESSAGE_All('EMPLOYEEIMAGE','사원 이미지 찾기.','Image search of employees');
+  dmDBInsert.InsertIntoTB_FORMMESSAGE_All('NOTACCESSPERMIT','출입불가','NOT ACCESS PERMIT');
+  dmDBInsert.InsertIntoTB_FORMMESSAGE_All('ACCESSPERMIT','출입가능','ACCESS PERMIT');
+//  dmDBInsert.InsertIntoTB_FORMMESSAGE_All('DATACOPY','$DATA가 ClipBoard에 복사 되었습니다.','$DATA has been copied to ClipBoard');
+  dmDBInsert.InsertIntoTB_FORMMESSAGE_All('CHILDTIME','하위장비까지 일괄 적용하시겠습니까?','Do you collectively apply to sub belong?');
+
+
+  dmDBUpdate.UpdateTB_CONFIG_Field_StringValue('COMMON','FORMMESSAGE_VER','CO_CONFIGVALUE','3');
+end;
+
+function TdmFormMessage.MessageTable_0004_VersionMake: Boolean;
+begin
+  dmDBInsert.InsertIntoTB_FORMMESSAGE_All('WORKFAIL','$WORK 실패','Failed $WORK','$WORK 失敗');
+  dmDBInsert.InsertIntoTB_FORMMESSAGE_All('WORKSUCCESS','$WORK 성공','Success $WORK','$WORK 成功');
+
+  dmDBUpdate.UpdateTB_CONFIG_Field_StringValue('COMMON','FORMMESSAGE_VER','CO_CONFIGVALUE','4');
+end;
+
+function TdmFormMessage.MessageTable_0005_VersionMake: Boolean;
+begin
+  dmDBInsert.InsertIntoTB_FORMMESSAGE_All('DEVICEUNUSED','컨트롤러 미사용시 로컬시스템의 해당 컨트롤러의 권한은 모두 삭제됩니다.','컨트롤러 미사용시 로컬시스템의 해당 컨트롤러의 권한은 모두 삭제됩니다.','컨트롤러 미사용시 로컬시스템의 해당 컨트롤러의 권한은 모두 삭제됩니다.');
+  dmDBInsert.InsertIntoTB_FORMMESSAGE_All('PARENTGRADECOPY','부모코드의 권한을 복사하시겠습니까?','부모코드의 권한을 복사하시겠습니까?','부모코드의 권한을 복사하시겠습니까?');
+
+
+  dmDBUpdate.UpdateTB_CONFIG_Field_StringValue('COMMON','FORMMESSAGE_VER','CO_CONFIGVALUE','5');
+end;
+
+end.

@@ -1,0 +1,661 @@
+unit uMain;
+
+interface
+
+uses
+  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
+  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, AdvGlowButton, AdvToolBar,
+  Vcl.Imaging.jpeg, Vcl.ExtCtrls, AdvToolBarStylers, AdvMenus, AdvMenuStylers,
+  Vcl.Menus, Vcl.ImgList, AdvPreviewMenu, AdvPreviewMenuStylers,ActiveX,ADODB,uSubForm,
+  CommandArray, Vcl.Imaging.pngimage,DateUtils, AdvAppStyler;
+
+type
+  TFoodDetail = class(TComponent)
+  private
+    FStartTime: string;
+    FAmt: integer;
+    FEndTime: string;
+    FFoodCode: string;
+  public
+    property FoodCode : string read FFoodCode write FFoodCode;
+    property StartTime : string read FStartTime write FStartTime;
+    property EndTime : string read FEndTime write FEndTime;
+    property Amt : integer read FAmt write FAmt;
+  end;
+  TFoodCode = class(TComponent)
+  private
+    FoodCodeList : TStringList;
+    FFoodCodeName: string;
+    FFoodType: string;
+    FYesterDayTime: string;
+  published
+    constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
+    property FoodType : string read FFoodType write FFoodType;
+    property FoodCodeName : string read FFoodCodeName write FFoodCodeName;
+    property YesterDayTime : string read FYesterDayTime  write FYesterDayTime;
+  public
+    procedure AddFoodCode(aFoodType,aFoodCode,aFoodCodeName,aStartTime,aEndTime,aAmt:string);
+    function GetFoodCode(aTime:string;var aFoodCode,aFoodAmt:string):Boolean;
+  end;
+
+  TfmMain = class(TfmASubForm)
+    StartMenu: TAdvPreviewMenu;
+    AdvPreviewMenuOfficeStyler2: TAdvPreviewMenuOfficeStyler;
+    TrayIcon1: TTrayIcon;
+    TrayImageList: TImageList;
+    pm_TrayMenu: TPopupMenu;
+    mn_trayVisible: TMenuItem;
+    N2: TMenuItem;
+    mn_trayClose: TMenuItem;
+    TrayTimer: TTimer;
+    AdvPreviewMenuOfficeStyler1: TAdvPreviewMenuOfficeStyler;
+    AdvMenuOfficeStyler1: TAdvMenuOfficeStyler;
+    Image1: TImage;
+    at_Menu: TAdvToolBarPager;
+    AdvPage7: TAdvPage;
+    AdvFormStyler1: TAdvFormStyler;
+    AdvToolBarOfficeStyler1: TAdvToolBarOfficeStyler;
+    mn_CodeAdmin: TAdvToolBar;
+    btn_ConfigSetting: TAdvGlowButton;
+    mn_Upgrade: TAdvGlowButton;
+    btn_Close: TAdvGlowButton;
+    MenuImageList32: TImageList;
+    MenuDisImageList32: TImageList;
+    DeleteCardTimer: TTimer;
+    procedure btn_CloseClick(Sender: TObject);
+    procedure FormCreate(Sender: TObject);
+    procedure mn_trayCloseClick(Sender: TObject);
+    procedure TrayIcon1DblClick(Sender: TObject);
+    procedure mn_trayVisibleClick(Sender: TObject);
+    procedure TrayTimerTimer(Sender: TObject);
+    procedure FormClose(Sender: TObject; var Action: TCloseAction);
+    procedure btn_ConfigSettingClick(Sender: TObject);
+    procedure CommandArrayCommandsTFORMENABLEExecute(Command: TCommand;
+      Params: TStringList);
+    procedure FormShow(Sender: TObject);
+    procedure mn_UpgradeClick(Sender: TObject);
+    procedure FormCloseQuery(Sender: TObject; var CanClose: Boolean);
+    procedure btn_ATReaderSettingClick(Sender: TObject);
+    procedure btn_FoodReaderSettingClick(Sender: TObject);
+    procedure FormResize(Sender: TObject);
+    procedure DeleteCardTimerTimer(Sender: TObject);
+  private
+    L_bClose : Boolean;
+    procedure MemoryCreate;
+    procedure MemoryFree;
+    Procedure MDIChildShow(FormName:String);
+
+    Procedure RelayDBConnected(Sender: TObject; aSessionNo:integer; DBConnected: Boolean); //AdoConnected
+    procedure RelayDBEvent(Sender: TObject; aSession:integer; aData:string);
+    procedure WorkComplete(Sender: TObject;  aValue:Boolean);
+  private
+    { Private declarations }
+    wmTaskbar : word;
+    procedure AppException( Sender:  TObject;  E:  Exception) ;
+    procedure DefaultHandler(var Message);override;
+  public
+    L_bATReSummary : Boolean;
+    L_stWorkTime : string;
+    L_bATSummary : Boolean;
+    { Public declarations }
+    Function LoadConfig : Boolean;
+  end;
+
+var
+  fmMain: TfmMain;
+
+implementation
+uses
+  uCardDelete,
+  uCommonFunction,
+  uCommonVariable,
+  uDataBase,
+  uDataBaseConfig,
+  uDBCardPermit,
+  uDBSelect,
+  uDBUpdate,
+  uDBFunction,
+  uDBInsert,
+  uDBRelay,
+  uEmployeeRelay,
+  uFormVariable;
+
+{$R *.dfm}
+
+{ TfmMain }
+
+procedure TfmMain.AppException(Sender: TObject; E: Exception);
+var
+  sObj : string;
+  ctrl : TControl;
+  Comp : TComponent;
+begin
+  sObj := '';
+  if Sender <> nil then
+  begin
+    if Sender.InheritsFrom(TControl) then
+    begin
+      ctrl := TControl(Sender);
+      While (ctrl <> nil) do
+      begin
+        sObj := ctrl.Name + '->' + sObj;
+        ctrl := ctrl.Parent;
+      end;
+    end else if Sender.InheritsFrom(TComponent) then
+    begin
+      Comp := TComponent(Sender);
+      sObj := Comp.Name;
+      if (Comp.Owner <> nil) then
+      begin
+        sObj := comp.Owner.Name + '->' + sObj;
+      end;
+    end;
+  end;
+  LogSave(G_stLogDirectory + '\AFServerApplication' + FormatDateTime('yyyymmdd',now) + '.log',sObj);
+end;
+
+
+procedure TfmMain.btn_ATReaderSettingClick(Sender: TObject);
+begin
+  inherited;
+  MDIChildShow('TfmATReaderSetting');
+
+end;
+
+procedure TfmMain.btn_CloseClick(Sender: TObject);
+begin
+  L_bClose := True;
+  Close;
+end;
+
+procedure TfmMain.btn_ConfigSettingClick(Sender: TObject);
+begin
+  MDIChildShow('TfmConfigSetting');
+end;
+
+procedure TfmMain.btn_FoodReaderSettingClick(Sender: TObject);
+begin
+  inherited;
+  MDIChildShow('TfmFoodReaderSetting');
+end;
+
+procedure TfmMain.CommandArrayCommandsTFORMENABLEExecute(Command: TCommand;
+  Params: TStringList);
+var
+  stName : string;
+  bValue : Boolean;
+begin
+  stName := Params.Values['NAME'];
+  if UpperCase(Params.Values['VALUE']) = 'TRUE' then bValue := True
+  else bValue := False;
+
+  if Not isDigit(stName) then Exit;
+  G_bFormEnabled[strtoint(stName)] := bValue;   //해당 폼
+
+  case strtoint(stName) of
+    con_FormAFSConfig : begin  //환경설정 창 종료시
+      if Not bValue then LoadConfig;
+    end;
+    con_FormAFSATReader : begin
+      if Not bValue then LoadConfig;
+    end;
+    con_FormAFSFoodReader : begin
+      if Not bValue then LoadConfig;
+    end;
+  end;
+
+end;
+
+procedure TfmMain.DefaultHandler(var Message);
+begin
+  inherited DefaultHandler(Message);
+  with Tmessage(message) do
+  begin
+    if Msg = wmTaskbar then
+    begin
+      if TrayIcon1 = nil then
+      begin
+        TrayIcon1 := TTrayIcon.Create(self);
+      end;
+      {사라진 트레이 재생}
+
+      TrayIcon1.Visible := False;
+      TrayIcon1.Visible := True;
+    end;
+  end;//with
+end;
+
+
+procedure TfmMain.DeleteCardTimerTimer(Sender: TObject);
+begin
+  inherited;
+  Try
+    DeleteCardTimer.Enabled := False;
+    dmCardDelete.WorkWeekday := G_stCardDeleteWorkSchedule;
+    dmCardDelete.Week := DayOfWeek(now);
+    dmCardDelete.WorkTime := G_stCardDeleteWorkTime;
+
+    dmCardDelete.ApplyType := G_stCardDeleteApplyType;  //'1'.전체,'2'.소속,'3'.그룹,'4'.소속+그룹
+    dmCardDelete.DeleteType := G_stCardDeleteType;  //1.횟수,2.미사용 기간
+    dmCardDelete.DeleteCount := strtoint(G_stCardDeleteCount);  //DeleteType 이 1에서 횟수 미만
+    dmCardDelete.DeleteDayTerm := strtoint(G_stCardDeleteDayTerm);  //기간 Term
+
+    dmCardDelete.CardDeleteStart;
+  Finally
+    if G_stCardDeleteUse = '1' then DeleteCardTimer.Enabled := True;
+  End;
+end;
+
+procedure TfmMain.FormClose(Sender: TObject; var Action: TCloseAction);
+begin
+  G_bApplicationTerminate := True;
+  MemoryFree;
+end;
+
+procedure TfmMain.FormCloseQuery(Sender: TObject; var CanClose: Boolean);
+begin
+  inherited;
+  if L_bClose = False then
+  begin
+    CanClose := False;
+    Hide();
+    WindowState := wsMinimized;
+  end;
+
+end;
+
+procedure TfmMain.FormCreate(Sender: TObject);
+var
+  stYear : string;
+  nWeekDay : integer;
+  nWeek : integer;
+begin
+  Self.ModuleID := 'Main';
+
+  wmTaskbar := RegisterWindowMessage('TaskbarCreated');
+  G_stLogDirectory := ExtractFileDir(Application.ExeName) + '\..\log';
+
+
+  TrayIcon1.Hint := 'CardManager Server Start';
+  TrayIcon1.AnimateInterval := 1000;
+
+  { Set up a hint balloon. }
+  TrayIcon1.BalloonTitle := 'CardManager Server.';
+  TrayIcon1.BalloonFlags := bfInfo;
+
+  TDataBaseConfig.GetObject.DataBaseConnect(False);
+  if Not TDataBaseConfig.GetObject.DBConnected then
+  begin
+    Delay(1000);
+    TDataBaseConfig.GetObject.DataBaseConnect(False);
+  end;
+  if Not TDataBaseConfig.GetObject.DBConnected then
+  begin
+    Delay(1000);
+    TDataBaseConfig.GetObject.DataBaseConnect(False);
+  end;
+  if Not TDataBaseConfig.GetObject.DBConnected then
+  begin
+    Delay(1000);
+    TDataBaseConfig.GetObject.DataBaseConnect(False);
+  end;
+
+  if Not TDataBaseConfig.GetObject.DBConnected then
+  begin
+    showmessage('데이터베이스 접속 실패.데이터베이스접속 환경설정을 다시 하세요.');
+    Application.Terminate;
+    G_bApplicationTerminate := True;
+    Exit;
+  end;
+
+  if FileExists(G_stExeFolder + '\logo.ico') then
+  begin
+    self.Icon.LoadFromFile(G_stExeFolder + '\logo.ico');
+    Application.Icon.LoadFromFile(G_stExeFolder + '\logo.ico');
+  end;
+
+  MemoryCreate;
+
+  Application.OnException := AppException;
+  LoadConfig;
+
+  stYear := FormatDateTime('yyyy',now);
+  nWeekDay := WeekOf(Now);
+  nWeek := DayOfWeek(now);
+
+  dmCardDelete.WorkWeekday := G_stCardDeleteWorkSchedule;
+  dmCardDelete.Week := nWeekDay;
+  dmCardDelete.WorkTime := G_stCardDeleteWorkTime;
+
+  dmCardDelete.ApplyType := G_stCardDeleteApplyType;  //'1'.전체,'2'.소속,'3'.그룹,'4'.소속+그룹
+  dmCardDelete.DeleteType := G_stCardDeleteType;  //1.횟수,2.미사용 기간
+  dmCardDelete.DeleteCount := strtoint(G_stCardDeleteCount);  //DeleteType 이 1에서 횟수 미만
+  dmCardDelete.DeleteDayTerm := strtoint(G_stCardDeleteDayTerm);  //기간 Term
+
+  if dmDBFunction.CheckTB_CARDDELETEEVENT_Work(stYear,inttostr(nWeekDay),inttostr(nWeek)) = 1 then
+  begin
+    dmCardDelete.WorkComplete := True;
+  end else
+  begin
+    dmCardDelete.WorkComplete := False;
+  end;
+  dmCardDelete.OnWorkComplete := WorkComplete;
+
+  TrayTimer.Enabled := True;
+  if G_stCardDeleteUse = '1' then DeleteCardTimer.Enabled := True;
+end;
+
+procedure TfmMain.FormResize(Sender: TObject);
+var
+  nImageWidth : integer;
+  nImageHight : integer;
+begin
+  inherited;
+  nImageWidth := 1919;
+  nImageHight := 928;
+
+  Image1.Width := Width;
+  Image1.Height := nImageHight * width div nImageWidth;
+
+  Image1.Top := at_Menu.Height + (Height - at_Menu.Height) div 2 - (Image1.Height div 2) - 20;
+  Image1.Left := 0;
+
+end;
+
+procedure TfmMain.FormShow(Sender: TObject);
+var
+  stLogoFile : string;
+begin
+  inherited;
+  stLogoFile := G_stExeFolder + '\Logo.JPG';
+  if FileExists(stLogoFile) then
+    Image1.Picture.LoadFromFile(stLogoFile);
+
+end;
+
+function TfmMain.LoadConfig: Boolean;
+var
+  stSql : string;
+  TempAdoQuery : TADOQuery;
+begin
+  result := False;
+
+  Try
+    CoInitialize(nil);
+    TempAdoQuery := TADOQuery.Create(nil);
+    TempAdoQuery.Connection := dmDataBase.ADOConnection;
+    TempAdoQuery.DisableControls;
+
+    stSql := 'select * from TB_CONFIG ';
+    stSql := stSql + ' where GROUP_CODE = ''' + G_stGroupCode + ''' ';
+    with TempAdoQuery do
+    begin
+      Close;
+      //Sql.Clear;
+      Sql.Text := stSql;
+
+      Try
+        Open;
+      Except
+        Exit;
+      End;
+
+      if RecordCount < 1 then Exit;
+      while Not Eof do
+      begin
+        if G_bApplicationTerminate then Exit;
+        if FindField('CO_CONFIGGROUP').AsString = 'CARDDELETE' then
+        begin
+          if FindField('CO_CONFIGCODE').AsString = 'APPLYTYPE' then
+          begin
+            if isDigit(FindField('CO_CONFIGVALUE').AsString) then
+              G_stCardDeleteApplyType := FindField('CO_CONFIGVALUE').AsString;
+          end else if FindField('CO_CONFIGCODE').AsString = 'CARDSTOP' then
+          begin
+              G_stCardDeleteStopType := FindField('CO_CONFIGVALUE').AsString;
+          end else if FindField('CO_CONFIGCODE').AsString = 'COUNT' then
+          begin
+            if isDigit(FindField('CO_CONFIGVALUE').AsString) then
+              G_stCardDeleteCount := FindField('CO_CONFIGVALUE').AsString;
+          end else if FindField('CO_CONFIGCODE').AsString = 'DAYTERM' then
+          begin
+            if isDigit(FindField('CO_CONFIGVALUE').AsString) then
+              G_stCardDeleteDayTerm := FindField('CO_CONFIGVALUE').AsString;
+          end else if FindField('CO_CONFIGCODE').AsString = 'DELETETYPE' then
+          begin
+            if isDigit(FindField('CO_CONFIGVALUE').AsString) then
+              G_stCardDeleteType := FindField('CO_CONFIGVALUE').AsString;
+          end else if FindField('CO_CONFIGCODE').AsString = 'WORKSCHEDULE' then
+          begin
+            if isDigit(FindField('CO_CONFIGVALUE').AsString) then
+              G_stCardDeleteWorkSchedule := FindField('CO_CONFIGVALUE').AsString;
+          end else if FindField('CO_CONFIGCODE').AsString = 'WORKTIME' then
+          begin
+            if isDigit(FindField('CO_CONFIGVALUE').AsString) then
+              G_stCardDeleteWorkTime := FindField('CO_CONFIGVALUE').AsString;
+          end else if FindField('CO_CONFIGCODE').AsString = 'USE' then
+          begin
+            if isDigit(FindField('CO_CONFIGVALUE').AsString) then
+              G_stCardDeleteUse := FindField('CO_CONFIGVALUE').AsString;
+          end;
+        end;
+        Next;
+      end;
+    end;
+  Finally
+    TempAdoQuery.EnableControls;
+    TempAdoQuery.Free;
+    CoUninitialize;
+  End;
+  result := True;
+end;
+
+procedure TfmMain.MDIChildShow(FormName: String);
+var
+  tmpFormClass : TFormClass;
+  tmpClass : TPersistentClass;
+  tmpForm : TForm;
+  clsName : String;
+  i : Integer;
+begin
+  clsName := FormName;
+  tmpClass := FindClass(clsName);
+  if tmpClass <> nil then
+  begin
+    for i := 0 to Screen.FormCount - 1 do
+    begin
+      if Screen.Forms[i].ClassNameIs(clsName) then
+      begin
+        if Screen.ActiveForm = Screen.Forms[i] then
+        begin
+          Exit;
+        end;
+        Screen.Forms[i].Show;
+        Exit;
+      end;
+    end;
+
+    tmpFormClass := TFormClass(tmpClass);
+    tmpForm := tmpFormClass.Create(Self);
+    tmpForm.Show;
+  end;
+end;
+
+procedure TfmMain.MemoryCreate;
+begin
+//  EmployeeList := TStringList.Create;
+end;
+
+procedure TfmMain.MemoryFree;
+var
+  i : integer;
+begin
+
+end;
+
+procedure TfmMain.mn_trayCloseClick(Sender: TObject);
+begin
+  L_bClose := True;
+  Close;
+end;
+
+procedure TfmMain.mn_trayVisibleClick(Sender: TObject);
+begin
+  TrayIcon1DblClick(self);
+end;
+
+procedure TfmMain.mn_UpgradeClick(Sender: TObject);
+begin
+  inherited;
+  if Not FileExists(G_stExeFolder + '\AFServer\SmartUpdate.exe') then
+  begin
+    showmessage(mn_Upgrade.Caption + ' 도구가 설치되어 있지 않습니다.');
+    Exit;
+  end;
+
+  MyRunDosCommand(G_stExeFolder + '\AFServer\SmartUpdate.exe',False,False);
+  Close;
+
+end;
+
+procedure TfmMain.RelayDBConnected(Sender: TObject; aSessionNo: integer;
+  DBConnected: Boolean);
+begin
+end;
+
+procedure TfmMain.RelayDBEvent(Sender: TObject; aSession: integer;
+  aData: string);
+begin
+
+end;
+
+procedure TfmMain.TrayIcon1DblClick(Sender: TObject);
+begin
+  { Hide the tray icon and show the window,
+  setting its state property to wsNormal. }
+  Show();
+  WindowState := wsNormal;
+  Application.BringToFront();
+end;
+
+procedure TfmMain.TrayTimerTimer(Sender: TObject);
+begin
+  TrayTimer.Enabled := False;
+  { Hide the window and set its state variable to wsMinimized. }
+  Hide();
+  WindowState := wsMinimized;
+
+  { Show the animated tray icon and also a hint balloon. }
+  TrayIcon1.Visible := True;
+  TrayIcon1.Animate := True;
+  TrayIcon1.ShowBalloonHint;
+end;
+
+
+procedure TfmMain.WorkComplete(Sender: TObject; aValue: Boolean);
+var
+  stYear : string;
+  nWeekDay : integer;
+  nWeek : integer;
+begin
+  if Not aValue then Exit;
+
+  stYear := FormatDateTime('yyyy',now);
+  nWeekDay := WeekOf(Now);
+  nWeek := DayOfWeek(now);
+
+  if dmDBFunction.CheckTB_CARDDELETEEVENT_Key(stYear,inttostr(nWeekDay)) = 1 then
+  begin
+    dmDBUpdate.UpdateTB_CARDDELETEEVENT_Complete(stYear,inttostr(nWeekDay),inttostr(nWeek),'Y');
+  end else
+  begin
+    dmDBInsert.InsertIntoTB_CARDDELETEEVENT_Complete(stYear,inttostr(nWeekDay),inttostr(nWeek),'Y');
+  end;
+
+end;
+
+{ TFoodCode }
+
+procedure TFoodCode.AddFoodCode(aFoodType,aFoodCode,aFoodCodeName, aStartTime, aEndTime, aAmt: string);
+var
+  nIndex : integer;
+  oFoodDetail : TFoodDetail;
+begin
+  FoodType := aFoodType;
+  FoodCodeName := aFoodCodeName;
+  nIndex := FoodCodeList.IndexOf(aFoodCode);
+  if nIndex > -1 then Exit;
+  oFoodDetail:= TFoodDetail.Create(Self);
+  oFoodDetail.FoodCode := aFoodCode;
+  oFoodDetail.StartTime := aStartTime;
+  oFoodDetail.EndTime := aEndTime;
+  oFoodDetail.Amt := strtoint(aAmt);
+  FoodCodeList.AddObject(aFoodCode,oFoodDetail);
+
+end;
+
+constructor TFoodCode.Create(AOwner: TComponent);
+begin
+  inherited;
+  FoodCodeList := TstringList.Create;
+end;
+
+destructor TFoodCode.Destroy;
+var
+  i : integer;
+begin
+  if FoodCodeList.Count > 0 then
+  begin
+    for i := FoodCodeList.Count - 1 downto 0 do
+      TFoodDetail(FoodCodeList.Objects[i]).free;
+  end;
+  FoodCodeList.Free;
+  inherited;
+end;
+
+function TFoodCode.GetFoodCode(aTime: string;var aFoodCode,aFoodAmt:string):Boolean;
+var
+  i : integer;
+  stTemp : string;
+begin
+  result := False;
+  aFoodCode := '0';
+  for I := 0 to FoodCodeList.Count - 1 do
+  begin
+    if TFoodDetail(FoodCodeList.Objects[i]).StartTime < TFoodDetail(FoodCodeList.Objects[i]).EndTime  then
+    begin
+      if (TFoodDetail(FoodCodeList.Objects[i]).StartTime <= aTime) and
+         (TFoodDetail(FoodCodeList.Objects[i]).EndTime >= aTime)
+        then
+      begin
+        aFoodCode := FoodCodeList.Strings[i];
+        aFoodAmt :=  inttostr(TFoodDetail(FoodCodeList.Objects[i]).Amt);
+        result := True;
+        break;
+      end;
+    end else
+    begin
+      if (TFoodDetail(FoodCodeList.Objects[i]).StartTime <= aTime) or
+         (TFoodDetail(FoodCodeList.Objects[i]).EndTime >= aTime)
+        then
+      begin
+        aFoodCode := FoodCodeList.Strings[i];
+        aFoodAmt :=  inttostr(TFoodDetail(FoodCodeList.Objects[i]).Amt);
+        result := True;
+        break;
+      end;
+    end;
+    if (aTime > '1200') and (aFoodCode = '1') then
+    begin
+      stTemp := '1';
+    end;
+
+  end;
+  if result = False then
+  begin
+      stTemp := '1';
+  end;
+end;
+
+end.

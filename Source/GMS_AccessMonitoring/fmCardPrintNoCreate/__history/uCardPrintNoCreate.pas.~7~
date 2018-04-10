@@ -1,0 +1,54 @@
+unit uCardPrintNoCreate;
+
+interface
+
+uses
+  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
+  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.Buttons, Vcl.StdCtrls;
+
+type
+  TfmCardPrintNoCreate = class(TForm)
+    Label1: TLabel;
+    ed_PrintNo: TEdit;
+    Label2: TLabel;
+    ed_CardNo: TEdit;
+    btn_Save: TSpeedButton;
+    btn_Cancel: TSpeedButton;
+    procedure btn_CancelClick(Sender: TObject);
+  private
+    FSelectCardNo: string;
+    FSelectPrintNo: string;
+    procedure SetSelectPrintNo(const Value: string);
+    procedure SetSelectCardNo(const Value: string);
+    { Private declarations }
+  public
+    { Public declarations }
+    property SelectCardNo : string read FSelectCardNo write SetSelectCardNo;
+    property SelectPrintNo : string read FSelectPrintNo write SetSelectPrintNo;
+  end;
+
+var
+  fmCardPrintNoCreate: TfmCardPrintNoCreate;
+
+implementation
+
+{$R *.dfm}
+
+procedure TfmCardPrintNoCreate.btn_CancelClick(Sender: TObject);
+begin
+  Close;
+end;
+
+procedure TfmCardPrintNoCreate.SetSelectCardNo(const Value: string);
+begin
+  FSelectCardNo := Value;
+  ed_CardNo.Text := Value;
+end;
+
+procedure TfmCardPrintNoCreate.SetSelectPrintNo(const Value: string);
+begin
+  FSelectPrintNo := Value;
+  ed_PrintNo.Text := Value;
+end;
+
+end.

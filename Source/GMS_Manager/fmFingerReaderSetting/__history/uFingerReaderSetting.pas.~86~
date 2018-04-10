@@ -1,0 +1,690 @@
+unit uFingerReaderSetting;
+
+interface
+
+uses
+  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
+  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls, AdvGlowButton, AdvEdit,
+  AdvSmoothLabel, Vcl.ComCtrls, AdvSmoothPanel, W7Classes, W7Panels,
+  AdvOfficePager, AdvOfficeTabSet, AdvOfficeTabSetStylers, AdvAppStyler,
+  AdvOfficePagerStylers, Vcl.ImgList, Vcl.ExtCtrls, AdvSplitter, Vcl.Grids,
+  AdvObj, BaseGrid, AdvGrid,Data.Win.ADODB,uSubForm, CommandArray,
+  Vcl.Imaging.pngimage,ActiveX, AdvGlassButton, AdvCombo;
+
+const
+  con_LocalCompanyImageIndex = 0;
+  con_LocalEmployeeImageIndex = 1;
+  con_LocalBuildingImageIndex = 2;
+
+type
+  TfmFingerReaderSetting = class(TfmASubForm)
+    AdvOfficePagerOfficeStyler1: TAdvOfficePagerOfficeStyler;
+    AdvFormStyler1: TAdvFormStyler;
+    AdvOfficeTabSetOfficeStyler1: TAdvOfficeTabSetOfficeStyler;
+    AdvOfficePager1: TAdvOfficePager;
+    AdvOfficePage1: TAdvOfficePage;
+    BodyPanel: TW7Panel;
+    List: TAdvSmoothPanel;
+    btn_minimize: TAdvGlowButton;
+    btn_Close: TAdvGlowButton;
+    AdvSmoothPanel1: TAdvSmoothPanel;
+    MenuImageList16: TImageList;
+    AdvSplitter1: TAdvSplitter;
+    pan_left: TAdvSmoothPanel;
+    lb_Building: TLabel;
+    tv_List: TTreeView;
+    tv_Code: TTreeView;
+    sg_List: TAdvStringGrid;
+    lb_FingerReaderName: TAdvSmoothLabel;
+    ed_SearchName: TAdvEdit;
+    btn_Search: TAdvGlowButton;
+    lb_FingerReaderIP: TAdvSmoothLabel;
+    ed_ReaderIP: TAdvEdit;
+    lb_BuildingList: TLabel;
+    btn_Add: TAdvGlowButton;
+    btn_Delete: TAdvGlowButton;
+    Add: TAdvSmoothPanel;
+    lb_AddFingerIP: TAdvSmoothLabel;
+    lb_AddFingerName: TAdvSmoothLabel;
+    lb_AddDoor: TAdvSmoothLabel;
+    lb_AddFingerID: TAdvSmoothLabel;
+    ed_Ip: TAdvEdit;
+    ed_Name: TAdvEdit;
+    ed_DeviceName: TAdvEdit;
+    TreeView1: TTreeView;
+    ed_DeviceID: TAdvEdit;
+    ed_AddSeq: TAdvEdit;
+    ed_ReaderPort: TAdvEdit;
+    ed_FingerDeviceID: TAdvEdit;
+    btn_AddSave: TAdvGlowButton;
+    btn_AddCancel: TAdvGlowButton;
+    lb_AddBuilding: TAdvSmoothLabel;
+    ed_BuildingName: TAdvEdit;
+    btn_AddBuildingSelect: TAdvGlowButton;
+    btnSelectDoor: TAdvGlowButton;
+    ed_SelectBuildingCode: TAdvEdit;
+    tv_AddBuildingList: TTreeView;
+    tv_AddBuildingCode: TTreeView;
+    lb_FingerType: TAdvSmoothLabel;
+    cmb_ReaderType: TAdvComboBox;
+    btn_FingerResend: TAdvGlowButton;
+    procedure FormActivate(Sender: TObject);
+    procedure FormClose(Sender: TObject; var Action: TCloseAction);
+    procedure btn_minimizeClick(Sender: TObject);
+    procedure btn_CloseClick(Sender: TObject);
+    procedure FormResize(Sender: TObject);
+    procedure pan_leftResize(Sender: TObject);
+    procedure tv_ListClick(Sender: TObject);
+    procedure AdvSmoothPanel1Resize(Sender: TObject);
+    procedure sg_ListResize(Sender: TObject);
+    procedure sg_ListCheckBoxClick(Sender: TObject; ACol, ARow: Integer;
+      State: Boolean);
+    procedure btn_SearchClick(Sender: TObject);
+    procedure btn_DeleteClick(Sender: TObject);
+    procedure btn_AddCancelClick(Sender: TObject);
+    procedure btn_AddClick(Sender: TObject);
+    procedure btn_AddBuildingSelectClick(Sender: TObject);
+    procedure AddMouseDown(Sender: TObject; Button: TMouseButton;
+      Shift: TShiftState; X, Y: Integer);
+    procedure tv_AddBuildingListDblClick(Sender: TObject);
+    procedure btnSelectDoorClick(Sender: TObject);
+    procedure btn_AddSaveClick(Sender: TObject);
+    procedure sg_ListDblClick(Sender: TObject);
+    procedure ed_SearchNameKeyPress(Sender: TObject; var Key: Char);
+    procedure btn_FingerResendClick(Sender: TObject);
+    procedure cmb_ReaderTypeChange(Sender: TObject);
+    procedure FormShow(Sender: TObject);
+  private
+    L_nCheckCount : integer;
+    L_nPageListMaxCount : integer;
+    L_stWork : string;
+    L_stSelectBuildingCode : string;
+    { Private declarations }
+    function FormNameSetting : Boolean;
+    procedure SearchList(aCode:string;aTopRow:integer = 0);
+    procedure AdvStrinGridSetAllCheck(Sender: TObject;bchkState:Boolean);
+    Function AddFingerDevice:Boolean;
+    Function UpdateFingerDevice:Boolean;
+  public
+    { Public declarations }
+  end;
+
+var
+  fmFingerReaderSetting: TfmFingerReaderSetting;
+
+implementation
+uses
+  uComboBoxCodeLoad,
+  uCommonFunction,
+  uCommonVariable,
+  uDataBase,
+  uDBDelete,
+  uDBFormMessage,
+  uDBFunction,
+  uDBInsert,
+  uDBUpdate,
+  uDBSelect,
+  uDoorSelect,
+  uFormFunction;
+
+{$R *.dfm}
+
+procedure TfmFingerReaderSetting.btnSelectDoorClick(Sender: TObject);
+begin
+  inherited;
+  fmDoorSelect := TfmDoorSelect.Create(nil);
+  fmDoorSelect.SelectBuildingCode := L_stSelectBuildingCode;
+  fmDoorSelect.ShowModal;
+  if fmDoorSelect.SelectDoorID <> '' then
+  begin
+    ed_DeviceID.Text := fmDoorSelect.SelectDoorID;
+    ed_DeviceName.Text := fmDoorSelect.SelectDoorName;
+  end;
+  fmDoorSelect.Free;
+end;
+
+procedure TfmFingerReaderSetting.btn_AddBuildingSelectClick(Sender: TObject);
+begin
+  inherited;
+  tv_AddBuildingList.Visible := Not tv_AddBuildingList.Visible;
+  tv_AddBuildingList.Top := btn_AddBuildingSelect.Top - tv_AddBuildingList.Height;
+  tv_AddBuildingList.Left := btn_AddBuildingSelect.Left + btn_AddBuildingSelect.Width - tv_AddBuildingList.Width ;
+end;
+
+procedure TfmFingerReaderSetting.btn_AddCancelClick(Sender: TObject);
+begin
+  inherited;
+  Add.Visible := False;
+end;
+
+procedure TfmFingerReaderSetting.btn_AddClick(Sender: TObject);
+begin
+  inherited;
+  ed_SelectBuildingCode.Text := L_stSelectBuildingCode;
+  ed_BuildingName.Text := dmDBFunction.GetTB_BUILDINGCODE_BuildingName(L_stSelectBuildingCode);
+  ed_AddSeq.Text := dmDBFunction.GetNextTB_FINGERDEVICE_ID;
+  ed_FingerDeviceID.Text := dmDBFunction.GetNextTB_FINGERDEVICE_ID;
+  ed_Ip.Text := '';
+  ed_Name.Text := '';
+  ed_DeviceName.Text := '';
+  ed_DeviceID.Text := '';
+  Add.Visible := True;
+  if G_nFingerReaderType = 1 then
+  begin
+    ed_ReaderPort.Text := '7005';
+    cmb_ReaderType.ItemIndex := 0;
+  end
+  else if G_nFingerReaderType = 2 then
+  begin
+    ed_ReaderPort.Text := '1471';
+    cmb_ReaderType.ItemIndex := 1;
+  end else if G_nFingerReaderType = 3 then
+  begin
+    ed_ReaderPort.Text := '7005';
+    cmb_ReaderType.ItemIndex := 2;
+  end;
+  L_stWork := 'ADD';
+end;
+
+procedure TfmFingerReaderSetting.btn_AddSaveClick(Sender: TObject);
+var
+  bResult : Boolean;
+begin
+  inherited;
+  if L_stWork = 'ADD' then bResult := AddFingerDevice
+  else if L_stWork = 'UPDATE' then bResult := UpdateFingerDevice;
+
+  if bResult then
+  begin
+    Add.Visible := False;
+    SearchList(ed_AddSeq.Text);
+  end;
+end;
+
+Function TfmFingerReaderSetting.AddFingerDevice:Boolean;
+var
+  stFingerID : string;
+  stMessage : string;
+  i,j,k : integer;
+  stDate : string;
+  stDeviceID : string;
+  stCPType : string;
+  stNodeNo : string;
+  stEcuID : string;
+  stExtendID : string;
+  stDoorNo : string;
+begin
+  inherited;
+  result := False;
+  stFingerID := ed_AddSeq.Text;
+
+  if dmDBFunction.CheckTB_FINGERDEVICE_IP(ed_Ip.Text,stFingerID) = 1 then
+  begin
+    stMessage := dmFormMessage.GetMessage('DBDATADUP');
+    Application.MessageBox(PChar(stMessage),'Error',MB_OK);
+    Exit;
+  end;
+
+  if G_nFingerRelayType = 2 then //DB연동타입이면
+  begin
+    if dmDBFunction.CheckTB_FINGERDEVICE_FingerDeviceID(ed_FingerDeviceID.Text,stFingerID) = 1 then
+    begin
+      stMessage := '지문리더 아이디 중복';
+      Application.MessageBox(PChar(stMessage),'Error',MB_OK);
+      Exit;
+    end;
+  end;
+
+  stDeviceID := '';
+  stCPType := '0';
+  stNodeNo := '0';
+  stEcuID := '00';
+  stExtendID := '0';
+  stDoorNo := '0';
+  if ed_DeviceID.Text <> '' then
+  begin
+    stDeviceID := ed_DeviceID.Text;
+    stCPType := stDeviceID[1];
+    stNodeNo := copy(stDeviceID,2,G_nNodeCodeLength);
+    stEcuID := copy(stDeviceID,2 + G_nNodeCodeLength, 2);
+    stExtendID := copy(stDeviceID,2 + G_nNodeCodeLength + 2,2);
+    stDoorNo := copy(stDeviceID,2 + G_nNodeCodeLength + 2 + 2,2);
+  end;
+
+  if Not dmDBInsert.InsertIntoTB_FINGERDEVICE_Value(stFingerID,ed_Ip.Text,ed_Name.Text,ed_ReaderPort.Text,inttostr(cmb_ReaderType.ItemIndex + 1),stCPType,stNodeNo,stEcuID,stExtendID,stDoorNo,ed_FingerDeviceID.Text,ed_SelectBuildingCode.Text) then
+  begin
+    stMessage := stringReplace(dmFormMessage.GetMessage('DBSAVEERROR'),'$WORK',btn_AddSave.Caption,[rfReplaceAll]);
+    Application.MessageBox(PChar(stMessage),'Error',MB_OK);
+    Exit;
+  end;
+  dmDBUpdate.UpdateTB_CARDPERMITEMPLOYEECODE_DeviceToFingerApply(stNodeNo,stEcuID,stExtendID,stCPType,stDoorNo,'N','1');
+  result := True;
+end;
+
+procedure TfmFingerReaderSetting.AddMouseDown(Sender: TObject;
+  Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+const
+ SC_DragMove = $F012;
+begin
+ ReleaseCapture;
+ (sender as TWinControl).perform(WM_SysCommand, SC_DragMove,0);
+end;
+
+procedure TfmFingerReaderSetting.AdvSmoothPanel1Resize(Sender: TObject);
+begin
+  sg_List.Width := AdvSmoothPanel1.Width - (sg_List.Left * 2);
+  sg_List.Height := AdvSmoothPanel1.Height - sg_List.Top - 20;
+  Add.Left := AdvSmoothPanel1.Width div 2 - Add.Width div 2;
+  Add.Top := AdvSmoothPanel1.Height div 2 - Add.Height div 2;
+end;
+
+procedure TfmFingerReaderSetting.AdvStrinGridSetAllCheck(Sender: TObject;
+  bchkState: Boolean);
+var
+  i : integer;
+begin
+  for i:= 1 to (Sender as TAdvStringGrid).RowCount - 1  do
+  begin
+    (Sender as TAdvStringGrid).SetCheckBoxState(0,i,bchkState);
+  end;
+end;
+
+procedure TfmFingerReaderSetting.btn_CloseClick(Sender: TObject);
+begin
+  Close;
+end;
+
+procedure TfmFingerReaderSetting.btn_DeleteClick(Sender: TObject);
+var
+  i : integer;
+  bChkState : Boolean;
+  stMessage : string;
+  stClientIP : string;
+  stTime : string;
+begin
+  inherited;
+  stClientIP:= GetLocalIPAddr;
+  stTime := FormatDateTime('yyyymmddhhnnsszzz',now);
+  stMessage := stringReplace(dmFormMessage.GetMessage('SELECTERROR'),'$WORK',btn_Delete.Caption,[rfReplaceAll]);
+  if L_nCheckCount = 0 then
+  begin
+    Application.MessageBox(PChar(stMessage),'Information',MB_OK);
+    Exit;
+  end;
+  stMessage := stringReplace(dmFormMessage.GetMessage('WORKCOUNTINFO'),'$WORK',btn_Delete.Caption,[rfReplaceAll]);
+  stMessage := stringReplace(stMessage,'$COUNT',inttostr(L_nCheckCount),[rfReplaceAll]);
+  if (Application.MessageBox(PChar(stMessage),'Information',MB_OKCANCEL) = IDCANCEL)  then Exit;
+  stMessage := stringReplace(dmFormMessage.GetMessage('NODEDELETEMESSAGE'),'$WORK',btn_Delete.Caption,[rfReplaceAll]);
+  if (Application.MessageBox(PChar(stMessage),'Information',MB_OKCANCEL) = IDCANCEL)  then Exit;
+  With sg_List do
+  begin
+    for i := 1 to RowCount - 1 do
+    begin
+      GetCheckBoxState(0,i, bChkState);
+      if bChkState then
+      begin
+        dmDBDelete.DeleteTB_FINGERDEVICE_Seq(cells[3,i]);
+        dmDBDelete.DeleteTB_FINGERDEVICECARD_DeviceSeq(cells[3,i]);
+      end;
+    end;
+  end;
+  SearchList('');
+end;
+
+procedure TfmFingerReaderSetting.btn_FingerResendClick(Sender: TObject);
+var
+  i : integer;
+  bChkState : Boolean;
+  stMessage : string;
+  stClientIP : string;
+  stTime : string;
+  stNodeNo,stEcuID,stType,stDoorNo : string;
+begin
+  inherited;
+  stClientIP:= GetLocalIPAddr;
+  stTime := FormatDateTime('yyyymmddhhnnsszzz',now);
+  stMessage := stringReplace(dmFormMessage.GetMessage('SELECTERROR'),'$WORK',btn_FingerResend.Caption,[rfReplaceAll]);
+  if L_nCheckCount = 0 then
+  begin
+    Application.MessageBox(PChar(stMessage),'Information',MB_OK);
+    Exit;
+  end;
+
+  With sg_List do
+  begin
+    for i := 1 to RowCount - 1 do
+    begin
+      GetCheckBoxState(0,i, bChkState);
+      if bChkState then
+      begin
+        if dmDBFunction.GetTB_FINGERDEVICE_DeviceInfo(cells[3,Row],stNodeNo,stEcuID,stType,stDoorNo) then
+        begin
+          dmDBUpdate.UpdateTB_CARDPERMITEMPLOYEECODE_DeviceToFingerApply(stNodeNo,stEcuID,'0',stType,stDoorNo,'N');
+        end;
+        dmDBUpdate.UpdateTB_FINGERDEVICECARD_Resend(cells[3,Row]);
+      end;
+    end;
+  end;
+  SearchList('',sg_List.TopRow);
+end;
+
+procedure TfmFingerReaderSetting.btn_minimizeClick(Sender: TObject);
+begin
+  windowState := wsNormal;
+end;
+
+procedure TfmFingerReaderSetting.btn_SearchClick(Sender: TObject);
+begin
+  inherited;
+  SearchList('');
+end;
+
+procedure TfmFingerReaderSetting.cmb_ReaderTypeChange(Sender: TObject);
+begin
+  inherited;
+  if (cmb_ReaderType.ItemIndex = 0) or (cmb_ReaderType.ItemIndex = 2) then ed_ReaderPort.Text := '7005'
+  else if (cmb_ReaderType.ItemIndex = 1) then ed_ReaderPort.Text := '1471';
+end;
+
+procedure TfmFingerReaderSetting.ed_SearchNameKeyPress(Sender: TObject;
+  var Key: Char);
+begin
+  inherited;
+  if Key = #13 then
+  begin
+    SearchList('');
+  end;
+end;
+
+procedure TfmFingerReaderSetting.FormActivate(Sender: TObject);
+begin
+  L_nPageListMaxCount := 17;
+  LoadBuildingTreeView('',tv_List,tv_Code,con_LocalBuildingImageIndex);
+  LoadBuildingTreeView('',tv_AddBuildingList,tv_AddBuildingCode,con_LocalBuildingImageIndex);
+  tv_ListClick(tv_List);
+//  SearchList('');
+  WindowState := wsMaximized;
+end;
+
+
+procedure TfmFingerReaderSetting.FormClose(Sender: TObject;
+  var Action: TCloseAction);
+begin
+  Action := caFree;
+end;
+
+function TfmFingerReaderSetting.FormNameSetting: Boolean;
+begin
+  AdvOfficePage1.Caption := dmFormFunction.GetFormName('0','2','BUTTONMENU002');
+  lb_Building.Caption := dmFormFunction.GetFormName('0','2','COMMONBUILDING');
+  lb_FingerReaderIP.Caption.Text := dmFormFunction.GetFormName('0','2','COMMONFINGERIP');
+  lb_FingerReaderName.Caption.Text := dmFormFunction.GetFormName('0','2','COMMONFINGERNAME');
+  btn_Search.Caption := dmFormFunction.GetFormName('0','2','BUTTONSEARCH001');
+  btn_Add.Caption := dmFormFunction.GetFormName('0','2','BUTTONADD001');
+  btn_Delete.Caption := dmFormFunction.GetFormName('0','2','BUTTONDEL001');
+  btn_FingerResend.Caption := dmFormFunction.GetFormName('0','2','COMMONFINGERRESEND');
+
+  sg_List.Cells[1,0] := dmFormFunction.GetFormName('0','2','COMMONFINGERIP');
+  sg_List.Cells[2,0] := dmFormFunction.GetFormName('0','2','COMMONFINGERNAME');
+  sg_List.Cells[3,0] := dmFormFunction.GetFormName('0','2','COMMONFINGERNO');
+  sg_List.Cells[4,0] := dmFormFunction.GetFormName('0','2','COMMONDOORNO');
+
+  lb_AddFingerID.Caption.Text := dmFormFunction.GetFormName('0','2','COMMONFINGERNO');
+  lb_AddFingerIP.Caption.Text := dmFormFunction.GetFormName('0','2','COMMONFINGERIP');
+  lb_AddFingerName.Caption.Text := dmFormFunction.GetFormName('0','2','COMMONFINGERNAME');
+  lb_FingerType.Caption.Text := dmFormFunction.GetFormName('0','2','COMMONFINGERTYPE');
+  lb_AddBuilding.Caption.Text := dmFormFunction.GetFormName('0','2','COMMONBUILDING');
+  lb_AddDoor.Caption.Text := dmFormFunction.GetFormName('0','2','COMMONRELAYDOOR');
+  btn_AddBuildingSelect.Caption := dmFormFunction.GetFormName('0','2','BUTTONSEARCH002');
+  btnSelectDoor.Caption := dmFormFunction.GetFormName('0','2','BUTTONSEARCH002');
+  btn_AddSave.Caption := dmFormFunction.GetFormName('0','2','BUTTONSAVE001');
+  btn_AddCancel.Caption := dmFormFunction.GetFormName('0','2','BUTTONMENU001');
+end;
+
+procedure TfmFingerReaderSetting.FormResize(Sender: TObject);
+begin
+  btn_Close.Left := AdvOfficePager1.Width - btn_Close.Width - 10;
+  btn_minimize.Left := btn_Close.Left - btn_minimize.Width - 2;
+
+  if Windowstate = wsMaximized then
+  begin
+    btn_minimize.Visible := True;
+    btn_Close.Visible := True;
+  end else
+  begin
+    btn_minimize.Visible := False;
+    btn_Close.Visible := False;
+  end;
+
+
+  pan_leftResize(pan_left);
+  AdvSmoothPanel1Resize(AdvSmoothPanel1);
+end;
+
+procedure TfmFingerReaderSetting.FormShow(Sender: TObject);
+begin
+  inherited;
+  FormNameSetting;
+end;
+
+procedure TfmFingerReaderSetting.pan_leftResize(Sender: TObject);
+begin
+  tv_List.Left := 10;
+  tv_List.Width := pan_left.Width - (tv_List.Left * 2);
+  tv_List.Height := pan_left.Height - (tv_List.Top + 10);
+end;
+
+procedure TfmFingerReaderSetting.SearchList(aCode: string;aTopRow:integer = 0);
+var
+  stSql : string;
+  TempAdoQuery : TADOQuery;
+  nRow : integer;
+begin
+  GridInit(sg_List,3,2,true);
+  stSql := dmDBSelect.SelectTB_FINGERDEVICE_LikeValue(L_stSelectBuildingCode,ed_ReaderIP.Text,ed_SearchName.Text);
+  L_nCheckCount := 0;
+
+  Try
+    CoInitialize(nil);
+    TempAdoQuery := TADOQuery.Create(nil);
+    TempAdoQuery.Connection := dmDataBase.ADOConnection;
+    TempAdoQuery.DisableControls;
+
+    with TempAdoQuery do
+    begin
+      Close;
+      sql.Text := stSql;
+      Try
+        Open;
+      Except
+        dmDataBase.DBConnected := False;
+        Exit;
+      End;
+      if recordcount < 1 then Exit;
+      with sg_List do
+      begin
+        nRow := 1;
+        RowCount := RecordCount + 1;
+        while Not Eof do
+        begin
+          AddCheckBox(0,nRow,False,False);
+          cells[1,nRow] := FindField('FN_DEVICEIP').AsString;
+          cells[2,nRow] := FindField('FN_DEVICENAME').AsString;
+          cells[3,nRow] := FindField('FN_DEVICESEQ').AsString;
+          cells[4,nRow] := FindField('CP_TYPE').AsString + FillZeroNumber(FindField('ND_NODENO').AsInteger,G_nNodeCodeLength) + FindField('DE_ECUID').AsString + FillZeroNumber(FindField('DE_EXTENDID').AsInteger,2) + FillZeroNumber(FindField('DO_DOORNO').AsInteger,2) ;
+          cells[5,nRow] := FindField('FN_DEVICEPORT').AsString;
+          cells[6,nRow] := FindField('FN_FINGERDEVICEID').AsString;
+          cells[7,nRow] := FindField('BC_BUILDINGCODE').AsString;
+          cells[8,nRow] := FindField('FN_DEVICETYPE').AsString;
+          if cells[3,nRow] = aCode then
+          begin
+            SelectRows(nRow,1);
+          end;
+
+          nRow := nRow + 1;
+          Next;
+        end;
+        if aTopRow = 0 then
+        begin
+          if Row > (L_nPageListMaxCount - 1) then TopRow := Row - L_nPageListMaxCount;
+        end else
+        begin
+          TopRow := aTopRow;
+        end;
+      end;
+
+    end;
+  Finally
+    TempAdoQuery.EnableControls;
+    TempAdoQuery.Free;
+    CoUninitialize;
+  End;
+end;
+
+procedure TfmFingerReaderSetting.sg_ListCheckBoxClick(Sender: TObject; ACol,
+  ARow: Integer; State: Boolean);
+begin
+  inherited;
+  if ARow = 0 then //전체선택 또는 해제
+  begin
+    if State then L_nCheckCount := (Sender as TAdvStringGrid).RowCount - 1
+    else L_nCheckCount := 0;
+    AdvStrinGridSetAllCheck(Sender,State);
+  end else
+  begin
+    if State then L_nCheckCount := L_nCheckCount + 1
+    else L_nCheckCount := L_nCheckCount - 1 ;
+  end;
+end;
+
+procedure TfmFingerReaderSetting.sg_ListDblClick(Sender: TObject);
+var
+  stTemp : string;
+  aNode1 : TTreeNode;
+  vNode1 : TTreeNode;
+begin
+  inherited;
+  L_stWork := 'UPDATE';
+  with sg_List do
+  begin
+    if Not isDigit(cells[3,Row]) then Exit;
+    ed_Ip.Text := cells[1,Row];
+    ed_ReaderPort.Text := cells[5,Row];
+    ed_Name.Text := cells[2,Row];
+    ed_AddSeq.Text := cells[3,Row];
+    ed_FingerDeviceID.Text := cells[6,Row];
+    ed_DeviceID.Text := cells[4,Row];
+    cmb_ReaderType.ItemIndex := strtoint(cells[8,Row]) - 1;
+    if ed_DeviceID.Text <> '' then
+    begin
+      if ed_DeviceID.Text[1] = '1' then
+      begin
+        ed_DeviceName.Text := dmDBFunction.GetTB_DOOR_DoorName(copy(ed_DeviceID.Text,2,G_nNodeCodeLength),copy(ed_DeviceID.Text,2 + G_nNodeCodeLength,2),copy(ed_DeviceID.Text,2 + G_nNodeCodeLength + 2 + 2,2)) ;
+      end else if ed_DeviceID.Text[1] = '2' then
+      begin
+        ed_DeviceName.Text := dmDBFunction.GetTB_ARMAREA_ArmAreaName(copy(ed_DeviceID.Text,2,G_nNodeCodeLength),copy(ed_DeviceID.Text,2 + G_nNodeCodeLength,2),copy(ed_DeviceID.Text,2 + G_nNodeCodeLength + 2 + 2,2)) ;
+      end;
+    end;
+    ed_BuildingName.Text := dmDBFunction.GetTB_BUILDINGCODE_BuildingName(cells[7,Row]);
+    ed_SelectBuildingCode.Text := cells[7,Row];
+  end;
+  Add.Visible := True;
+
+end;
+
+procedure TfmFingerReaderSetting.sg_ListResize(Sender: TObject);
+begin
+  inherited;
+  sg_List.ColWidths[2] := sg_List.Width - sg_List.ColWidths[0] - sg_List.ColWidths[1] - 20;
+end;
+
+procedure TfmFingerReaderSetting.tv_AddBuildingListDblClick(Sender: TObject);
+begin
+  inherited;
+  if tv_AddBuildingList.Selected = nil then tv_AddBuildingList.items[0].Selected := True;
+
+  ed_SelectBuildingCode.Text := tv_AddBuildingCode.Items.Item[tv_AddBuildingList.Selected.AbsoluteIndex].Text;
+  ed_BuildingName.Text := tv_AddBuildingList.Selected.Text;
+  tv_AddBuildingList.Visible := False;
+end;
+
+procedure TfmFingerReaderSetting.tv_ListClick(Sender: TObject);
+var
+  stCode : string;
+begin
+  inherited;
+//  if tv_List.Selected = nil then Exit;
+  if tv_List.Selected = nil then tv_List.Items[0].Selected := True;
+
+  lb_BuildingList.Caption := tv_List.Selected.Text;
+  stCode := tv_Code.Items.Item[tv_List.Selected.AbsoluteIndex].Text;
+
+  if L_stSelectBuildingCode = stCode then Exit;
+  L_stSelectBuildingCode :=  stCode;
+  SearchList('');
+end;
+
+Function TfmFingerReaderSetting.UpdateFingerDevice:Boolean;
+var
+  stFingerSeq : string;
+  stMessage : string;
+  stDeviceID : string;
+  stCPType : string;
+  stNodeNo : string;
+  stEcuID : string;
+  stExtendID : string;
+  stDoorNo : string;
+begin
+  inherited;
+  result := False;
+  stFingerSeq := ed_AddSeq.Text;
+
+  if dmDBFunction.CheckTB_FINGERDEVICE_IP(ed_Ip.Text,stFingerSeq) = 1 then
+  begin
+    stMessage := dmFormMessage.GetMessage('DBDATADUP');
+    Application.MessageBox(PChar(stMessage),'Error',MB_OK);
+    Exit;
+  end;
+
+  if G_nFingerRelayType = 2 then //DB연동타입이면
+  begin
+    if dmDBFunction.CheckTB_FINGERDEVICE_FingerDeviceID(ed_FingerDeviceID.Text,stFingerSeq) = 1 then
+    begin
+      stMessage := '지문리더 아이디 중복';
+      Application.MessageBox(PChar(stMessage),'Error',MB_OK);
+      Exit;
+    end;
+  end;
+
+  stDeviceID := '';
+  stCPType := '0';
+  stNodeNo := '0';
+  stEcuID := '00';
+  stExtendID := '0';
+  stDoorNo := '0';
+  if ed_DeviceID.Text <> '' then
+  begin
+    stDeviceID := ed_DeviceID.Text;
+    stCPType := stDeviceID[1];
+    stNodeNo := copy(stDeviceID,2,G_nNodeCodeLength);
+    stEcuID := copy(stDeviceID,2 + G_nNodeCodeLength, 2);
+    stExtendID := copy(stDeviceID,2 + G_nNodeCodeLength + 2,2);
+    stDoorNo := copy(stDeviceID,2 + G_nNodeCodeLength + 2 + 2,2);
+  end;
+
+  if Not dmDBUpdate.UpdateTB_FINGERDEVICE_Value(stFingerSeq,ed_Ip.Text,ed_Name.Text,ed_ReaderPort.Text,inttostr(cmb_ReaderType.ItemIndex + 1),stCPType,stNodeNo,stEcuID,stExtendID,stDoorNo,ed_FingerDeviceID.Text,ed_SelectBuildingCode.Text) then
+  begin
+    stMessage := stringReplace(dmFormMessage.GetMessage('DBSAVEERROR'),'$WORK',btn_AddSave.Caption,[rfReplaceAll]);
+    Application.MessageBox(PChar(stMessage),'Error',MB_OK);
+    Exit;
+  end;
+  dmDBUpdate.UpdateTB_CARDPERMITEMPLOYEECODE_DeviceToFingerApply(stNodeNo,stEcuID,stExtendID,stCPType,stDoorNo,'N');
+  result := True;
+end;
+
+initialization
+  RegisterClass(TfmFingerReaderSetting);
+Finalization
+  UnRegisterClass(TfmFingerReaderSetting);
+
+end.

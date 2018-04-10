@@ -1,0 +1,40 @@
+unit uDoor;
+
+interface
+
+uses
+  System.SysUtils, System.Classes,
+  uDevice;
+
+type
+  TDeviceDoor = Class(TComponent)
+  private
+    FDoorUse: Boolean;
+    FDoorNo: integer;
+    FDevice: TDevice;
+    { Private declarations }
+  published
+    property Device : TDevice read FDevice write FDevice;
+    property DoorNo : integer read FDoorNo write FDoorNo;
+    property DoorUse : Boolean read FDoorUse write FDoorUse; //출입문사용유무
+  public
+    { Public declarations }
+  end;
+
+  TdmDoor = class(TDataModule)
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+  end;
+
+var
+  dmDoor: TdmDoor;
+
+implementation
+
+{%CLASSGROUP 'System.Classes.TPersistent'}
+
+{$R *.dfm}
+
+end.

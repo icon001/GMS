@@ -1,0 +1,1021 @@
+unit uAntiPassLib;
+
+interface
+
+uses
+  System.SysUtils, System.Classes,Vcl.ExtCtrls,Vcl.Forms;
+
+const
+  con_AntiStartCheckTime = 10; //이벤트 신호 올라온 후 체크 시간
+
+type
+  TAntiPassInOutInitiailize = procedure(Sender: TObject;  aCardNo: string;aInOutState:integer ) of object;
+
+  TAntiPassGroup = class(TComponent)
+  private
+    L_bAntiPassDestroy : Boolean;
+    AntiCardFreeTimer : TTimer;
+    L_dtLastEventTime : TDateTime;
+    AntiStartCheckTimer : TTimer;
+    AntiDeviceList : TStringList;
+    AntiCardList : TStringList;
+    FAntiPassNo: integer;
+    FAntiPassGroup: string;
+    FAllDeviceConnected: Boolean;
+    FAntiStart: Boolean;
+    procedure AntiStartCheckTimerTimer(Sender: TObject);
+    procedure AntiCardFreeTimerTimer(Sender: TObject);
+    procedure SetAllDeviceConnected(const Value: Boolean);
+    procedure SetAntiStart(const Value: Boolean);
+    procedure AntiPassInOutInitiailize(Sender: TObject;  aCardNo: string;aInOutState:integer );
+  public
+    constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
+  public
+    function AntiPassCardCheck(aCardNo:string; aAntiInOut:integer):integer;
+    procedure CardEvent(aCardNo,aAccessTime,aReaderNo,aAccessResult:string);
+    procedure DeviceAdd(aDeviceID:string);
+    procedure DeviceConnected(aDeviceID:string;aConnected:Boolean);
+    procedure ReceiveAntiCardInOutSetting(aDeviceID:string;aInGroup,aOutGroup:integer;aCardNo:string);
+    procedure ReceiveAntiCardStartBit(aDeviceID:string;aCardStartBit:integer;aCardNo:string);
+    procedure ReceiveAntiGlobalStart(aDeviceID:string);
+    procedure ReceiveAntiGlobalStop(aDeviceID:string);
+  public
+    property AntiPassGroup : string Read FAntiPassGroup write FAntiPassGroup; //안티패스 그룹번호
+    property AntiPassNo : integer Read FAntiPassNo write FAntiPassNo; //안티패스번호
+    property AntiStart : Boolean read FAntiStart write SetAntiStart;
+    property AllDeviceConnected:Boolean Read FAllDeviceConnected Write SetAllDeviceConnected;  //그룹내 전체 컨트롤러 접속 완료 되었는지 체크
+  end;
+
+  TAntiPassCard = class(TComponent)
+  private
+    FInOutState: integer;
+    FSendComplete: integer;
+    FLastAccessTime: TDateTime;
+    FCardNo: string;
+    FSendFreeState: Boolean;
+    FLastAuthTime: TDateTime;
+    FOnAntiPassInOutInitiailize: TAntiPassInOutInitiailize;
+    procedure SetInOutState(const Value: integer);
+    procedure SetSendComplete(const Value: integer);
+    procedure SetSendFreeState(const Value: Boolean);
+  public
+    constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
+  published
+    property CardNo : string read FCardNo write FCardNo;
+    property InOutState : integer Read FInOutState Write SetInOutState;
+    property SendComplete : integer Read FSendComplete Write SetSendComplete;
+    property SendFreeState : Boolean Read FSendFreeState Write SetSendFreeState;
+    property LastAccessTime : TDateTime read FLastAccessTime write FLastAccessTime; //최종 태그시간
+    property LastAuthTime : TDateTime read FLastAuthTime write FLastAuthTime;    //최종 인증시간
+  published
+    property OnAntiPassInOutInitiailize : TAntiPassInOutInitiailize read FOnAntiPassInOutInitiailize write FOnAntiPassInOutInitiailize;               //데이터 수신
+  end;
+
+  TAntiPassDevice = class(TComponent)
+  private
+//    AntiPassTimeSyncSendTimer : TTimer;
+//    AntiPassCardSendTimer : TTimer;
+//    AntiPassCardInitializeSendTimer : TTimer;
+//    AntiPassSettingSendTimer : TTimer;
+    DeviceAntiCardList : TStringList;
+    L_bComponentDestroy : Boolean;
+    L_nSendCardSeq : integer;
+    L_nSendCardInitSeq : integer;
+    L_nAntiPassInitSendCount : integer;
+    L_bAntiPassInitSending : Boolean;  //카드초기화 전송중이면...
+    L_nAntiPassSendCount : integer;
+    L_bAntiPassSending : Boolean;
+    FDeviceConnected: Boolean;
+    FDeviceID: string;
+    FAntiGroup: TAntiPassGroup;
+    FAntiStart: Boolean;
+    FRCVAntiPassCardStopBit: string;
+    FRCVAntiStart: string;
+    FAntiPassCardClear: Boolean;
+    procedure AntiPassCardSendTimerTimer(Sender: TObject);
+    procedure AntiPassCardInitializeSendTimerTimer(Sender:TObject);
+    procedure AntiPassSettingSendTimerTimer(Sender:TObject);
+    procedure AntiPassTimeSyncSendTimerTimer(Sender:TObject);
+    procedure SetDeviceConnected(const Value: Boolean);
+    procedure Send_AntiPassStartAndStop;
+    procedure Send_AntiPassCardStopBit;
+    procedure Send_AntiPassCard(aCardNo:string;aInOutState:integer);
+    procedure Send_AntiPassCardInitialize(aCardNo:string);
+    procedure Send_AntiTimeSync;
+    procedure SetAntiStart(const Value: Boolean);
+    procedure SetRCVAntiPassCardStopBit(const Value: string);
+    procedure SetRCVAntiStart(const Value: string);
+    procedure SetAntiPassCardClear(const Value: Boolean);
+  public
+    constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
+  public
+    procedure AntiCard_Add(aCardNo:string;aInOutState:integer);
+    procedure CardInOutTimeInitialize(aCardNo:string);
+    procedure ReceiveAntiCardInSetting(aCardNo:string);
+    procedure ReceiveAntiCardOutSetting(aCardNo:string);
+    procedure ReceiveAntiCardSetting(aCardNo:string);
+    procedure ReceiveAntiCardInitialize(aCardNo:string;aCardStartBit:integer);
+  published
+    property AntiGroup : TAntiPassGroup Read FAntiGroup write FAntiGroup;
+    property AntiStart : Boolean read FAntiStart write SetAntiStart;                    //컨트롤러 글로벌 안티패스 시작 유무
+    property AntiPassCardClear : Boolean read FAntiPassCardClear write SetAntiPassCardClear;
+    property DeviceConnected : Boolean Read FDeviceConnected Write SetDeviceConnected;
+    property DeviceID : string read FDeviceID write FDeviceID;
+    property RCVAntiPassCardStopBit : string read FRCVAntiPassCardStopBit write SetRCVAntiPassCardStopBit; //안티카드 Start 전송유무
+    property RCVAntiStart : string read FRCVAntiStart write SetRCVAntiStart; //안티패스 시작 전송유무
+  end;
+
+
+  TdmAntiPassGroup = class(TDataModule)
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+  end;
+
+var
+  dmAntiPassGroup: TdmAntiPassGroup;
+
+implementation
+uses
+  uCommonFunction,
+  uCommonVariable,
+  uDeviceVariable,
+  uNodeServer,
+  uNode;
+{%CLASSGROUP 'Vcl.Controls.TControl'}
+
+{$R *.dfm}
+
+{ TAntiPassGroup }
+
+procedure TAntiPassGroup.AntiCardFreeTimerTimer(Sender: TObject);
+var
+  dtFreeTime: TDatetime;
+  nAntiFreeTime : integer;
+  i : integer;
+begin
+  if Not isDigit(G_stAntiFreeTime) then Exit;
+  nAntiFreeTime := strtoint(G_stAntiFreeTime);
+  if nAntiFreeTime = 0 then Exit;
+  if AntiCardList = nil then Exit;
+  if AntiCardList.Count = 0 then Exit;
+
+  Try
+    AntiCardFreeTimer.Enabled := False;
+    for i := 0 to AntiCardList.Count - 1 do
+    begin
+      if L_bAntiPassDestroy then Exit;
+      dtFreeTime:= IncTime(TAntiPassCard(AntiCardList.Objects[i]).LastAuthTime,0,nAntiFreeTime,0,0);
+      if dtFreeTime < now then
+      begin
+        TAntiPassCard(AntiCardList.Objects[i]).InOutState := -1;
+      end;
+      Application.ProcessMessages;
+    end;
+  Finally
+    AntiCardFreeTimer.Enabled := Not L_bAntiPassDestroy;
+  End;
+
+end;
+
+function TAntiPassGroup.AntiPassCardCheck(aCardNo: string;
+  aAntiInOut: integer): integer;
+var
+  nIndex : integer;
+  oAntiGroupCardList : TAntiPassCard;
+  dtCheckTime : TDateTime;
+  stNowTime : string;
+begin
+  result := con_NOTRESULTED; //초기 상태값
+  nIndex := AntiCardList.IndexOf(aCardNo);
+  if nIndex < 0 then
+  begin
+    oAntiGroupCardList := TAntiPassCard.Create(nil);
+    oAntiGroupCardList.InOutState := aAntiInOut;
+    oAntiGroupCardList.LastAccessTime := Now;
+    AntiCardList.AddObject(aCardNo,oAntiGroupCardList);
+    Exit;
+  end;
+
+  if Not AllDeviceConnected then Exit; //Anti그룹내 모든 컨트롤러가 Connect 상태 일때만 안티패스 체크 하자.
+
+  if TAntiPassCard(AntiCardList.Objects[nIndex]).InOutState = aAntiInOut then
+  begin
+    if G_nGlobalAntiInitTime = 0 then    //안티 초기화 사용하지 않으면 안티패스 실패 전송
+    begin
+      result := con_NOTAUTH ;
+    end else                            //안티 초기화 사용하면 시간 체크
+    begin
+      if G_stGlobalAntiInitStartTime < G_stGlobalAntiInitEndTime then
+      begin
+        stNowTime := FormatDateTime('hhnn',now);
+        if (G_stGlobalAntiInitStartTime < stNowTime ) and ( stNowTime < G_stGlobalAntiInitEndTime) then     //안티 초기화 시간이면 시간체크
+        begin
+          dtCheckTime := IncTime(TAntiPassCard(AntiCardList.Objects[nIndex]).LastAccessTime,0,G_nGlobalAntiInitTime,0,0);
+          if dtCheckTime < now then
+          begin
+            result := con_NOTRESULTED;
+            TAntiPassCard(AntiCardList.Objects[nIndex]).LastAccessTime := Now;
+          end else
+          begin
+            result := con_NOTAUTH;
+          end;
+        end else
+        begin
+          result := con_NOTAUTH;
+        end;
+      end else
+      begin
+        stNowTime := FormatDateTime('hhnn',now);
+        if (G_stGlobalAntiInitStartTime < stNowTime ) or ( stNowTime < G_stGlobalAntiInitEndTime) then
+        begin
+          dtCheckTime := IncTime(TAntiPassCard(AntiCardList.Objects[nIndex]).LastAccessTime,0,G_nGlobalAntiInitTime,0,0);
+          if dtCheckTime < now then
+          begin
+            result := con_NOTRESULTED;
+            TAntiPassCard(AntiCardList.Objects[nIndex]).LastAccessTime := Now;
+          end else
+          begin
+            result := con_NOTAUTH;
+          end;
+        end else
+        begin
+          result := con_NOTAUTH;
+        end;
+      end;
+    end;
+  end else
+  begin
+    TAntiPassCard(AntiCardList.Objects[nIndex]).InOutState := aAntiInOut;
+    TAntiPassCard(AntiCardList.Objects[nIndex]).LastAccessTime := Now;
+    result := con_AUTH;
+  end;
+
+end;
+
+procedure TAntiPassGroup.AntiPassInOutInitiailize(Sender: TObject;
+  aCardNo: string; aInOutState: integer);
+var
+  i : integer;
+begin
+  if AntiDeviceList = nil then Exit;
+
+  if AntiDeviceList.Count < 1 then Exit;
+
+  if aInOutState = -1 then  //타임 초기화 시간이다... 여기서 카드데이터 초기화 전송 하자...
+  begin
+    if G_nAntiLog = 1 then LogSave(G_stLogDirectory + '\AntiLog' + FormatDateTime('yyyymmdd',now) + '.log','AntiPassInOutInitiailize,' + aCardNo);
+    for i := 0 to AntiDeviceList.Count - 1 do
+    begin
+      TAntiPassDevice(AntiDeviceList.Objects[i]).CardInOutTimeInitialize(aCardNo);
+    end;
+  end;
+end;
+
+procedure TAntiPassGroup.AntiStartCheckTimerTimer(Sender: TObject);
+var
+  dtTimeOut: TDatetime;
+begin
+  Try
+    AntiStartCheckTimer.Enabled := False;
+    dtTimeOut:= IncTime(L_dtLastEventTime,0,0,con_AntiStartCheckTime,0);
+    if Now > dtTimeOut then
+    begin
+      AntiStart := True;
+    end else
+    begin
+      AntiStartCheckTimer.Enabled := True;
+    end;
+  Finally
+
+  End;
+end;
+
+procedure TAntiPassGroup.CardEvent(aCardNo, aAccessTime, aReaderNo,aAccessResult: string);
+var
+  nIndex : integer;
+  oAntiCard : TAntiPassCard;
+  nReaderNo : integer;
+  nInOut : integer;
+  bDeviceSetting : Boolean;
+  i : integer;
+  dtAccessTime : TDateTime;
+begin
+  if Not isDigit(aReaderNo) then Exit;
+  L_dtLastEventTime := Now;
+  if Not isDigit(aAccessResult) then Exit; //미승인인 경우는 빠져 나가자...
+
+//DEBUG
+//    LogSave(G_stLogDirectory + '\AntiDebug.log','CARDEVENT:' + aCardNo);
+  bDeviceSetting := False;
+  nReaderNo := strtoint(aReaderNo);
+  nInOut := nReaderNo mod 2;
+
+  dtAccessTime := strtodate(copy(aAccessTime,1,4) + '-' + copy(aAccessTime,5,2) + '-' + copy(aAccessTime,7,2) + ' ' + copy(aAccessTime,9,2) + ':' + copy(aAccessTime,11,2) + ':' + copy(aAccessTime,13,2));
+
+  nIndex := AntiCardList.IndexOf(aCardNo);
+  if nIndex < 0 then
+  begin
+    oAntiCard := TAntiPassCard.Create(nil);
+    oAntiCard.OnAntiPassInOutInitiailize := AntiPassInOutInitiailize;
+    oAntiCard.CardNo := aCardNo;
+    oAntiCard.LastAccessTime := dtAccessTime;
+    oAntiCard.LastAuthTime := Now;
+    oAntiCard.InOutState := nInOut;
+
+    AntiCardList.AddObject(aCardNo,oAntiCard);
+    bDeviceSetting := True;
+  end else
+  begin
+    if TAntiPassCard(AntiCardList.Objects[nIndex]).LastAccessTime <= dtAccessTime then    //컨트롤러 시간별로 처리하자 //PC에 들어 오는 순서대로 처리하자.
+    begin
+      TAntiPassCard(AntiCardList.Objects[nIndex]).LastAccessTime := dtAccessTime;
+      TAntiPassCard(AntiCardList.Objects[nIndex]).LastAuthTime := Now;
+      if TAntiPassCard(AntiCardList.Objects[nIndex]).InOutState <> nInOut then
+      begin
+        TAntiPassCard(AntiCardList.Objects[nIndex]).InOutState := nInOut;
+        bDeviceSetting := True;
+      end;
+    end;
+  end;
+
+  if Not bDeviceSetting then Exit;
+
+  if AntiDeviceList.Count < 1 then Exit;
+
+
+  for i := 0 to AntiDeviceList.Count - 1 do
+  begin
+    TAntiPassDevice(AntiDeviceList.Objects[i]).AntiCard_Add(aCardNo, nInOut);
+  end;
+
+end;
+
+constructor TAntiPassGroup.Create(AOwner: TComponent);
+begin
+  inherited;
+  L_bAntiPassDestroy := False;
+  AntiDeviceList := TStringList.Create;
+  AntiCardList := TStringList.Create;
+  AntiStartCheckTimer := TTimer.Create(nil);
+  AntiStartCheckTimer.OnTimer := AntiStartCheckTimerTimer;
+  AntiStartCheckTimer.Interval := 1000;
+  AntiStartCheckTimer.Enabled := False;
+
+  AntiCardFreeTimer := TTimer.Create(nil);
+  AntiCardFreeTimer.Interval := 1000;
+  AntiCardFreeTimer.OnTimer := AntiCardFreeTimerTimer;
+  AntiCardFreeTimer.Enabled := True;
+end;
+
+destructor TAntiPassGroup.Destroy;
+begin
+  L_bAntiPassDestroy := True;
+  AntiStartCheckTimer.Enabled := False;
+  AntiStartCheckTimer.Free;
+  AntiDeviceList.Free;
+
+  AntiCardFreeTimer.Enabled := False;
+  AntiCardFreeTimer.Free;
+  inherited;
+end;
+
+procedure TAntiPassGroup.DeviceAdd(aDeviceID: string);
+var
+  nIndex : integer;
+  oAntiDevice : TAntiPassDevice;
+  i : integer;
+begin
+  nIndex := AntiDeviceList.IndexOf(aDeviceID);
+  if nIndex > -1 then Exit;
+  oAntiDevice := TAntiPassDevice.Create(nil);
+  oAntiDevice.DeviceID := aDeviceID;
+  oAntiDevice.AntiGroup := Self;
+
+  if AntiCardList.Count > 0 then
+  begin
+    for i := 0 to AntiCardList.Count - 1 do oAntiDevice.AntiCard_Add(TAntiPassCard(AntiCardList.Objects[i]).CardNo,TAntiPassCard(AntiCardList.Objects[i]).InOutState);  //그룹 카드를 전체 등록 하자...
+  end;
+  AntiDeviceList.AddObject(aDeviceID,oAntiDevice);
+end;
+
+procedure TAntiPassGroup.DeviceConnected(aDeviceID: string;
+  aConnected: Boolean);
+var
+  nIndex : integer;
+  i : integer;
+  bAllConnected : Boolean;
+begin
+  nIndex := AntiDeviceList.IndexOf(aDeviceID);
+  if nIndex < 0 then
+  begin
+    DeviceAdd(aDeviceID);
+    nIndex := AntiDeviceList.IndexOf(aDeviceID);
+  end;
+  if nIndex < 0 then Exit;
+  TAntiPassDevice(AntiDeviceList.Objects[nIndex]).DeviceConnected := aConnected;
+  if AntiDeviceList.Count < 1 then Exit;
+  bAllConnected := True;
+  for i := 0 to AntiDeviceList.Count - 1 do
+  begin
+    if Not TAntiPassDevice(AntiDeviceList.Objects[i]).DeviceConnected then
+    begin
+      bAllConnected := False;
+      Break;
+    end;
+  end;
+  AllDeviceConnected := bAllConnected;
+end;
+
+procedure TAntiPassGroup.ReceiveAntiCardInOutSetting(aDeviceID:string;aInGroup,
+  aOutGroup: integer; aCardNo: string);
+var
+  nIndex : integer;
+begin
+  nIndex := AntiDeviceList.IndexOf(aDeviceID);
+  if nIndex < 0 then Exit;
+  //TAntiPassDevice(AntiDeviceList.Objects[nIndex]).ReceiveAntiCardSetting(aCardNo);
+
+  if aInGroup = AntiPassNo then   //입실그룹이 현재 그룹과 동일하면
+  begin
+    TAntiPassDevice(AntiDeviceList.Objects[nIndex]).ReceiveAntiCardInSetting(aCardNo);
+  end;
+  if aOutGroup = AntiPassNo then  //퇴실그룹이 현재 그룹과 동일하면
+  begin
+    TAntiPassDevice(AntiDeviceList.Objects[nIndex]).ReceiveAntiCardOutSetting(aCardNo);
+  end;
+end;
+
+procedure TAntiPassGroup.ReceiveAntiCardStartBit(aDeviceID: string;
+  aCardStartBit: integer;aCardNo:string);
+var
+  nIndex : integer;
+begin
+  nIndex := AntiDeviceList.IndexOf(aDeviceID);
+  if nIndex < 0 then Exit;
+  if aCardNo = '' then
+  begin
+    if aCardStartBit = 1 then  //최초1회 안티패스 무시
+    begin
+      if TAntiPassDevice(AntiDeviceList.Objects[nIndex]).AntiPassCardClear then TAntiPassDevice(AntiDeviceList.Objects[nIndex]).RCVAntiPassCardStopBit := 'Y';
+    end else                   //안티패스 동작 수행
+    begin
+      if Not TAntiPassDevice(AntiDeviceList.Objects[nIndex]).AntiPassCardClear then TAntiPassDevice(AntiDeviceList.Objects[nIndex]).RCVAntiPassCardStopBit := 'Y';
+    end;
+  end else
+  begin
+    TAntiPassDevice(AntiDeviceList.Objects[nIndex]).ReceiveAntiCardInitialize(aCardNo,aCardStartBit);
+  end;
+end;
+
+procedure TAntiPassGroup.ReceiveAntiGlobalStart(aDeviceID: string);
+var
+  nIndex : integer;
+begin
+  nIndex := AntiDeviceList.IndexOf(aDeviceID);
+  if nIndex < 0 then Exit;
+  if TAntiPassDevice(AntiDeviceList.Objects[nIndex]).AntiStart then TAntiPassDevice(AntiDeviceList.Objects[nIndex]).RCVAntiStart := 'Y';
+end;
+
+procedure TAntiPassGroup.ReceiveAntiGlobalStop(aDeviceID: string);
+var
+  nIndex : integer;
+begin
+  nIndex := AntiDeviceList.IndexOf(aDeviceID);
+  if nIndex < 0 then Exit;
+  if Not TAntiPassDevice(AntiDeviceList.Objects[nIndex]).AntiStart then TAntiPassDevice(AntiDeviceList.Objects[nIndex]).RCVAntiStart := 'Y';
+end;
+
+procedure TAntiPassGroup.SetAllDeviceConnected(const Value: Boolean);
+begin
+  if FAllDeviceConnected = Value then Exit;
+
+  FAllDeviceConnected := Value;
+
+  if Value then  //전체 접속 완료 되면
+  begin
+    L_dtLastEventTime := Now;
+    //10초 짜리 타이머 돌려서 10초 동안 데이터 들어 오는거 없으면 안티패스 동작 하도록 설정
+    AntiStartCheckTimer.Enabled := True;
+//DEBUG
+//    LogSave(G_stLogDirectory + '\AntiDebug.log','AllDeviceConnected');
+  end else       //하나라도 기기가 끊어 지면
+  begin
+    //전체 기기에 안티패스 동작 하지 않도록 전문 전송
+    AntiStart := False;
+//DEBUG
+//    LogSave(G_stLogDirectory + '\AntiDebug.log','AllDeviceDisConnected');
+  end;
+end;
+
+procedure TAntiPassGroup.SetAntiStart(const Value: Boolean);
+var
+  i : integer;
+begin
+  if FAntiStart = Value then Exit;
+  FAntiStart := Value;
+  //여기서 각 컨트롤러에 AntiStart 전문을 전송 하자...
+  Try
+    if AntiDeviceList = nil then Exit;
+
+    if AntiDeviceList.Count < 1 then Exit;
+    for i := 0 to AntiDeviceList.Count - 1 do
+    begin
+      TAntiPassDevice(AntiDeviceList.Objects[i]).AntiStart := Value;
+    end;
+  Except
+    Exit;
+  End;
+end;
+
+{ TAntiPassCard }
+
+constructor TAntiPassCard.Create(AOwner: TComponent);
+begin
+  inherited;
+  InOutState := -1;
+  SendFreeState := True;
+  LastAuthTime := Now;
+end;
+
+destructor TAntiPassCard.Destroy;
+begin
+  inherited;
+end;
+
+procedure TAntiPassCard.SetInOutState(const Value: integer);
+begin
+  if FInOutState = Value then Exit;
+
+  if G_nAntiLog = 1 then LogSave(G_stLogDirectory + '\AntiLog' + FormatDateTime('yyyymmdd',now) + '.log',inttostr(Value) + ',' + CardNo);
+  FInOutState := Value;
+  if Assigned(FOnAntiPassInOutInitiailize) then
+  begin
+    OnAntiPassInOutInitiailize(Self,CardNo,Value);
+  end;
+
+  if Value <> -1 then SendComplete := 0;
+end;
+
+procedure TAntiPassCard.SetSendComplete(const Value: integer);
+begin
+  if FSendComplete = Value then Exit;
+
+  FSendComplete := Value;
+  if Value = 0 then SendFreeState := True; //전송해야 할 카드이면 초기화는 전송하지 말자.
+
+end;
+
+procedure TAntiPassCard.SetSendFreeState(const Value: Boolean);
+begin
+  FSendFreeState := Value;
+end;
+
+{ TAntiPassDevice }
+
+procedure TAntiPassDevice.AntiCard_Add(aCardNo: string; aInOutState: integer);
+var
+  nIndex : integer;
+  oAntiCard : TAntiPassCard;
+begin
+  nIndex := DeviceAntiCardList.IndexOf(aCardNo);
+  if nIndex < 0 then
+  begin
+    oAntiCard := TAntiPassCard.Create(nil);
+    oAntiCard.CardNo := aCardNo;
+    oAntiCard.InOutState := aInOutState;
+    oAntiCard.SendComplete := 0;
+    DeviceAntiCardList.AddObject(aCardNo,oAntiCard);
+  end else
+  begin
+    TAntiPassCard(DeviceAntiCardList.Objects[nIndex]).InOutState := aInOutState;
+    TAntiPassCard(DeviceAntiCardList.Objects[nIndex]).SendComplete := 0;
+  end;
+end;
+
+procedure TAntiPassDevice.AntiPassCardInitializeSendTimerTimer(Sender: TObject);
+var
+  i : integer;
+begin
+(*  if DeviceAntiCardList.Count < 1 then Exit;
+  Try
+    AntiPassCardInitializeSendTimer.Enabled := False;
+    if L_bAntiPassInitSending then
+    begin
+      L_nAntiPassInitSendCount := L_nAntiPassInitSendCount + 1;
+      if L_nAntiPassInitSendCount > 10 then    //5초 동안 응답을 기다린다.
+      begin
+        L_nAntiPassInitSendCount := 0;
+        L_bAntiPassInitSending := False;
+      end;
+      Exit;
+    end;
+    if (DeviceAntiCardList.Count - 1) < L_nSendCardInitSeq then L_nSendCardInitSeq := 0;
+    for i := L_nSendCardInitSeq to DeviceAntiCardList.Count - 1 do
+    begin
+      L_nSendCardInitSeq := i + 1;
+      if Not TAntiPassCard(DeviceAntiCardList.Objects[i]).SendFreeState then
+      begin
+        L_bAntiPassInitSending := True;
+        Send_AntiPassCardInitialize(TAntiPassCard(DeviceAntiCardList.Objects[i]).CardNo);
+        break;
+      end;
+      Application.ProcessMessages;
+    end;
+  Finally
+    AntiPassCardInitializeSendTimer.Enabled := Not L_bComponentDestroy;
+  End;
+*)
+end;
+
+procedure TAntiPassDevice.AntiPassCardSendTimerTimer(Sender: TObject);
+var
+  i : integer;
+  nSendComplete : integer;
+begin
+  if DeviceAntiCardList.Count < 1 then Exit;
+  if L_bAntiPassSending then
+  begin
+    L_nAntiPassSendCount := L_nAntiPassSendCount + 1;
+    if L_nAntiPassSendCount > 10 then
+    begin
+      L_nAntiPassSendCount := 0;
+      L_bAntiPassSending := False;
+    end;
+    Exit;
+  end;
+
+  Try
+    L_bAntiPassSending := True;
+    if (DeviceAntiCardList.Count - 1) < L_nSendCardSeq then L_nSendCardSeq := 0;
+    //for i := L_nSendCardSeq to DeviceAntiCardList.Count - 1 do    //20151223 안티패스를 빠르게 처리 하기 위해 모두 전송
+    for i := 0 to DeviceAntiCardList.Count - 1 do
+    begin
+      L_nSendCardSeq := i + 1;
+      nSendComplete := TAntiPassCard(DeviceAntiCardList.Objects[i]).SendComplete;
+      if nSendComplete = 0 then
+      begin
+        Send_AntiPassCard(TAntiPassCard(DeviceAntiCardList.Objects[i]).CardNo,TAntiPassCard(DeviceAntiCardList.Objects[i]).InOutState);
+        TAntiPassCard(DeviceAntiCardList.Objects[i]).SendComplete := -10;
+        //break; //20151223 안티패스를 빠르게 처리 하기 위해 모두 전송
+      end else if nSendComplete < 0 then
+      begin
+        TAntiPassCard(DeviceAntiCardList.Objects[i]).SendComplete := nSendComplete + 1; //2초 동안 안내려가면 재전송
+      end;
+      Application.ProcessMessages;
+    end;
+  Finally
+    L_bAntiPassSending := False;
+  End;
+
+end;
+
+procedure TAntiPassDevice.AntiPassSettingSendTimerTimer(Sender: TObject);
+begin
+(*  //안티패스카드 시작을 전송하지 않은 경우 전송하자.
+  if RCVAntiPassCardStopBit <> 'Y' then
+     Send_AntiPassCardStopBit;
+  //시작전송 하지 않은 경우 시작을 전송 하자.
+  if RCVAntiStart <> 'Y' then
+     Send_AntiPassStartAndStop;
+
+  if (RCVAntiPassCardStopBit = 'Y') and (RCVAntiStart = 'Y') then AntiPassSettingSendTimer.Enabled := False; //두개 모두 전송 완료 상태면 타이머 종료
+*)
+end;
+
+procedure TAntiPassDevice.AntiPassTimeSyncSendTimerTimer(Sender: TObject);
+begin
+  Send_AntiTimeSync;
+end;
+
+procedure TAntiPassDevice.CardInOutTimeInitialize(aCardNo: string);
+var
+  nIndex : integer;
+begin
+  nIndex := DeviceAntiCardList.IndexOf(aCardNo);
+  if nIndex > -1 then
+  begin
+    TAntiPassCard(DeviceAntiCardList.Objects[nIndex]).InOutState := -1;
+    TAntiPassCard(DeviceAntiCardList.Objects[nIndex]).SendFreeState := False;
+  end;
+end;
+
+constructor TAntiPassDevice.Create(AOwner: TComponent);
+begin
+  inherited;
+  L_bComponentDestroy := False;
+  DeviceAntiCardList := TStringList.Create;
+(*  AntiPassCardSendTimer := TTimer.Create(nil);
+  AntiPassCardSendTimer.Interval := 200;
+  AntiPassCardSendTimer.OnTimer := AntiPassCardSendTimerTimer;
+  AntiPassCardSendTimer.Enabled := False;
+
+  AntiPassCardInitializeSendTimer := TTimer.Create(nil);
+  AntiPassCardInitializeSendTimer.Interval := 500;
+  AntiPassCardInitializeSendTimer.OnTimer := AntiPassCardInitializeSendTimerTimer;
+  AntiPassCardInitializeSendTimer.Enabled := False;
+
+  AntiPassSettingSendTimer := TTimer.Create(nil);
+  AntiPassSettingSendTimer.Interval := 3000;
+  AntiPassSettingSendTimer.OnTimer := AntiPassSettingSendTimerTimer;
+  AntiPassSettingSendTimer.Enabled := False;
+
+
+  AntiPassTimeSyncSendTimer := TTimer.Create(nil);
+  AntiPassTimeSyncSendTimer.Interval := 1000 * 60 * 30; //30분에 한번씩 시간 동기화 하자.
+  AntiPassTimeSyncSendTimer.OnTimer := AntiPassTimeSyncSendTimerTimer;
+  AntiPassTimeSyncSendTimer.Enabled := True;
+*)
+  AntiGroup := nil;
+
+  DeviceConnected := False;
+end;
+
+destructor TAntiPassDevice.Destroy;
+var
+  i : integer;
+begin
+  L_bComponentDestroy := True;
+  AntiPassCardSendTimer.Enabled := False;
+  AntiPassCardSendTimer.Free;
+  AntiPassCardInitializeSendTimer.Enabled := False;
+  AntiPassCardInitializeSendTimer.Free;
+  AntiPassSettingSendTimer.Enabled := False;
+  AntiPassSettingSendTimer.Free;
+  AntiPassTimeSyncSendTimer.Enabled := False;
+  AntiPassTimeSyncSendTimer.Free;
+  if DeviceAntiCardList.Count > 0 then
+  begin
+    for i := DeviceAntiCardList.Count - 1 downto 0 do TAntiPassCard(DeviceAntiCardList.Objects[i]).Free;
+  end;
+  DeviceAntiCardList.Clear;
+  DeviceAntiCardList.Free;
+  inherited;
+end;
+
+procedure TAntiPassDevice.ReceiveAntiCardInitialize(aCardNo: string;
+  aCardStartBit: integer);
+var
+  nIndex : integer;
+begin
+  if aCardStartBit <> 1 then Exit; //안티패스 동작 수행 인 경우는 빠져 나가자...
+  nIndex := DeviceAntiCardList.IndexOf(aCardNo);
+  if nIndex < 0 then Exit;
+  TAntiPassCard(DeviceAntiCardList.Objects[nIndex]).SendFreeState := True;
+
+end;
+
+procedure TAntiPassDevice.ReceiveAntiCardInSetting(aCardNo: string);
+var
+  nIndex : integer;
+begin
+  nIndex := DeviceAntiCardList.IndexOf(aCardNo);
+  if nIndex < 0 then Exit;
+  if (TAntiPassCard(DeviceAntiCardList.Objects[nIndex]).InOutState = -1) or (TAntiPassCard(DeviceAntiCardList.Objects[nIndex]).InOutState = 1) then  //현재 상태가 In 상태이면
+  begin
+    //L_bAntiPassSending := False; //20151223
+    TAntiPassCard(DeviceAntiCardList.Objects[nIndex]).SendComplete := 1;
+  end;
+end;
+
+procedure TAntiPassDevice.ReceiveAntiCardOutSetting(aCardNo: string);
+var
+  nIndex : integer;
+begin
+  nIndex := DeviceAntiCardList.IndexOf(aCardNo);
+  if nIndex < 0 then Exit;
+  if (TAntiPassCard(DeviceAntiCardList.Objects[nIndex]).InOutState = -1) or (TAntiPassCard(DeviceAntiCardList.Objects[nIndex]).InOutState = 0) then  //현재 상태가 Out 상태이면
+  begin
+    //L_bAntiPassSending := False;  //20151223
+    TAntiPassCard(DeviceAntiCardList.Objects[nIndex]).SendComplete := 1;
+  end;
+end;
+
+procedure TAntiPassDevice.ReceiveAntiCardSetting(aCardNo: string);
+var
+  nIndex : integer;
+begin
+  nIndex := DeviceAntiCardList.IndexOf(aCardNo);
+  if nIndex < 0 then Exit;
+  //L_bAntiPassSending := False; //20151223
+  TAntiPassCard(DeviceAntiCardList.Objects[nIndex]).SendComplete := 1;
+end;
+
+procedure TAntiPassDevice.Send_AntiPassCard(aCardNo: string;
+  aInOutState: integer);
+var
+  stNodeNo : string;
+  stEcuID : string;
+  nIndex : integer;
+  stData : string;
+begin
+  if Not DeviceConnected then Exit;
+  if AntiGroup = nil then Exit;
+  if aInOutState = -1 then Exit;
+
+  stData := 'AP11 1 ' ;
+  if aInOutState = 1 then stData := stData + FillZeroNumber(AntiGroup.AntiPassNo,2) + ' 00'    //1이면 입실,0이면 퇴실
+  else if aInOutState = 0 then stData := stData + '00 ' + FillZeroNumber(AntiGroup.AntiPassNo,2);
+  stData := stData + ' ' + aCardNo;
+
+  stNodeNo := copy(DeviceID,1,G_nNodeCodeLength);
+  stEcuID := copy(DeviceID,1 + G_nNodeCodeLength,2);
+  nIndex := NodeList.IndexOf(stNodeNo);
+  if nIndex > -1 then
+  begin
+    TNode(NodeList.Objects[nIndex]).SendPacket(stEcuID,'R',TNode(NodeList.Objects[nIndex]).GetSendMsgNo,TNode(NodeList.Objects[nIndex]).GetDeviceVer,stData,0); //최고수준으로 높이자
+  end else
+  begin
+    nIndex := ServerNodeList.IndexOf(stNodeNo);
+    if nIndex > -1 then
+    begin
+      dmNodeServer.DeviceNodeServer_SendPacket(TServerNode(ServerNodeList.Objects[nIndex]).WinSocket,stEcuID ,'R',stData,2);
+    end;
+  end;
+  if G_nAntiLog = 1 then LogSave(G_stLogDirectory + '\AntiLog' + FormatDateTime('yyyymmdd',now) + '.log','[TX]' + DeviceID + ',' + stData);
+end;
+
+procedure TAntiPassDevice.Send_AntiPassCardInitialize(aCardNo: string);
+var
+  stNodeNo : string;
+  stEcuID : string;
+  nIndex : integer;
+  stData : string;
+begin
+  if Not DeviceConnected then Exit;
+
+  stData := 'AP15 1 01 00 ' + aCardNo;
+
+  stNodeNo := copy(DeviceID,1,G_nNodeCodeLength);
+  stEcuID := copy(DeviceID,1 + G_nNodeCodeLength,2);
+  nIndex := NodeList.IndexOf(stNodeNo);
+  if nIndex > -1 then
+  begin
+    if TNode(NodeList.Objects[nIndex]).NodeConnected = csConnected then
+      TNode(NodeList.Objects[nIndex]).SendPacket(stEcuID,'R',TNode(NodeList.Objects[nIndex]).GetSendMsgNo,TNode(NodeList.Objects[nIndex]).GetDeviceVer,stData,1);
+  end else
+  begin
+    nIndex := ServerNodeList.IndexOf(stNodeNo);
+    if nIndex > -1 then
+    begin
+      dmNodeServer.DeviceNodeServer_SendPacket(TServerNode(ServerNodeList.Objects[nIndex]).WinSocket,stEcuID ,'R',stData,1);
+    end;
+  end;
+  if G_nAntiLog = 1 then LogSave(G_stLogDirectory + '\AntiLog' + FormatDateTime('yyyymmdd',now) + '.log','[TX]' + DeviceID + ',' + stData);
+end;
+
+procedure TAntiPassDevice.Send_AntiPassCardStopBit;
+var
+  stNodeNo : string;
+  stEcuID : string;
+  nIndex : integer;
+  stData : string;
+begin
+  if Not DeviceConnected then Exit;
+  if Not AntiPassCardClear then Exit; //AntiPassCard Set 인 경우에는 굳이 전송 할 필요가 없다.
+
+  stData := 'AP15 a ';
+  if AntiPassCardClear then stData := stData + '01'
+  else stData := stData + '00';
+
+  stNodeNo := copy(DeviceID,1,G_nNodeCodeLength);
+  stEcuID := copy(DeviceID,1 + G_nNodeCodeLength,2);
+  nIndex := NodeList.IndexOf(stNodeNo);
+  if nIndex > -1 then
+  begin
+    if TNode(NodeList.Objects[nIndex]).NodeConnected = csConnected then
+      TNode(NodeList.Objects[nIndex]).SendPacket(stEcuID,'R',TNode(NodeList.Objects[nIndex]).GetSendMsgNo,TNode(NodeList.Objects[nIndex]).GetDeviceVer,stData,1);
+  end else
+  begin
+    nIndex := ServerNodeList.IndexOf(stNodeNo);
+    if nIndex > -1 then
+    begin
+      dmNodeServer.DeviceNodeServer_SendPacket(TServerNode(ServerNodeList.Objects[nIndex]).WinSocket,stEcuID ,'R',stData,1);
+    end;
+  end;
+  if G_nAntiLog = 1 then LogSave(G_stLogDirectory + '\AntiLog' + FormatDateTime('yyyymmdd',now) + '.log','[TX]' + DeviceID + ',' + stData);
+end;
+
+procedure TAntiPassDevice.Send_AntiPassStartAndStop;
+var
+  stNodeNo : string;
+  stEcuID : string;
+  nIndex : integer;
+  stData : string;
+begin
+  Try
+    if Not DeviceConnected then Exit;
+    stData := 'AP16';
+    if AntiStart then stData := stData + 'FF'
+    else stData := stData + '00';
+
+    stNodeNo := copy(DeviceID,1,G_nNodeCodeLength);
+    stEcuID := copy(DeviceID,1 + G_nNodeCodeLength,2);
+    nIndex := NodeList.IndexOf(stNodeNo);
+    if nIndex > -1 then
+    begin
+      if TNode(NodeList.Objects[nIndex]).NodeConnected = csConnected then
+        TNode(NodeList.Objects[nIndex]).SendPacket(stEcuID,'R',TNode(NodeList.Objects[nIndex]).GetSendMsgNo,TNode(NodeList.Objects[nIndex]).GetDeviceVer,stData,1);
+    end else
+    begin
+      nIndex := ServerNodeList.IndexOf(stNodeNo);
+      if nIndex > -1 then
+      begin
+        dmNodeServer.DeviceNodeServer_SendPacket(TServerNode(ServerNodeList.Objects[nIndex]).WinSocket,stEcuID ,'R',stData,1);
+      end;
+    end;
+    if G_nAntiLog = 1 then LogSave(G_stLogDirectory + '\AntiLog' + FormatDateTime('yyyymmdd',now) + '.log','[TX]' + DeviceID + ',' + stData);
+  Except
+    Exit;
+  End;
+end;
+
+
+
+procedure TAntiPassDevice.Send_AntiTimeSync;
+var
+  stNodeNo : string;
+  nIndex : integer;
+begin
+  if Not DeviceConnected then Exit;
+  stNodeNo := copy(DeviceID,1,G_nNodeCodeLength);
+  nIndex := NodeList.IndexOf(stNodeNo);
+  if nIndex > -1 then
+  begin
+    if TNode(NodeList.Objects[nIndex]).NodeConnected = csConnected then
+      TNode(NodeList.Objects[nIndex]).ControlNodeToDeviceTimeSync;
+  end else
+  begin
+    nIndex := ServerNodeList.IndexOf(stNodeNo);
+    if nIndex > -1 then
+    begin
+      dmNodeServer.DeviceNodeServer_ControlNodeToDeviceTimeSync(TServerNode(ServerNodeList.Objects[nIndex]).WinSocket);
+    end;
+  end;
+end;
+
+procedure TAntiPassDevice.SetAntiPassCardClear(const Value: Boolean);
+var
+  i : integer;
+begin
+  if FAntiPassCardClear = Value then Exit;
+
+  FAntiPassCardClear := Value;
+
+  if Value then
+  begin
+    RCVAntiPassCardStopBit := 'N';
+    if DeviceAntiCardList = nil then Exit;
+
+    if DeviceAntiCardList.Count > 0 then
+    begin
+      TAntiPassCard(DeviceAntiCardList.Objects[i]).SendFreeState := True; //AntiPassCardStop 전송 시에는 각각의 카드 초기화 명령을 내릴 필요가 없다.
+    end;
+  end;
+end;
+
+procedure TAntiPassDevice.SetAntiStart(const Value: Boolean);
+begin
+  if FAntiStart = Value then Exit;
+
+  FAntiStart := Value;
+  RCVAntiStart := 'N';
+
+  //if Not Value then          //Anti 시작 시 Clear 한번 내려 보내자
+  AntiPassCardClear := Value;  //AntiStart 하다가 Stop 하면 AntiPassCardStopStart Clear
+
+  Send_AntiPassStartAndStop;
+end;
+
+procedure TAntiPassDevice.SetDeviceConnected(const Value: Boolean);
+begin
+  if FDeviceConnected = Value then Exit;
+
+  FDeviceConnected := Value;
+  //1.모든 카드 데이터 출입 가능 명령 내려 주고...
+  //AntiPassCardClear := Value;    //Anti 시작시 내려 보내자
+  //2.현재 AntiCard 전체 전송 해 주고
+  AntiPassCardSendTimer.enabled := Value;
+  AntiPassCardInitializeSendTimer.Enabled := Value; //초기화
+end;
+
+procedure TAntiPassDevice.SetRCVAntiPassCardStopBit(const Value: string);
+begin
+  if FRCVAntiPassCardStopBit = Value then Exit;
+  FRCVAntiPassCardStopBit := Value;
+  if Value <> 'Y' then AntiPassSettingSendTimer.Enabled := True;
+end;
+
+procedure TAntiPassDevice.SetRCVAntiStart(const Value: string);
+begin
+  if FRCVAntiStart = Value then Exit;
+
+  FRCVAntiStart := Value;
+  if Value <> 'Y' then AntiPassSettingSendTimer.Enabled := True;
+end;
+
+end.

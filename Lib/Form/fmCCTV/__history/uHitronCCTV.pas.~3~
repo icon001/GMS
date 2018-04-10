@@ -1,0 +1,25 @@
+unit uHitronCCTV;
+
+interface
+
+uses
+  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
+  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.OleCtrls, NemoLib_TLB;
+
+type
+  TfmHitronCCTV = class(TForm)
+    Media1: TMedia;
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+  end;
+
+var
+  fmHitronCCTV: TfmHitronCCTV;
+
+implementation
+
+{$R *.dfm}
+
+end.

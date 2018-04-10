@@ -1,0 +1,41 @@
+unit uHitronCCTV;
+
+interface
+
+uses
+  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
+  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.OleCtrls, NemoLib_TLB;
+
+type
+  TfmHitronCCTV = class(TForm)
+    Media1: TMedia;
+    procedure FormDockOver(Sender: TObject; Source: TDragDockObject; X,
+      Y: Integer; State: TDragState; var Accept: Boolean);
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+  end;
+
+var
+  fmHitronCCTV: TfmHitronCCTV;
+
+implementation
+
+{$R *.dfm}
+
+procedure TfmHitronCCTV.FormDockOver(Sender: TObject; Source: TDragDockObject;
+  X, Y: Integer; State: TDragState; var Accept: Boolean);
+var
+  ARect: TRect;
+begin
+  Accept := (Source.Control is Tform);
+  //Draw dock preview depending on where the cursor is relative to our client area
+  if Accept and (ComputeDockingRect(ARect, Point(X, Y)) <> alNone) then
+  begin
+    ComputeDockingRect(ARect, Point(X, Y));
+    Source.DockRect := ARect;
+  end;
+end;
+
+end.

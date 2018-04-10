@@ -1,0 +1,113 @@
+unit uHitronCCTV;
+
+interface
+
+uses
+  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
+  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.OleCtrls, NemoLib_TLB;
+
+type
+  TfmHitronCCTV = class(TForm)
+    Media1: TMedia;
+    procedure FormDockOver(Sender: TObject; Source: TDragDockObject; X,
+      Y: Integer; State: TDragState; var Accept: Boolean);
+  private
+    function  ComputeDockingRect(var DockRect: TRect; MousePos: TPoint): TAlign;   //도킹되어 있는 상태에서 다른 폼이 도킹을 시도하는 경우 발생
+    { Private declarations }
+  public
+    { Public declarations }
+  end;
+
+var
+  fmHitronCCTV: TfmHitronCCTV;
+
+implementation
+
+{$R *.dfm}
+
+function TfmHitronCCTV.ComputeDockingRect(var DockRect: TRect;
+  MousePos: TPoint): TAlign;
+var
+  DockTopRect,
+  DockLeftRect,
+  DockBottomRect,
+  DockRightRect,
+  DockCenterRect: TRect;
+begin
+  Result := alNone;
+  //divide form up into docking "Zones"
+  DockLeftRect.TopLeft := Point(0, 0);
+  DockLeftRect.BottomRight := Point(ClientWidth div 5, ClientHeight);
+
+  DockTopRect.TopLeft := Point(ClientWidth div 5, 0);
+  DockTopRect.BottomRight := Point(ClientWidth div 5 * 4, ClientHeight div 5);
+
+  DockRightRect.TopLeft := Point(ClientWidth div 5 * 4, 0);
+  DockRightRect.BottomRight := Point(ClientWidth, ClientHeight);
+
+  DockBottomRect.TopLeft := Point(ClientWidth div 5, ClientHeight div 5 * 4);
+  DockBottomRect.BottomRight := Point(ClientWidth div 5 * 4, ClientHeight);
+
+  DockCenterRect.TopLeft := Point(ClientWidth div 5, ClientHeight div 5);
+  DockCenterRect.BottomRight := Point(ClientWidth div 5 * 4, ClientHeight div 5 * 4);
+
+  //Find out where the mouse cursor is, to decide where to draw dock preview.
+  if PtInRect(DockLeftRect, MousePos) then
+  begin
+    Result := alLeft;
+    DockRect := DockLeftRect;
+    DockRect.Right := ClientWidth div 2;
+  end
+  else
+  if PtInRect(DockTopRect, MousePos) then
+  begin
+    Result := alTop;
+    DockRect := DockTopRect;
+    DockRect.Left := 0;
+    DockRect.Right := ClientWidth;
+    DockRect.Bottom := ClientHeight div 2;
+  end
+  else
+  if PtInRect(DockRightRect, MousePos) then
+  begin
+    Result := alRight;
+    DockRect := DockRightRect;
+    DockRect.Left := ClientWidth div 2;
+  end
+  else
+  if PtInRect(DockBottomRect, MousePos) then
+  begin
+    Result := alBottom;
+    DockRect := DockBottomRect;
+    DockRect.Left := 0;
+    DockRect.Right := ClientWidth;
+    DockRect.Top := ClientHeight div 2;
+ end
+  else
+  if PtInRect(DockCenterRect, MousePos) then
+  begin
+    Result := alClient;
+    DockRect := DockCenterRect;
+  end;
+  if Result = alNone then Exit;
+
+  //DockRect is in screen coordinates.
+  DockRect.TopLeft := ClientToScreen(DockRect.TopLeft);
+  DockRect.BottomRight := ClientToScreen(DockRect.BottomRight);
+end;
+
+procedure TfmHitronCCTV.FormDockOver(Sender: TObject; Source: TDragDockObject;
+  X, Y: Integer; State: TDragState; var Accept: Boolean);
+var
+  ARect: TRect;
+begin
+  Accept := (Source.Control is Tform);
+  //Draw dock preview depending on where the cursor is relative to our client area
+  if Accept and (ComputeDockingRect(ARect, Point(X, Y)) <> alNone) then
+  begin
+    ComputeDockingRect(ARect, Point(X, Y));
+    Source.DockRect := ARect;
+  end;
+end;
+
+end.

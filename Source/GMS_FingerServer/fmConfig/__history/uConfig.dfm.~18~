@@ -1,0 +1,213 @@
+object fmConfig: TfmConfig
+  Left = 0
+  Top = 0
+  Caption = #54872#44221#49444#51221
+  ClientHeight = 410
+  ClientWidth = 307
+  Color = clBtnFace
+  Font.Charset = DEFAULT_CHARSET
+  Font.Color = clWindowText
+  Font.Height = -11
+  Font.Name = 'Tahoma'
+  Font.Style = []
+  OldCreateOrder = False
+  Position = poMainFormCenter
+  OnActivate = FormActivate
+  PixelsPerInch = 96
+  TextHeight = 13
+  object GroupBox1: TGroupBox
+    Left = 0
+    Top = 0
+    Width = 307
+    Height = 67
+    Align = alTop
+    Caption = #51648#47928#47532#45908
+    TabOrder = 0
+    object Label1: TLabel
+      Left = 24
+      Top = 32
+      Width = 72
+      Height = 13
+      Caption = #51648#47928#47532#45908#51333#47448
+    end
+    object cmb_ReaderType: TComboBox
+      Left = 120
+      Top = 29
+      Width = 145
+      Height = 22
+      Style = csOwnerDrawFixed
+      ItemIndex = 0
+      TabOrder = 0
+      Text = '1.'#49457#54788#51648#47928#47532#45908
+      OnChange = cmb_ReaderTypeChange
+      Items.Strings = (
+        '1.'#49457#54788#51648#47928#47532#45908
+        '2.'#49800#54532#47532#47560)
+    end
+  end
+  object btn_Save: TButton
+    Left = 56
+    Top = 360
+    Width = 75
+    Height = 25
+    Caption = #51201#50857
+    TabOrder = 1
+    OnClick = btn_SaveClick
+  end
+  object btn_close: TButton
+    Left = 198
+    Top = 360
+    Width = 75
+    Height = 25
+    Caption = #45803#44592
+    TabOrder = 2
+    OnClick = btn_closeClick
+  end
+  object gb_RelayType: TGroupBox
+    Left = 0
+    Top = 67
+    Width = 307
+    Height = 54
+    Align = alTop
+    TabOrder = 3
+    object Label2: TLabel
+      Left = 24
+      Top = 16
+      Width = 48
+      Height = 13
+      Caption = #50672#46041#53440#51077
+    end
+    object cmb_RelayType: TComboBox
+      Left = 120
+      Top = 13
+      Width = 145
+      Height = 22
+      Style = csOwnerDrawFixed
+      ItemIndex = 0
+      TabOrder = 0
+      Text = '1.TCP/IP'
+      OnChange = cmb_RelayTypeChange
+      Items.Strings = (
+        '1.TCP/IP'
+        '2.DataBase'
+        '3.'#47784#44397'TCP/IP')
+    end
+  end
+  object gb_RelayDBConfig: TGroupBox
+    Left = 0
+    Top = 121
+    Width = 307
+    Height = 224
+    Align = alTop
+    TabOrder = 4
+    object Label3: TLabel
+      Left = 24
+      Top = 16
+      Width = 37
+      Height = 13
+      Caption = 'DB'#53440#51077
+    end
+    object Label4: TLabel
+      Left = 24
+      Top = 45
+      Width = 26
+      Height = 13
+      Caption = 'DB IP'
+    end
+    object Label5: TLabel
+      Left = 24
+      Top = 72
+      Width = 36
+      Height = 13
+      Caption = 'DB Port'
+    end
+    object Label6: TLabel
+      Left = 24
+      Top = 99
+      Width = 52
+      Height = 13
+      Caption = 'DB User ID'
+    end
+    object Label7: TLabel
+      Left = 24
+      Top = 126
+      Width = 57
+      Height = 13
+      Caption = 'DB User PW'
+    end
+    object Label8: TLabel
+      Left = 24
+      Top = 153
+      Width = 43
+      Height = 13
+      Caption = 'DB Name'
+    end
+    object Label9: TLabel
+      Left = 24
+      Top = 180
+      Width = 71
+      Height = 13
+      Caption = #49324#50857#51088'ID'#44600#51060
+    end
+    object cmb_RelayDBType: TComboBox
+      Left = 120
+      Top = 13
+      Width = 145
+      Height = 22
+      Style = csOwnerDrawFixed
+      ItemIndex = 0
+      TabOrder = 0
+      Text = '1.MSSQL'
+      Items.Strings = (
+        '1.MSSQL')
+    end
+    object ed_RelayDBIP: TEdit
+      Left = 120
+      Top = 41
+      Width = 145
+      Height = 21
+      TabOrder = 1
+      Text = 'ed_RelayDBIP'
+    end
+    object ed_RelayDBPort: TEdit
+      Left = 120
+      Top = 68
+      Width = 145
+      Height = 21
+      TabOrder = 2
+      Text = 'Edit1'
+    end
+    object ed_RelayDBUserID: TEdit
+      Left = 120
+      Top = 95
+      Width = 145
+      Height = 21
+      TabOrder = 3
+      Text = 'Edit1'
+    end
+    object ed_RelayDBUserPW: TEdit
+      Left = 120
+      Top = 122
+      Width = 145
+      Height = 21
+      TabOrder = 4
+      Text = 'Edit1'
+    end
+    object ed_RelayDBName: TEdit
+      Left = 120
+      Top = 149
+      Width = 145
+      Height = 21
+      TabOrder = 5
+      Text = 'Edit1'
+    end
+    object ed_UserIDLen: TEdit
+      Left = 120
+      Top = 176
+      Width = 145
+      Height = 21
+      TabOrder = 6
+      Text = 'ed_UserIDLen'
+    end
+  end
+end

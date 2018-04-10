@@ -1,0 +1,26 @@
+unit uDBSocket;
+
+interface
+
+uses
+  System.SysUtils, System.Classes;
+
+type
+  TdmDBSocket = class(TDataModule)
+  private
+    L_nOldDBSocketSeq : integer; //최종 가져온 DBSocketSequence
+    { Private declarations }
+  public
+    { Public declarations }
+  end;
+
+var
+  dmDBSocket: TdmDBSocket;
+
+implementation
+
+{%CLASSGROUP 'System.Classes.TPersistent'}
+
+{$R *.dfm}
+
+end.

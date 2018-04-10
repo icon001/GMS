@@ -1,0 +1,37 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<BorlandProject>
+	<Transactions>
+    <Transaction>1899-12-30 00:00:00.000.550,=Y:\[프로젝트]\[DELXE3]\[ACAM_XE3]\Source\1.ACAM\Unit1.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.838,C:\[프로젝트]\[ACAM_XE3]\Source\1.ACAM\Unit1.dfm=C:\[프로젝트]\[ACAM_XE3]\Source\1.ACAM\fmNameChange\uNameChange.dfm</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.783,=Y:\[프로젝트]\[DELXE3]\[ACAM_XE3]\Source\1.ACAM\Unit1.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.816,=Y:\[프로젝트]\[DELXE3]\[ACAM_XE3]\Source\1.ACAM\Unit1.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.599,Y:\[프로젝트]\[DELXE3]\[ACAM_XE3]\Source\1.ACAM\Report\fmFoodStateReport\uFoodStateReport.pas=Y:\[프로젝트]\[DELXE3]\[ACAM_XE3]\Source\1.ACAM\Report\fmFoodDepartStateReport\uFoodDepartStateReport.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.356,=Y:\[프로젝트]\[DELXE3]\[ACAM_XE3]\Source\1.ACAM\Report\fmFoodStateReport\uFoodStateReport.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.306,Y:\[프로젝트]\[DELXE3]\[ACAM_XE3]\Source\1.ACAM\Report\fmAttendReport\uAttendReport.dfm=Y:\[프로젝트]\[DELXE3]\[ACAM_XE3]\Source\1.ACAM\Report\fmAttendManger\uAttendManger.dfm</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.260,=Y:\[프로젝트]\[DELXE3]\[ACAM_XE3]\Source\3.ACAM_AFServer\fmFoodGubun\uFoodGubun.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.075,=Y:\[프로젝트]\[DELXE3]\[ACAM_XE3]\Lib\Attend\uAttendEvent.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.067,=Y:\[프로젝트]\[DELXE3]\[ACAM_XE3]\Source\1.ACAM\Unit1.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.163,Y:\[프로젝트]\[DELXE3]\[ACAM_XE3]\Lib\Form\uComboBoxCodeLoad.pas=</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.705,=Y:\[프로젝트]\[DELXE3]\[ACAM_XE3]\Lib\Form\uComboBoxCodeLoad.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.245,Y:\[프로젝트]\[DELXE3]\[ACAM_XE3]\Source\1.ACAM\Unit1.pas=Y:\[프로젝트]\[DELXE3]\[ACAM_XE3]\Source\1.ACAM\Report\fmAttendManger\uAttendUpdate.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.052,Y:\[프로젝트]\[DELXE3]\[ACAM_XE3]\Source\1.ACAM\Unit1.pas=Y:\[프로젝트]\[DELXE3]\[ACAM_XE3]\Lib\Food\uFoodReader.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.029,Y:\[프로젝트]\[DELXE3]\[ACAM_XE3]\Source\1.ACAM\Unit1.pas=Y:\[프로젝트]\[DELXE3]\[ACAM_XE3]\Source\1.ACAM\Report\fmAttendSummary\uAttendSummary.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.355,Y:\[프로젝트]\[DELXE3]\[ACAM_XE3]\Source\1.ACAM\Unit1.pas=Y:\[프로젝트]\[DELXE3]\[ACAM_XE3]\Source\1.ACAM\fmMonitoring\fmFoodMonitoring\uFoodMonitoring.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.029,Y:\[프로젝트]\[DELXE3]\[ACAM_XE3]\Source\1.ACAM\Unit1.dfm=Y:\[프로젝트]\[DELXE3]\[ACAM_XE3]\Source\1.ACAM\Report\fmAttendSummary\uAttendSummary.dfm</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.052,Y:\[프로젝트]\[DELXE3]\[ACAM_XE3]\Source\1.ACAM\Unit1.dfm=Y:\[프로젝트]\[DELXE3]\[ACAM_XE3]\Lib\Food\uFoodReader.dfm</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.182,Y:\[프로젝트]\[DELXE3]\[ACAM_XE3]\Source\1.ACAM\fmMonitoring\uMapMonitoring.dfm=Y:\[프로젝트]\[DELXE3]\[ACAM_XE3]\Source\1.ACAM\fmMonitoring\uMonitoring.dfm</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.661,=Y:\[프로젝트]\[DELXE3]\[ACAM_XE3]\Source\3.ACAM_AFServer\fmFoodReaderSetting\uFoodReaderSetting.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.310,=Y:\[프로젝트]\[DELXE3]\[ACAM_XE3]\Source\1.ACAM\fmMonitoring\uMonitoring.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.599,Y:\[프로젝트]\[DELXE3]\[ACAM_XE3]\Source\1.ACAM\Report\fmFoodStateReport\uFoodStateReport.dfm=Y:\[프로젝트]\[DELXE3]\[ACAM_XE3]\Source\1.ACAM\Report\fmFoodDepartStateReport\uFoodDepartStateReport.dfm</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.355,Y:\[프로젝트]\[DELXE3]\[ACAM_XE3]\Source\1.ACAM\Unit1.dfm=Y:\[프로젝트]\[DELXE3]\[ACAM_XE3]\Source\1.ACAM\fmMonitoring\fmFoodMonitoring\uFoodMonitoring.dfm</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.245,Y:\[프로젝트]\[DELXE3]\[ACAM_XE3]\Source\1.ACAM\Unit1.dfm=Y:\[프로젝트]\[DELXE3]\[ACAM_XE3]\Source\1.ACAM\Report\fmAttendManger\uAttendUpdate.dfm</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.617,=C:\[프로젝트]\[ACAM_XE3]\Source\1.ACAM\Unit1.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.306,Y:\[프로젝트]\[DELXE3]\[ACAM_XE3]\Source\1.ACAM\Report\fmAttendReport\uAttendReport.pas=Y:\[프로젝트]\[DELXE3]\[ACAM_XE3]\Source\1.ACAM\Report\fmAttendManger\uAttendManger.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.838,C:\[프로젝트]\[ACAM_XE3]\Source\1.ACAM\Unit1.pas=C:\[프로젝트]\[ACAM_XE3]\Source\1.ACAM\fmNameChange\uNameChange.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.012,=C:\[프로젝트]\[ACAM_XE3]\Source\1.ACAM\Unit1.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.959,=Y:\[프로젝트]\[DELXE3]\[ACAM_XE3]\Lib\DockForm\uComboBoxCodeLoad.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.182,Y:\[프로젝트]\[DELXE3]\[ACAM_XE3]\Source\1.ACAM\fmMonitoring\uMapMonitoring.pas=Y:\[프로젝트]\[DELXE3]\[ACAM_XE3]\Source\1.ACAM\fmMonitoring\uMonitoring.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.686,=Y:\[프로젝트]\[DELXE3]\[ACAM_XE3]\Source\1.ACAM\Report\fmAttendReport\uAttendReport.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.533,Y:\[프로젝트]\[DELXE3]\[ACAM_XE3]\Lib\DockForm\uComboBoxCodeLoad.pas=</Transaction>
+  </Transactions>
+</BorlandProject>

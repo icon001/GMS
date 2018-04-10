@@ -1,0 +1,77 @@
+program GMS_AccessMonitoring;
+
+uses
+  Vcl.Forms,
+  uMain in 'fmMain\uMain.pas' {fmLogin},
+  System.SysUtils,
+  Vcl.Themes,
+  Vcl.Styles,
+  uMonitoringMain in 'fmMonitoringMain\uMonitoringMain.pas' {fmMonitoringMain},
+  uDetailForm in 'fmMonitoringMain\uDetailForm.pas' {DetailForm},
+  uCommonFunction in '..\..\Lib\Common\uCommonFunction.pas',
+  uCommonVariable in '..\..\Lib\Common\uCommonVariable.pas',
+  uDataBase in '..\..\Lib\DataBase\uDataBase.pas' {dmDataBase: TDataModule},
+  uLoginVariable in '..\..\Lib\Login\uLoginVariable.pas',
+  uDBFormMessage in '..\..\Lib\DataBase\uDBFormMessage.pas' {dmFormMessage: TDataModule},
+  uCommonEvent in '..\..\Lib\Common\uCommonEvent.pas',
+  uDBDelete in '..\..\Lib\DataBase\uDBDelete.pas' {dmDBDelete: TDataModule},
+  uDBInsert in '..\..\Lib\DataBase\uDBInsert.pas' {dmDBInsert: TDataModule},
+  uDBSelect in '..\..\Lib\DataBase\uDBSelect.pas' {dmDBSelect: TDataModule},
+  uDBUpdate in '..\..\Lib\DataBase\uDBUpdate.pas' {dmDBUpdate: TDataModule},
+  uDataBaseConfig in '..\..\Lib\DataBase\uDataBaseConfig.pas' {fmDataBaseConfig},
+  uDBCreate in '..\..\Lib\DataBase\uDBCreate.pas' {dmDBCreate: TDataModule},
+  uDBFunction in '..\..\Lib\DataBase\uDBFunction.pas' {dmDBFunction: TDataModule},
+  uSolarLunar in '..\..\Lib\Date\uSolarLunar.pas',
+  uDBFormName in '..\..\Lib\DataBase\uDBFormName.pas' {dmFormName: TDataModule},
+  uServerClientVariable in '..\..\Lib\MIAMSServer\uServerClientVariable.pas',
+  uPCClient in '..\..\Lib\PCSocket\uPCClient.pas' {dmPCClient: TDataModule},
+  uServerClientFunction in '..\..\Lib\MIAMSServer\uServerClientFunction.pas',
+  u_c_basic_object in '..\..\Lib\Device\Winsockclasses\u_c_basic_object.pas',
+  u_c_byte_buffer in '..\..\Lib\Device\Winsockclasses\u_c_byte_buffer.pas',
+  u_c_display in '..\..\Lib\Device\Winsockclasses\u_c_display.pas',
+  u_c_log in '..\..\Lib\Device\Winsockclasses\u_c_log.pas',
+  u_winsock in '..\..\Lib\Device\Winsocket\u_winsock.pas',
+  u_characters in '..\..\Lib\Device\Winsockunits\u_characters.pas',
+  u_dir in '..\..\Lib\Device\Winsockunits\u_dir.pas',
+  u_display_hex_2 in '..\..\Lib\Device\Winsockunits\u_display_hex_2.pas',
+  u_file in '..\..\Lib\Device\Winsockunits\u_file.pas',
+  u_strings in '..\..\Lib\Device\Winsockunits\u_strings.pas',
+  u_types_constants in '..\..\Lib\Device\Winsockunits\u_types_constants.pas',
+  uFormVariable in '..\..\Lib\Form\uFormVariable.pas',
+  uFormDeviceState in '..\..\Lib\DockForm\uFormDeviceState.pas' {DataModule2: TDataModule},
+  uFormFunction in '..\..\Lib\Form\uFormFunction.pas' {dmFormFunction: TDataModule},
+  uTelEventRegist in 'fmTelEventRegist\uTelEventRegist.pas' {fmTelEventRegist},
+  uCardPrintNoCreate in 'fmCardPrintNoCreate\uCardPrintNoCreate.pas' {fmCardPrintNoCreate},
+  uDoorMemo in 'fmDoorMemo\uDoorMemo.pas' {fmDoorMemo},
+  uDoorAlarm in 'fmDoorAlarm\uDoorAlarm.pas' {fmDoorAlarm},
+  uSubForm in '..\..\Lib\Form\uSubForm.pas' {fmASubForm},
+  uDBVariable in '..\..\Lib\DataBase\uDBVariable.pas',
+  uComboBoxCodeLoad in '..\..\Lib\DockForm\uComboBoxCodeLoad.pas',
+  uDBCardPermit in '..\..\Lib\DataBase\uDBCardPermit.pas' {dmDBCardPermit: TDataModule},
+  uSupremaFinger in '..\..\Lib\FingerReader\uSupremaFinger.pas' {dmSupremaFinger: TDataModule},
+  uFormUtil in '..\..\Lib\DockForm\uFormUtil.pas' {dmFormUtil: TDataModule},
+  uKTEmployee in 'fmKTEmployee\uKTEmployee.pas' {fmKTEmployee},
+  uFingerVariable in '..\..\Lib\FingerReader\uFingerVariable.pas',
+  uAccessReport in 'fmAccessReport\uAccessReport.pas' {fmAccessReport},
+  uClientConfig in 'fmClientConfig\uClientConfig.pas' {fmClientConfig},
+  uDoorAlarmReport in 'fmDoorAlarmReport\uDoorAlarmReport.pas' {fmDoorAlarmReport},
+  uBuildingDoorState in 'fmBuildingDoorState\uBuildingDoorState.pas' {fmBuildingDoorState};
+
+{$R *.res}
+{$R manifest.RES}
+
+begin
+  Application.Initialize;
+  if FileExists(ExtractFileDir(Application.ExeName) + '\logo.ico') then
+  begin
+    Application.Icon.LoadFromFile(ExtractFileDir(Application.ExeName) + '\logo.ico');
+  end;
+  Application.MainFormOnTaskbar := True;
+  TStyleManager.TrySetStyle('Metropolis UI Blue');
+  Application.CreateForm(TdmDataBase, dmDataBase);
+  Application.CreateForm(TdmSupremaFinger, dmSupremaFinger);
+  Application.CreateForm(TfmBuildingDoorState, fmBuildingDoorState);
+  Application.CreateForm(TfmLogin, fmLogin);
+  Application.CreateForm(TfmMonitoringMain, fmMonitoringMain);
+  Application.Run;
+end.

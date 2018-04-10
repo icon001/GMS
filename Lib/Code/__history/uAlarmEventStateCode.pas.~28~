@@ -1,0 +1,207 @@
+unit uAlarmEventStateCode;
+
+interface
+
+uses
+  System.SysUtils, System.Classes;
+
+type
+  TAlarmEventStateCode = Class(TComponent)
+  private
+    AlarmPCCodeList : TStringList;
+    AlarmModeChangeList : TStringList;
+    FAlarmEventCodeName: String;
+    FAlarmZONESTATE: string;
+    FAlarmARMTYPE: string;
+    FAlarmOPER: string;
+    FAlarmDEVICEType: string;
+    FAlarmEventCode: string;
+    { Private declarations }
+  public
+    constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
+  public
+    { Public declarations }
+    procedure SetAlarmEventPCCode(aPCcode,aName,aModeChange,aView,aSound,aColor:string);
+    procedure SetAlarmEventModeChangeCode(aOperCode,aAlarmEventCode,aAlarmChangeCode:string);
+    Function GetAlarmEventPCCodeInfo(aAlarmStateCode,aSubCLass,aMode,aLoop,aZoneState,aOperator:string;var aAlarmStateCodeName,aAlarmStatePCCode,aAlarmStatePCCodeName,aAlarmView,aAlarmSound,aAlarmColor:string):Boolean;
+  published
+    property AlarmEventCode : string read FAlarmEventCode write FAlarmEventCode;
+    property AlarmEventCodeName : String read FAlarmEventCodeName Write FAlarmEventCodeName;
+    property AlarmDEVICEType : string read FAlarmDEVICEType write FAlarmDEVICEType;
+    property AlarmARMTYPE : string read FAlarmARMTYPE write FAlarmARMTYPE;
+    property AlarmZONESTATE : string read FAlarmZONESTATE write FAlarmZONESTATE;
+    property AlarmOPER : string read FAlarmOPER write FAlarmOPER;
+  End;
+
+  TAlarmEventStatePCCode = Class(TComponent)
+  private
+    FAlarmEventCode: String;
+    FPCAlarmEventView: String;
+    FPCAlarmEventCode: String;
+    FPCAlarmEventCodeName: String;
+    FPCAlarmEventSOUND: String;
+    FPCAlarmEventCOLOR: String;
+  public
+  published
+    property PCAlarmEventCode : String read FPCAlarmEventCode Write FPCAlarmEventCode;
+    property PCAlarmEventCodeName : String read FPCAlarmEventCodeName Write FPCAlarmEventCodeName;
+    property AlarmEventCode : String read FAlarmEventCode Write FAlarmEventCode;
+    property PCAlarmEventView : String read FPCAlarmEventView Write FPCAlarmEventView;
+    property PCAlarmEventSOUND : String read FPCAlarmEventSOUND Write FPCAlarmEventSOUND;
+    property PCAlarmEventCOLOR : String read FPCAlarmEventCOLOR Write FPCAlarmEventCOLOR;
+  End;
+
+  TAlarmEventModeChange = Class(TComponent)
+  private
+    FModeChangeAlarmChangeCode: String;
+    FModeChangeAlarmEventCode: String;
+    FModeChangeOperCode: String;
+  public
+  published
+    property ModeChangeOperCode : String read FModeChangeOperCode Write FModeChangeOperCode;
+    property ModeChangeAlarmEventCode : String read FModeChangeAlarmEventCode Write FModeChangeAlarmEventCode;
+    property ModeChangeAlarmChangeCode : String read FModeChangeAlarmChangeCode Write FModeChangeAlarmChangeCode;
+  End;
+
+  TdmAlarmEventStateCode = class(TDataModule)
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+  end;
+
+var
+  dmAlarmEventStateCode: TdmAlarmEventStateCode;
+
+  AlarmEventStateCodeList : TStringList;
+
+implementation
+
+{%CLASSGROUP 'System.Classes.TPersistent'}
+
+{$R *.dfm}
+
+{ TAlarmEventStateCode }
+
+constructor TAlarmEventStateCode.Create(AOwner: TComponent);
+begin
+  inherited;
+  AlarmPCCodeList := TStringList.Create;
+  AlarmModeChangeList := TStringList.Create;
+end;
+
+destructor TAlarmEventStateCode.Destroy;
+var
+  i : integer;
+begin
+  if AlarmPCCodeList.Count > 0 then
+  begin
+    for i := AlarmPCCodeList.Count - 1 downto 0 do
+    begin
+      TAlarmEventStatePCCode(AlarmPCCodeList.Objects[i]).Free;
+    end;
+    AlarmPCCodeList.Clear;
+  end;
+
+  if AlarmModeChangeList.Count > 0 then
+  begin
+    for i := AlarmModeChangeList.Count - 1 downto 0 do
+    begin
+      TAlarmEventModeChange(AlarmModeChangeList.Objects[i]).Free;
+    end;
+  end;
+
+  AlarmPCCodeList.Free;
+  AlarmModeChangeList.Free;
+  inherited;
+end;
+
+function TAlarmEventStateCode.GetAlarmEventPCCodeInfo(aAlarmStateCode,
+  aSubCLass, aMode, aLoop, aZoneState,aOperator: string; var aAlarmStateCodeName,
+  aAlarmStatePCCode, aAlarmStatePCCodeName, aAlarmView, aAlarmSound,
+  aAlarmColor: string): Boolean;
+var
+  stPCCode : string;
+  stOperType : string;
+  stAlarmEventCode : string;
+  nIndex : integer;
+  stZoneState : string;
+begin
+  result := False;
+  aAlarmColor := inttostr(0);
+  if AlarmDEVICEType = '1' then stPCCode := aSubCLass
+  else stPCCode := '00';
+  if AlarmARMTYPE = '1' then stPCCode := stPCCode + aMode[1]
+  else stPCCode := stPCCode + '0';
+  stAlarmEventCode := AlarmEventCode;
+  if stAlarmEventCode = '00' then
+  begin
+    //여기서 변경되는 알람코드를 새로 생성 하자.
+    nIndex := AlarmModeChangeList.IndexOf(copy(aOperator,1,10));
+    if nIndex > -1 then
+    begin
+      stPCCode := stPCCode + TAlarmEventModeChange(AlarmModeChangeList.Objects[nIndex]).ModeChangeAlarmEventCode;
+      stPCCode := stPCCode + TAlarmEventModeChange(AlarmModeChangeList.Objects[nIndex]).ModeChangeAlarmChangeCode;
+    end else
+    begin
+      stPCCode := stPCCode + '00' + '00';
+    end;
+  end else
+  begin
+    stPCCode := stPCCode + stAlarmEventCode;
+    stPCCode := stPCCode + '00';
+  end;
+
+  stZoneState := '1';
+  if aZoneState = 'N' then stZoneState := '0';
+
+  if AlarmZONESTATE = '1' then stPCCode := stPCCode + stZoneState
+  else stPCCode := stPCCode + '0';
+
+  aAlarmStateCodeName := AlarmEventCodeName;
+  aAlarmStatePCCode := UpperCase(stPCCode);
+  nIndex := AlarmPCCodeList.IndexOf(stPCCode);
+  if nIndex < 0 then Exit;
+  aAlarmStatePCCodeName := TAlarmEventStatePCCode(AlarmPCCodeList.Objects[nIndex]).PCAlarmEventCodeName;
+  aAlarmView := TAlarmEventStatePCCode(AlarmPCCodeList.Objects[nIndex]).PCAlarmEventView;
+  aAlarmSound := TAlarmEventStatePCCode(AlarmPCCodeList.Objects[nIndex]).PCAlarmEventSOUND;
+  aAlarmColor := TAlarmEventStatePCCode(AlarmPCCodeList.Objects[nIndex]).PCAlarmEventCOLOR;
+  result := True;
+end;
+
+procedure TAlarmEventStateCode.SetAlarmEventModeChangeCode(aOperCode,
+  aAlarmEventCode, aAlarmChangeCode: string);
+var
+  oAlarmEventModeChange : TAlarmEventModeChange;
+  nIndex : integer;
+begin
+  nIndex := AlarmModeChangeList.IndexOf(aOperCode);
+  if nIndex > -1 then Exit;
+  oAlarmEventModeChange := TAlarmEventModeChange.Create(nil);
+  oAlarmEventModeChange.ModeChangeOperCode := aOperCode;
+  oAlarmEventModeChange.ModeChangeAlarmEventCode := aAlarmEventCode;
+  oAlarmEventModeChange.ModeChangeAlarmChangeCode := aAlarmChangeCode;
+
+  AlarmModeChangeList.AddObject(aOperCode,oAlarmEventModeChange);
+end;
+
+procedure TAlarmEventStateCode.SetAlarmEventPCCode(aPCcode, aName, aView,
+  aSound, aColor: string);
+var
+  oAlarmEventStatePCCode : TAlarmEventStatePCCode;
+  nIndex : integer;
+begin
+  nIndex := AlarmPCCodeList.IndexOf(aPCCode);
+  if nIndex > -1 then Exit;
+  oAlarmEventStatePCCode := TAlarmEventStatePCCode.Create(nil);
+  oAlarmEventStatePCCode.PCAlarmEventCode := aPCcode;
+  oAlarmEventStatePCCode.AlarmEventCode := AlarmEventCode;
+  oAlarmEventStatePCCode.PCAlarmEventCodeName := aName;
+  oAlarmEventStatePCCode.PCAlarmEventView := aView;
+  oAlarmEventStatePCCode.PCAlarmEventSOUND := aSound;
+  oAlarmEventStatePCCode.PCAlarmEventCOLOR := aColor;
+  AlarmPCCodeList.AddObject(aPCCode,oAlarmEventStatePCCode);
+end;
+
+end.

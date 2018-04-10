@@ -1,0 +1,261 @@
+object fmOption: TfmOption
+  Left = 0
+  Top = 0
+  Caption = 'Option'
+  ClientHeight = 390
+  ClientWidth = 452
+  Color = clWhite
+  Font.Charset = DEFAULT_CHARSET
+  Font.Color = clWindowText
+  Font.Height = -11
+  Font.Name = 'Tahoma'
+  Font.Style = []
+  OldCreateOrder = False
+  Position = poMainFormCenter
+  OnClose = FormClose
+  OnCreate = FormCreate
+  OnResize = FormResize
+  OnShow = FormShow
+  PixelsPerInch = 96
+  TextHeight = 13
+  object GroupBox1: TGroupBox
+    Left = 0
+    Top = 0
+    Width = 452
+    Height = 169
+    Align = alTop
+    Caption = 'View Option'
+    TabOrder = 0
+    object Label2: TLabel
+      Left = 24
+      Top = 56
+      Width = 52
+      Height = 13
+      Caption = 'COL Count'
+    end
+    object Label1: TLabel
+      Left = 24
+      Top = 24
+      Width = 57
+      Height = 13
+      Caption = 'ROW Count'
+    end
+    object Label3: TLabel
+      Left = 184
+      Top = 24
+      Width = 62
+      Height = 13
+      Caption = 'Text Position'
+    end
+    object Label4: TLabel
+      Left = 184
+      Top = 56
+      Width = 51
+      Height = 13
+      Caption = 'Initial Time'
+    end
+    object Label5: TLabel
+      Left = 311
+      Top = 56
+      Width = 17
+      Height = 13
+      Caption = 'Sec'
+    end
+    object Label6: TLabel
+      Left = 24
+      Top = 88
+      Width = 52
+      Height = 13
+      Caption = 'Image Size'
+    end
+    object Label7: TLabel
+      Left = 167
+      Top = 88
+      Width = 6
+      Height = 13
+      Caption = '*'
+    end
+    object ed_ColCount: TAdvEdit
+      Left = 104
+      Top = 53
+      Width = 57
+      Height = 21
+      EmptyTextStyle = []
+      LabelFont.Charset = DEFAULT_CHARSET
+      LabelFont.Color = clWindowText
+      LabelFont.Height = -11
+      LabelFont.Name = 'Tahoma'
+      LabelFont.Style = []
+      Lookup.Font.Charset = DEFAULT_CHARSET
+      Lookup.Font.Color = clWindowText
+      Lookup.Font.Height = -11
+      Lookup.Font.Name = 'Arial'
+      Lookup.Font.Style = []
+      Lookup.Separator = ';'
+      Color = clWindow
+      TabOrder = 0
+      Text = '4'
+      Visible = True
+      OnKeyUp = ed_RowCountKeyUp
+      Version = '3.3.2.0'
+    end
+    object ed_RowCount: TAdvEdit
+      Left = 104
+      Top = 21
+      Width = 57
+      Height = 21
+      EmptyTextStyle = []
+      LabelFont.Charset = DEFAULT_CHARSET
+      LabelFont.Color = clWindowText
+      LabelFont.Height = -11
+      LabelFont.Name = 'Tahoma'
+      LabelFont.Style = []
+      Lookup.Font.Charset = DEFAULT_CHARSET
+      Lookup.Font.Color = clWindowText
+      Lookup.Font.Height = -11
+      Lookup.Font.Name = 'Arial'
+      Lookup.Font.Style = []
+      Lookup.Separator = ';'
+      Color = clWindow
+      TabOrder = 1
+      Text = '1'
+      Visible = True
+      OnKeyUp = ed_RowCountKeyUp
+      Version = '3.3.2.0'
+    end
+    object se_TextPos: TAdvSpinEdit
+      Left = 264
+      Top = 21
+      Width = 83
+      Height = 22
+      Value = 0
+      DateValue = 42612.450404039350000000
+      HexValue = 0
+      IncrementFloat = 0.100000000000000000
+      IncrementFloatPage = 1.000000000000000000
+      LabelFont.Charset = DEFAULT_CHARSET
+      LabelFont.Color = clWindowText
+      LabelFont.Height = -11
+      LabelFont.Name = 'Tahoma'
+      LabelFont.Style = []
+      TabOrder = 2
+      Visible = True
+      Version = '1.6.0.0'
+      OnChange = se_TextPosChange
+    end
+    object ed_initTime: TAdvEdit
+      Left = 264
+      Top = 53
+      Width = 41
+      Height = 21
+      EmptyTextStyle = []
+      LabelFont.Charset = DEFAULT_CHARSET
+      LabelFont.Color = clWindowText
+      LabelFont.Height = -11
+      LabelFont.Name = 'Tahoma'
+      LabelFont.Style = []
+      Lookup.Font.Charset = DEFAULT_CHARSET
+      Lookup.Font.Color = clWindowText
+      Lookup.Font.Height = -11
+      Lookup.Font.Name = 'Arial'
+      Lookup.Font.Style = []
+      Lookup.Separator = ';'
+      Color = clWindow
+      TabOrder = 3
+      Text = '5'
+      Visible = True
+      OnKeyUp = ed_initTimeKeyUp
+      Version = '3.3.2.0'
+    end
+    object ed_PhotoW: TAdvEdit
+      Left = 104
+      Top = 84
+      Width = 57
+      Height = 21
+      EmptyTextStyle = []
+      LabelFont.Charset = DEFAULT_CHARSET
+      LabelFont.Color = clWindowText
+      LabelFont.Height = -11
+      LabelFont.Name = 'Tahoma'
+      LabelFont.Style = []
+      Lookup.Font.Charset = DEFAULT_CHARSET
+      Lookup.Font.Color = clWindowText
+      Lookup.Font.Height = -11
+      Lookup.Font.Name = 'Arial'
+      Lookup.Font.Style = []
+      Lookup.Separator = ';'
+      Color = clWindow
+      TabOrder = 4
+      Text = '213'
+      Visible = True
+      OnKeyUp = ed_RowCountKeyUp
+      Version = '3.3.2.0'
+    end
+    object ed_PhotoH: TAdvEdit
+      Left = 189
+      Top = 84
+      Width = 57
+      Height = 21
+      EmptyTextStyle = []
+      LabelFont.Charset = DEFAULT_CHARSET
+      LabelFont.Color = clWindowText
+      LabelFont.Height = -11
+      LabelFont.Name = 'Tahoma'
+      LabelFont.Style = []
+      Lookup.Font.Charset = DEFAULT_CHARSET
+      Lookup.Font.Color = clWindowText
+      Lookup.Font.Height = -11
+      Lookup.Font.Name = 'Arial'
+      Lookup.Font.Style = []
+      Lookup.Separator = ';'
+      Color = clWindow
+      TabOrder = 5
+      Text = '283'
+      Visible = True
+      OnKeyUp = ed_RowCountKeyUp
+      Version = '3.3.2.0'
+    end
+  end
+  object Panel1: TPanel
+    Left = 0
+    Top = 349
+    Width = 452
+    Height = 41
+    Align = alBottom
+    TabOrder = 1
+    object btn_Save: TButton
+      Left = 104
+      Top = 8
+      Width = 75
+      Height = 25
+      Caption = 'save'
+      TabOrder = 0
+      OnClick = btn_SaveClick
+    end
+    object btn_Cancel: TButton
+      Left = 272
+      Top = 8
+      Width = 75
+      Height = 25
+      Caption = 'cancel'
+      TabOrder = 1
+      OnClick = btn_CancelClick
+    end
+  end
+  object pan_Body: TPanel
+    Left = 0
+    Top = 169
+    Width = 452
+    Height = 180
+    Align = alClient
+    TabOrder = 2
+    ExplicitTop = 97
+    ExplicitHeight = 252
+  end
+  object AdvFormStyler1: TAdvFormStyler
+    MetroColor = clSkyBlue
+    Style = tsOffice2013White
+    Left = 377
+    Top = 80
+  end
+end

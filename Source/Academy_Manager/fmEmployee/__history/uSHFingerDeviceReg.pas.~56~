@@ -1,0 +1,201 @@
+unit uSHFingerDeviceReg;
+
+interface
+
+uses
+  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
+  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, AdvAppStyler, AdvSmoothPanel,
+  AdvSmoothLabel, Vcl.ExtCtrls, Vcl.Buttons;
+
+type
+  TfmSHFingerDeviceReg = class(TForm)
+    pan_FingerUserID: TAdvSmoothPanel;
+    AdvFormStyler1: TAdvFormStyler;
+    lb_fingeruserid: TAdvSmoothLabel;
+    pan_Message: TAdvSmoothPanel;
+    lb_Message: TAdvSmoothLabel;
+    Timer: TTimer;
+    btn_Apply: TSpeedButton;
+    SpeedButton2: TSpeedButton;
+    procedure TimerTimer(Sender: TObject);
+    procedure SpeedButton2Click(Sender: TObject);
+    procedure FormClose(Sender: TObject; var Action: TCloseAction);
+    procedure btn_ApplyClick(Sender: TObject);
+  private
+    FSave: Boolean;
+    FFingerUserID: String;
+    FFingerDeviceID: integer;
+    FFingerData: String;
+    FFingerEmSeq: integer;
+    FFingerDeviceSeq: integer;
+    FFingerDeviceIP: string;
+    procedure SetFingerUserID(const Value: String);
+    procedure SetFingerData(const Value: String);
+    { Private declarations }
+  public
+    { Public declarations }
+    property Save : Boolean read FSave write FSave;
+  public
+    property FingerDeviceID : integer read FFingerDeviceID write FFingerDeviceID;
+    property FingerUserID : String read FFingerUserID write SetFingerUserID;
+    property FingerData : String read FFingerData write SetFingerData;
+    property FingerEmSeq : integer read FFingerEmSeq write FFingerEmSeq;
+    property FingerDeviceSeq : integer read FFingerDeviceSeq write FFingerDeviceSeq;
+    property FingerDeviceIP : string read FFingerDeviceIP write FFingerDeviceIP;
+  end;
+
+var
+  fmSHFingerDeviceReg: TfmSHFingerDeviceReg;
+
+implementation
+uses
+  uCommonFunction,
+  uCommonVariable,
+  uDBDelete,
+  uDBFunction,
+  uDBInsert,
+  uSHFDBRelay;
+
+{$R *.dfm}
+
+{ TfmSHFingerDeviceReg }
+
+procedure TfmSHFingerDeviceReg.btn_ApplyClick(Sender: TObject);
+begin
+  if (G_nFingerRelayType = 2) then
+  begin
+    if dmSHFDBRelay.DBConnected then
+      dmSHFDBRelay.GetTB_Approvalnum_FingerData(FillZeroStrNum(FingerUserID,G_nFPUserIDLength),inttostr(FingerEmSeq));
+  end else if (G_nFingerRelayType = 3) then
+  begin
+//    dmDBDelete.DeleteTB_FINGERAPPROVALNUM_Key(FingerUserID,inttostr(FingerDeviceSeq)); //테이블 Clear 시키자.
+  end;
+
+  Save := True;
+  Close;
+end;
+
+procedure TfmSHFingerDeviceReg.FormClose(Sender: TObject;
+  var Action: TCloseAction);
+begin
+  Timer.Enabled := False;
+end;
+
+procedure TfmSHFingerDeviceReg.SetFingerData(const Value: String);
+begin
+  if FFingerData = Value then Exit;
+
+  FFingerData := Value;
+  lb_fingeruserid.Caption.Text := '승인번호 : ' + Value;
+  if (G_nFingerRelayType = 2) then
+  begin
+    dmSHFDBRelay.DataBaseConnect(G_nFingerRelayDBType,G_stFingerRelayDBIP,G_stFingerRelayDBPort,G_stFingerRelayDBUserID,G_stFingerRelayDBUserPW,G_stFingerRelayDBName);
+    if Not dmSHFDBRelay.DBConnected then
+    begin
+      showmessage('데이터베이스 연동 테이블에 접속할 수 없습니다.');
+      Close;
+      Exit;
+    end;
+    dmSHFDBRelay.DeleteTb_approvalnum(FillZeroStrNum(FingerUserID,G_nFPUserIDLength),inttostr(FingerDeviceID));
+    dmSHFDBRelay.InsertIntoTb_approvalnum(FillZeroStrNum(FingerUserID,G_nFPUserIDLength),inttostr(FingerDeviceID),Value);
+  end else if (G_nFingerRelayType = 3) then
+  begin
+    dmDBDelete.DeleteTB_FINGERAPPROVALNUM_Key(FingerUserID,inttostr(FingerDeviceSeq));
+    dmDBInsert.InsertIntoTB_FINGERAPPROVALNUM_Value(FingerUserID,inttostr(FingerDeviceSeq),inttostr(FingerEmSeq),FingerDeviceIP);
+  end;
+
+end;
+
+procedure TfmSHFingerDeviceReg.SetFingerUserID(const Value: String);
+var
+  stmmddhhnn : string;
+  stuserid : string;
+  nRanNum : integer;
+  stRanNum : string;
+  stFingerUserID : string;
+  i : integer;
+  nTemp : integer;
+  stFingerData : string;
+begin
+  if FFingerUserID = Value then Exit;
+  FFingerUserID := Value;
+  stFingerUserID := FillZeroStrNum(Value,G_nFPUserIDLength);
+  stmmddhhnn := formatdatetime('mmddhhnn',now);
+  Randomize();
+  nRanNum := Random(99);
+  stRanNum := FillZeroNumber(nRanNum,2);
+  stuserid := copy(stmmddhhnn,1,2) + copy(stFingerUserID,1,2) +
+              copy(stmmddhhnn,5,2) + copy(stFingerUserID,3,2) +
+              copy(stmmddhhnn,3,2) + copy(stFingerUserID,5,2) +
+              copy(stmmddhhnn,7,2) ;
+  stFingerData := '';
+  for i:=1 to 14 do
+  begin
+    if (i mod 2 = 0) then nTemp := strtoint(stuserid[i]) + strtoint(stRanNum[2])
+    else nTemp := strtoint(stuserid[i]) + strtoint(stRanNum[1]);
+    stFingerData := stFingerData + inttostr(nTemp mod 10);
+  end;
+  stFingerData := stFingerData + stRanNum;
+  FingerData := stFingerData;
+  Timer.Enabled := True;
+end;
+
+procedure TfmSHFingerDeviceReg.SpeedButton2Click(Sender: TObject);
+begin
+  Save := False;
+  if (G_nFingerRelayType = 2) then
+  begin
+    (*
+    if dmSHFDBRelay.CheckTB_Syncuserterminal_Key(FillZeroStrNum(FingerUserID,G_nFPUserIDLength),inttostr(FingerDeviceID)) = 1 then
+    begin
+      dmSHFDBRelay.UpdateTB_Syncuserterminal_value(FillZeroStrNum(FingerUserID,G_nFPUserIDLength),inttostr(FingerDeviceID),'D');
+    end else
+    begin
+      dmSHFDBRelay.InsertIntoTB_Syncuserterminal_value(FillZeroStrNum(FingerUserID,G_nFPUserIDLength),inttostr(FingerDeviceID),'D');
+    end;
+    *)
+    //dmSHFDBRelay.UpdateTb_approvalnum(FillZeroStrNum(FingerUserID,G_nFPUserIDLength),inttostr(FingerDeviceID),'D');
+  end else if (G_nFingerRelayType = 3) then
+  begin
+    dmDBDelete.DeleteTB_FINGERAPPROVALNUM_Key(FingerUserID,inttostr(FingerDeviceSeq));
+  end;
+  Close;
+end;
+
+procedure TfmSHFingerDeviceReg.TimerTimer(Sender: TObject);
+var
+  nResult : integer;
+begin
+  lb_Message.Visible := Not lb_Message.Visible;
+  if (G_nFingerRelayType = 2) then
+  begin
+    if dmSHFDBRelay.DBConnected then
+    begin
+      if dmSHFDBRelay.CheckTB_Approvalnum_Sucess(FillZeroStrNum(FingerUserID,G_nFPUserIDLength),inttostr(FingerDeviceID)) then
+      begin
+        lb_Message.Caption.Text := '지문등록 완료! 적용 버튼을 클릭 하여 지문을 등록하여 주세요.';
+        lb_Message.Visible := True;
+        Timer.Enabled := False;
+        btn_ApplyClick(btn_Apply);
+      end;
+    end;
+  end else if (G_nFingerRelayType = 3) then
+  begin
+    nResult := dmDBFunction.CheckTB_FINGERAPPROVALNUM_Sucess(FingerUserID,inttostr(FingerDeviceSeq));
+    if nResult = 1 then
+    begin
+      lb_Message.Caption.Text := '지문등록 완료! 적용 버튼을 클릭 하여 지문을 등록하여 주세요.';
+      lb_Message.Visible := True;
+      Timer.Enabled := False;
+      btn_ApplyClick(btn_Apply);
+    end else if nResult = 0 then
+    begin
+      lb_Message.Caption.Text := '지문등록에 실패하였습니다.지문리더 통신상태를 점검하여 주세요.';
+      lb_Message.Visible := True;
+      Timer.Enabled := False;
+    end;
+
+  end;
+end;
+
+end.

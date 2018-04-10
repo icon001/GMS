@@ -1,0 +1,88 @@
+unit uCompanyCodeLoad;
+
+interface
+uses ADODB,StdCtrls,Classes,SysUtils,ActiveX;
+
+procedure LoadCompanyCode(aStringList:TStringList;cmb_Box:TComboBox;aAll:Boolean=True);
+
+implementation
+uses
+  uCommonVariable,
+  uDataBase;
+
+procedure LoadCompanyCode(aStringList:TStringList;cmb_Box:TComboBox;aAll:Boolean=True);
+var
+  stSql :string;
+  TempAdoQuery : TADOQuery;
+  nIndex : integer;
+  stTemp : string;
+begin
+  cmb_Box.Clear;
+  aStringList.Clear;
+
+  stSql := ' select a.CO_NAME,a.CO_COMPANYCODE from TB_COMPANY a ';
+  stSql := stSql + ' Where a.GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  stSql := stSql + ' AND a.CO_GUBUN = ''1''';
+  stSql := stSql + ' Group by a.CO_NAME ';
+
+
+  if aAll then   //잘못하면 CompanyCodeList 의 인덱스와 맞지 않을 수 있다
+  begin
+    cmb_Box.Items.Add('전체');
+    aStringList.Add('');
+    cmb_Box.ItemIndex := 0;
+  end;
+
+  CoInitialize(nil);
+  TempAdoQuery := TADOQuery.Create(nil);
+  TempAdoQuery.Connection := dmDataBase.ADOConnection;
+
+  with TempAdoQuery do
+  begin
+    Close;
+    Sql.Clear;
+    Sql.Text := stSql;
+
+    Try
+      Open;
+    Except
+      TempAdoQuery.Free;
+      CoUninitialize;
+      Exit;
+    End;
+
+    if RecordCount < 1 then
+    begin
+      TempAdoQuery.Free;
+      CoUninitialize;
+      Exit;
+    end;
+    First;
+
+    While Not Eof do
+    begin
+      stTemp := FindField('CO_COMPANYCODE').AsString + FindField('CO_NAME').AsString;
+      cmb_Box.Items.Add(FindField('CO_NAME').AsString);
+      aStringList.Add(FindField('CO_COMPANYCODE').AsString);
+      Next;
+    end;
+    if RecordCount = 1 then
+    begin
+      cmb_Box.ItemIndex := 1;
+    end else
+    begin
+      if strtoint(CompanyGrade) > 1 then
+      begin
+        nIndex := aStringList.IndexOf(MasterCompany);
+        if nIndex > 0 then cmb_Box.ItemIndex := nIndex;
+      end;
+      if cmb_Box.Items.Count > 0 then
+         cmb_Box.ItemIndex := 0;
+    end;
+  end;
+  TempAdoQuery.Free;
+  CoUninitialize;
+end;
+
+
+end.

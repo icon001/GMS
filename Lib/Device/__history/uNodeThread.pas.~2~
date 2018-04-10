@@ -1,0 +1,49 @@
+unit uNodeThread;
+
+interface
+
+uses
+  System.SysUtils, System.Classes;
+
+type
+  TNodeThread = class(TThread)
+  private
+    { Private declarations }
+  protected
+    procedure Execute; override;
+
+  public
+    { Public declarations }
+    constructor Create(aNodeNo:integer);
+  end;
+
+  TdmThread = class(TDataModule)
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+  end;
+
+var
+  dmThread: TdmThread;
+
+implementation
+
+{%CLASSGROUP 'System.Classes.TPersistent'}
+
+{$R *.dfm}
+
+{ TNodeThread }
+
+constructor TNodeThread.Create(aNodeNo:integer);
+begin
+
+end;
+
+procedure TNodeThread.Execute;
+begin
+  inherited;
+
+end;
+
+end.

@@ -1,0 +1,285 @@
+﻿unit uFingerDeviceState;
+
+interface
+
+uses
+  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
+  Vcl.Controls, Vcl.Forms, Vcl.Dialogs,uSubForm, AdvOfficeTabSet,
+  AdvOfficeTabSetStylers, CommandArray, Vcl.Grids, AdvObj, BaseGrid, AdvGrid,
+  Vcl.StdCtrls, AdvEdit, Vcl.Buttons, AdvSmoothLabel, AdvSmoothPanel, W7Classes,
+  W7Panels, AdvGlassButton,ADODB,ActiveX, frmshape, Vcl.Mask, AdvSpin,
+  DBAdvSmoothLabel, AdvSmoothProgressBar, Vcl.ExtCtrls, AdvCombo, Vcl.ComCtrls,
+  Vcl.ImgList, Vcl.Menus;
+
+type
+  TfmFingerDeviceState = class(TfmASubForm)
+    AdvOfficeTabSetOfficeStyler1: TAdvOfficeTabSetOfficeStyler;
+    W7Panel1: TW7Panel;
+    BodyPanel: TW7Panel;
+    menuTab: TAdvOfficeTabSet;
+    List: TAdvSmoothPanel;
+    MenuImageList16: TImageList;
+    tv_List: TTreeView;
+    tv_Code: TTreeView;
+    PopupMenu1: TPopupMenu;
+    mn_CardReSend: TMenuItem;
+    procedure menuTabChange(Sender: TObject);
+    procedure FormShow(Sender: TObject);
+    procedure FormClose(Sender: TObject; var Action: TCloseAction);
+    procedure btn_AddClick(Sender: TObject);
+    procedure FormResize(Sender: TObject);
+    procedure FormCreate(Sender: TObject);
+    procedure sg_ListCheckBoxClick(Sender: TObject; ACol, ARow: Integer;
+      State: Boolean);
+    procedure CommandArrayCommandsTMENUIDExecute(Command: TCommand;
+      Params: TStringList);
+    procedure ed_IpKeyPress(Sender: TObject; var Key: Char);
+    procedure CommandArrayCommandsTFORMNAMEExecute(Command: TCommand;
+      Params: TStringList);
+    procedure mn_CardReSendClick(Sender: TObject);
+  private
+    L_nPageListMaxCount : integer;
+    L_nCheckCount : integer;
+    L_nProgress : integer;
+    L_stMenuID : string;
+    L_stButtonCloseCaption : string;
+    L_stButtonPreCaption : string;
+    L_stNodeAddCaption : string;
+    L_stNodeUpdateCaption : string;
+    L_stWork : string;
+    { Private declarations }
+  private
+    function SearchDeviceViewList(aDeviceCode: string): Boolean;
+    procedure AdvStrinGridSetAllCheck(Sender: TObject;bchkState:Boolean);
+
+  public
+    { Public declarations }
+    procedure FormChangeEvent(aFormName:integer);
+    procedure ReaderConnected(aFNDEVICESEQ:integer;aValue:Boolean);
+  end;
+
+var
+  fmFingerDeviceState: TfmFingerDeviceState;
+
+implementation
+uses
+  uCommonFunction,
+  uCommonVariable,
+  uDataBase,
+  uDBDelete,
+  uDBFormMessage,
+  uDBFunction,
+  uDBInsert,
+  uDBUpdate,
+  uDBSelect,
+  uDBVariable,
+  uFormVariable,
+  uSupremaServer;
+{$R *.dfm}
+
+
+procedure TfmFingerDeviceState.AdvStrinGridSetAllCheck(Sender: TObject;
+  bchkState: Boolean);
+var
+  i : integer;
+begin
+    for i:= 1 to (Sender as TAdvStringGrid).RowCount - 1  do
+    begin
+      (Sender as TAdvStringGrid).SetCheckBoxState(0,i,bchkState);
+    end;
+end;
+
+procedure TfmFingerDeviceState.btn_AddClick(Sender: TObject);
+begin
+  inherited;
+  menuTab.ActiveTabIndex := 2;
+  menuTabChange(self);
+end;
+
+procedure TfmFingerDeviceState.CommandArrayCommandsTFORMNAMEExecute(Command: TCommand;
+  Params: TStringList);
+begin
+  inherited;
+  Caption := Params.Values['CAPTION'];
+
+end;
+
+procedure TfmFingerDeviceState.CommandArrayCommandsTMENUIDExecute(Command: TCommand;
+  Params: TStringList);
+begin
+  inherited;
+  L_stMenuID := Params.Values['ID'];
+end;
+
+procedure TfmFingerDeviceState.ed_IpKeyPress(Sender: TObject; var Key: Char);
+begin
+  inherited;
+  if Key = Char(VK_RETURN) then
+      Perform(WM_NEXTDLGCTL,0,0);
+
+end;
+
+procedure TfmFingerDeviceState.FormChangeEvent(aFormName: integer);
+begin
+//  case aFormName of
+//  end;
+end;
+
+procedure TfmFingerDeviceState.FormClose(Sender: TObject; var Action: TCloseAction);
+begin
+  inherited;
+  self.FindSubForm('Main').FindCommand('FORMENABLE').Params.Values['NAME'] := inttostr(conFORMFINGERDEVICESTATE);
+  self.FindSubForm('Main').FindCommand('FORMENABLE').Params.Values['VALUE'] := 'FALSE';
+  self.FindSubForm('Main').FindCommand('FORMENABLE').Execute;
+
+  Action := caFree;
+end;
+
+procedure TfmFingerDeviceState.FormCreate(Sender: TObject);
+begin
+  inherited;
+  L_nPageListMaxCount := 17;
+  L_stButtonCloseCaption := '닫기';
+end;
+
+
+procedure TfmFingerDeviceState.FormResize(Sender: TObject);
+begin
+  inherited;
+  BodyPanel.Left := 0;
+  BodyPanel.Top := 0;
+  BodyPanel.Height := Height - menuTab.Height;
+
+end;
+
+procedure TfmFingerDeviceState.FormShow(Sender: TObject);
+begin
+  inherited;
+  WindowState := wsMaximized;
+
+  self.FindSubForm('Main').FindCommand('FORMENABLE').Params.Values['NAME'] := inttostr(conFORMFINGERDEVICESTATE);
+  self.FindSubForm('Main').FindCommand('FORMENABLE').Params.Values['VALUE'] := 'TRUE';
+  self.FindSubForm('Main').FindCommand('FORMENABLE').Execute;
+
+  menuTab.ActiveTabIndex := 1;
+  menuTabChange(self);
+  SearchDeviceViewList('');
+end;
+
+procedure TfmFingerDeviceState.menuTabChange(Sender: TObject);
+begin
+  inherited;
+  if menuTab.ActiveTabIndex = 0 then //Ȩ
+  begin
+    if menuTab.AdvOfficeTabs.Items[0].Caption = L_stButtonCloseCaption then Close
+    else
+    begin
+      menuTab.ActiveTabIndex := 1;
+      menuTabChange(self);
+    end;
+  end else if menuTab.ActiveTabIndex = 1 then
+  begin
+    menuTab.AdvOfficeTabs.Items[0].Caption := L_stButtonCloseCaption;
+    List.Visible := True;
+    List.Align := alClient;
+  end;
+end;
+
+procedure TfmFingerDeviceState.mn_CardReSendClick(Sender: TObject);
+var
+  stFingerSeq : string;
+  stNodeNo,stEcuID,stDoorNo : string;
+begin
+  stFingerSeq := tv_Code.Items.Item[tv_List.Selected.AbsoluteIndex].Text;
+  //if dmDBFunction.GetTB_FINGERDEVICE_DeviceInfo(stFingerSeq,stNodeNo,stEcuID,stDoorNo) then
+  //begin
+  dmDBUpdate.UpdateTB_FINGERDEVICECARD_Resend(stFingerSeq);
+  //end;
+end;
+
+procedure TfmFingerDeviceState.ReaderConnected(aFNDEVICESEQ: integer;
+  aValue: Boolean);
+var
+  aTreeView   : TTreeview;
+  vTreeView   : TTreeview;
+  aNode       : TTreeNode;
+  nItemIndex : integer;
+begin
+  aTreeView := tv_List;
+  if aTreeView.Items.Count < 1 then Exit;
+  vTreeView := tv_Code;
+  aNode:= GetNodeByText(vTreeView,inttostr(aFNDEVICESEQ) ,False);
+
+  if aNode = nil then Exit;
+
+  nItemIndex := aNode.AbsoluteIndex;
+  if aValue then
+  begin
+    aTreeView.Items.Item[nItemIndex].ImageIndex := 0;
+    aTreeView.Items.Item[nItemIndex].SelectedIndex := 0;
+  end else
+  begin
+    aTreeView.Items.Item[nItemIndex].ImageIndex := 1;
+    aTreeView.Items.Item[nItemIndex].SelectedIndex := 1;
+  end;
+  aTreeView.Refresh;
+end;
+
+function TfmFingerDeviceState.SearchDeviceViewList(aDeviceCode: string): Boolean;
+var
+  aTreeView   : TTreeview;
+  vTreeView : TTreeview;
+  aNode1,aNode2,aNode3   : TTreeNode;
+  vNode1,vNode2,vNode3   : TTreeNode;
+  i : integer;
+begin
+  aTreeView := tv_List;
+  aTreeView.ReadOnly:= True;
+  aTreeView.Items.Clear;
+  vTreeView := tv_Code;
+  vTreeView.ReadOnly:= True;
+  vTreeView.Items.Clear;
+
+  if SupremaFingerList.Count > 0 then
+  begin
+    for i := 0 to SupremaFingerList.Count - 1 do
+    begin
+      aNode1:= aTreeView.Items.AddChild(nil,TSupremaServer(SupremaFingerList.Objects[i]).DEVICEIP + ':' + TSupremaServer(SupremaFingerList.Objects[i]).DEVICENAME);
+      vNode1:= vTreeView.Items.AddChild(nil,inttostr(TSupremaServer(SupremaFingerList.Objects[i]).FNSEQ));
+      if TSupremaServer(SupremaFingerList.Objects[i]).Connected then
+      begin
+        aNode1.ImageIndex := 0;
+        aNode1.SelectedIndex := 0;
+      end else
+      begin
+        aNode1.ImageIndex := 1;
+        aNode1.SelectedIndex := 1;
+      end;
+    end;
+  end;
+end;
+
+
+procedure TfmFingerDeviceState.sg_ListCheckBoxClick(Sender: TObject; ACol,
+  ARow: Integer; State: Boolean);
+begin
+  inherited;
+  if ARow = 0 then //전체선택 또는 해제
+  begin
+    if State then L_nCheckCount := (Sender as TAdvStringGrid).RowCount - 1
+    else L_nCheckCount := 0;
+    AdvStrinGridSetAllCheck(Sender,State);
+  end else
+  begin
+    if State then L_nCheckCount := L_nCheckCount + 1
+    else L_nCheckCount := L_nCheckCount - 1 ;
+  end;
+end;
+
+
+initialization
+  RegisterClass(TfmFingerDeviceState);
+Finalization
+  UnRegisterClass(TfmFingerDeviceState);
+
+end.

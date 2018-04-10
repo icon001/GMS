@@ -1,0 +1,61 @@
+unit uDoorSelect;
+
+interface
+
+uses
+  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
+  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.ComCtrls, AdvGlowButton,
+  Vcl.StdCtrls, AdvEdit, Vcl.Grids, AdvObj, BaseGrid, AdvGrid, AdvSmoothLabel,
+  Vcl.ExtCtrls, AdvSplitter, AdvSmoothPanel, W7Classes, W7Panels, AdvOfficePager,
+  AdvAppStyler, AdvOfficePagerStylers, AdvOfficeTabSet, AdvOfficeTabSetStylers,
+  Vcl.ImgList;
+
+const
+  con_LocalCompanyImageIndex = 0;
+  con_LocalEmployeeImageIndex = 1;
+  con_LocalBuildingImageIndex = 2;
+
+type
+  TfmDoorSelect = class(TForm)
+    AdvOfficeTabSetOfficeStyler1: TAdvOfficeTabSetOfficeStyler;
+    AdvOfficePagerOfficeStyler1: TAdvOfficePagerOfficeStyler;
+    AdvFormStyler1: TAdvFormStyler;
+    AdvOfficePager1: TAdvOfficePager;
+    AdvOfficePage1: TAdvOfficePage;
+    BodyPanel: TW7Panel;
+    List: TAdvSmoothPanel;
+    AdvSplitter1: TAdvSplitter;
+    AdvSmoothPanel1: TAdvSmoothPanel;
+    lb_BuildingList: TLabel;
+    sg_List: TAdvStringGrid;
+    pan_left: TAdvSmoothPanel;
+    Label1: TLabel;
+    tv_List: TTreeView;
+    tv_Code: TTreeView;
+    btn_Select: TAdvGlowButton;
+    MenuImageList16: TImageList;
+    procedure FormActivate(Sender: TObject);
+  private
+    FSelectBuildingCode: string;
+    { Private declarations }
+  public
+    { Public declarations }
+    property SelectBuildingCode : string read FSelectBuildingCode write FSelectBuildingCode;
+  end;
+
+var
+  fmDoorSelect: TfmDoorSelect;
+
+implementation
+uses
+  uComboBoxCodeLoad;
+
+{$R *.dfm}
+
+procedure TfmDoorSelect.FormActivate(Sender: TObject);
+begin
+  LoadBuildingTreeView(SelectBuildingCode,tv_List,tv_Code,con_LocalBuildingImageIndex);
+//
+end;
+
+end.

@@ -1,0 +1,394 @@
+﻿unit uFTPModule;
+
+interface
+
+uses
+  Winapi.Windows,System.SysUtils, System.Classes,System.Types,IdGlobalProtocols,IdHashCRC,
+  IdContext, IdBaseComponent, IdComponent, IdCustomTCPServer, IdTCPServer,
+  IdCmdTCPServer, IdExplicitTLSClientServerBase, IdFTPServer,IdFTPListOutput,
+  IdCommandHandlers,IdFTPList ;
+
+type
+  TdmFTPModule = class(TDataModule)
+    procedure IdFTPServer1UserLogin(ASender: TIdFTPServerContext;
+      const AUsername, APassword: string; var AAuthenticated: Boolean);
+    procedure IdFTPServer1ListDirectory(ASender: TIdFTPServerContext;
+      const APath: string; ADirectoryListing: TIdFTPListOutput; const ACmd,
+      ASwitches: string);
+    procedure IdFTPServer1RenameFile(ASender: TIdFTPServerContext;
+      const ARenameFromFile, ARenameToFile: string);
+    procedure IdFTPServer1RetrieveFile(ASender: TIdFTPServerContext;
+      const AFileName: string; var VStream: TStream);
+    procedure IdFTPServer1StoreFile(ASender: TIdFTPServerContext;
+      const AFileName: string; AAppend: Boolean; var VStream: TStream);
+    procedure IdFTPServer1RemoveDirectory(ASender: TIdFTPServerContext;
+      var VDirectory: string);
+    procedure IdFTPServer1MakeDirectory(ASender: TIdFTPServerContext;
+      var VDirectory: string);
+    procedure IdFTPServer1GetFileSize(ASender: TIdFTPServerContext;
+      const AFilename: string; var VFileSize: Int64);
+    procedure IdFTPServer1DeleteFile(ASender: TIdFTPServerContext;
+      const APathName: string);
+    procedure IdFTPServer1ChangeDirectory(ASender: TIdFTPServerContext;
+      var VDirectory: string);
+    procedure IdFTPServer1Disconnect(AContext: TIdContext);
+    procedure IdFTPServer1Connect(AContext: TIdContext);
+    procedure IdFTPServer1CommandXCRC( ASender: TIdCommand ) ;
+    procedure DataModuleCreate(Sender: TObject);
+    procedure DataModuleDestroy(Sender: TObject);
+  private
+    function GetSizeOfFile(AFile : String): integer;
+    function ReplaceChars(APath:String):string;
+  private
+    IdFTPServer: TIdFTPServer;
+    FFTPPORT: string;
+    FFTPStart: Boolean;
+    procedure SetFTPPORT(const Value: string);
+    procedure SetFTPStart(const Value: Boolean);
+    { Private declarations }
+  public
+    { Public declarations }
+    procedure FTPServerCreate;
+  published
+    property FTPPORT : string read FFTPPORT write SetFTPPORT;
+    property FTPStart : Boolean read FFTPStart write SetFTPStart;
+  end;
+
+var
+  dmFTPModule: TdmFTPModule;
+
+implementation
+
+uses
+  uCommonVariable;
+
+{%CLASSGROUP 'System.Classes.TPersistent'}
+
+{$R *.dfm}
+
+//*****************************************
+//FTP SERVER 관련 모듈
+//*****************************************
+
+
+function StartsWith( const str, substr: string ) : boolean;
+begin
+  result := copy( str, 1, length( substr ) ) = substr;
+end;
+
+function BackSlashToSlash( const str: string ) : string;
+var
+  a: dword;
+begin
+  result := str;
+  for a := 1 to length( result ) do
+    if result[a] = '\' then
+      result[a] := '/';
+end;
+
+function SlashToBackSlash( const str: string ) : string;
+var
+  a: dword;
+begin
+  result := str;
+  for a := 1 to length( result ) do
+    if result[a] = '/' then
+      result[a] := '\';
+end;
+
+function GetSizeOfFile( const APathname: string ) : int64;
+begin
+  result := FileSizeByName( APathname ) ;
+end;
+
+function GetNewDirectory( old, action: string ) : string;
+var
+  a: integer;
+begin
+  if action = '../' then
+  begin
+    if old = '/' then
+    begin
+      result := old;
+      exit;
+    end;
+    a := length( old ) - 1;
+    while ( old[a] <> '\' ) and ( old[a] <> '/' ) do
+      dec( a ) ;
+    result := copy( old, 1, a ) ;
+    exit;
+  end;
+  if ( action[1] = '/' ) or ( action[1] = '\' ) then
+    result := action
+  else
+    result := old + action;
+end;
+
+function CalculateCRC( const path: string ) : string;
+var
+  f: tfilestream;
+  value: dword;
+  IdHashCRC32: TIdHashCRC32;
+begin
+  IdHashCRC32 := nil;
+  f := nil;
+  try
+    IdHashCRC32 := TIdHashCRC32.create;
+    f := TFileStream.create( path, fmOpenRead or fmShareDenyWrite ) ;
+    value := IdHashCRC32.HashValue( f ) ;
+    result := inttohex( value, 8 ) ;
+  finally
+    f.free;
+    IdHashCRC32.free;
+  end;
+end;
+
+function ReplaceChars(APath:String):String;
+var
+ s:string;
+begin
+  s := StringReplace(APath, '/', '\', [rfReplaceAll]);
+  s := StringReplace(s, '\\', '\', [rfReplaceAll]);
+  Result := s;
+end;
+
+
+function TransLatePath(const APathname, homeDir: string): string;
+var
+  tmppath: string;
+begin
+  result := SlashToBackSlash( homeDir ) ;
+  tmppath := SlashToBackSlash( APathname ) ;
+  if homedir = '/' then
+  begin
+    result := tmppath;
+    exit;
+  end;
+
+  if length( APathname ) = 0 then
+    exit;
+  if result[length( result ) ] = '\' then
+    result := copy( result, 1, length( result ) - 1 ) ;
+  if tmppath[1] <> '\' then
+    result := result + '\';
+  result := result + tmppath;
+end;
+
+//*****************************************
+//FTP SERVER 관련 모듈
+//*****************************************
+
+{ TdmFTPModule }
+
+procedure TdmFTPModule.DataModuleCreate(Sender: TObject);
+begin
+  IdFTPServer := tIdFTPServer.create( nil ) ;
+end;
+
+procedure TdmFTPModule.DataModuleDestroy(Sender: TObject);
+begin
+  IdFTPServer.Active := False;
+  IdFTPServer.Free;
+end;
+
+procedure TdmFTPModule.FTPServerCreate;
+begin
+  if not DirectoryExists(G_stExeFolder + '\data') then
+  begin
+    if not CreateDir(G_stExeFolder + '\data')then
+    raise Exception.Create('Cannot create '+G_stExeFolder + '\data');
+  end;
+  IdFTPServer.DefaultPort := 3101;
+  IdFTPServer.AllowAnonymousLogin := False;
+  IdFTPServer.DirFormat := ftpdfUnix;
+  IdFTPServer.HelpReply.text.Add('Help is not implemented');
+  IdFTPServer.OnChangeDirectory := IdFTPServer1ChangeDirectory;
+  IdFTPServer.OnGetFileSize := IdFTPServer1GetFileSize;
+  IdFTPServer.OnListDirectory := IdFTPServer1ListDirectory;
+  IdFTPServer.OnUserLogin := IdFTPServer1UserLogin;
+  IdFTPServer.OnRenameFile := IdFTPServer1RenameFile;
+  IdFTPServer.OnDeleteFile := IdFTPServer1DeleteFile;
+  IdFTPServer.OnRetrieveFile := IdFTPServer1RetrieveFile;
+  IdFTPServer.OnStoreFile := IdFTPServer1StoreFile;
+  IdFTPServer.OnMakeDirectory := IdFTPServer1MakeDirectory;
+  IdFTPServer.OnRemoveDirectory := IdFTPServer1RemoveDirectory;
+
+  IdFTPServer.Greeting.NumericCode := 220;
+  IdFTPServer.OnDisconnect := IdFTPServer1DisConnect;
+  IdFTPServer.OnConnect := IdFTPServer1Connect;
+  with IdFTPServer.CommandHandlers.add do
+  begin
+    Command := 'XCRC';
+    OnCommand := IdFTPServer1CommandXCRC;
+  end;
+
+end;
+
+function TdmFTPModule.GetSizeOfFile(AFile: String): integer;
+var
+  FStream : TFileStream;
+begin
+  Try
+   FStream := TFileStream.Create(AFile, fmOpenRead);
+   Try
+    Result := FStream.Size;
+   Finally
+    FreeAndNil(FStream);
+   End;
+  Except
+   Result := 0;
+  End;
+end;
+
+procedure TdmFTPModule.IdFTPServer1ChangeDirectory(ASender: TIdFTPServerContext;
+  var VDirectory: string);
+begin
+  ASender.CurrentDir := VDirectory;
+end;
+
+procedure TdmFTPModule.IdFTPServer1CommandXCRC(ASender: TIdCommand);
+var
+  s: string;
+begin
+{
+  with TIdFTPServerThread( ASender.Thread ) do
+  begin
+    if Authenticated then
+    begin
+      try
+        s := ProcessPath( CurrentDir, ASender.UnparsedParams ) ;
+        s := TransLatePath( s, TIdFTPServerThread( ASender.Thread ) .HomeDir ) ;
+        ASender.Reply.SetReply( 213, CalculateCRC( s ) ) ;
+      except
+        ASender.Reply.SetReply( 500, 'file error' ) ;
+      end;
+    end;
+  end; }
+end;
+
+procedure TdmFTPModule.IdFTPServer1Connect(AContext: TIdContext);
+begin
+//
+end;
+
+procedure TdmFTPModule.IdFTPServer1DeleteFile(ASender: TIdFTPServerContext;
+  const APathName: string);
+begin
+//  DeleteFile(ReplaceChars(G_stExeFolder+ASender.CurrentDir+'\'+APathname));
+  DeleteFile( pchar( TransLatePath( ASender.CurrentDir + '/' + APathname, ASender.HomeDir ) ) ) ;
+end;
+
+procedure TdmFTPModule.IdFTPServer1Disconnect(AContext: TIdContext);
+begin
+//  AContext.Data := nil;
+end;
+
+procedure TdmFTPModule.IdFTPServer1GetFileSize(ASender: TIdFTPServerContext;
+  const AFilename: string; var VFileSize: Int64);
+begin
+  VFileSize := GetSizeOfFile( TransLatePath( AFilename, ASender.HomeDir ) ) ;
+end;
+
+procedure TdmFTPModule.IdFTPServer1ListDirectory(ASender: TIdFTPServerContext;
+  const APath: string; ADirectoryListing: TIdFTPListOutput; const ACmd,
+  ASwitches: string);
+var
+ LFTPItem :TIdFTPListItem;
+ SR : TSearchRec;
+ SRI : Integer;
+begin
+  ADirectoryListing.DirFormat := doUnix;
+  SRI := FindFirst(G_stExeFolder + APath + '\*.*', faAnyFile - faHidden - faSysFile, SR);
+
+  While SRI = 0 do
+  begin
+    LFTPItem := ADirectoryListing.Add;
+    LFTPItem.FileName := SR.Name;
+    LFTPItem.Size := SR.Size;
+    LFTPItem.ModifiedDate := FileDateToDateTime(SR.Time);
+    if SR.Attr = faDirectory then
+     LFTPItem.ItemType   := ditDirectory
+    else
+     LFTPItem.ItemType   := ditFile;
+    SRI := FindNext(SR);
+  end;
+  FindClose(SR);
+  SetCurrentDir(G_stExeFolder + APath + '\..');
+end;
+
+procedure TdmFTPModule.IdFTPServer1MakeDirectory(ASender: TIdFTPServerContext;
+  var VDirectory: string);
+begin
+//
+end;
+
+procedure TdmFTPModule.IdFTPServer1RemoveDirectory(ASender: TIdFTPServerContext;
+  var VDirectory: string);
+begin
+  RmDir( TransLatePath( VDirectory, ASender.HomeDir ) ) ;
+end;
+
+procedure TdmFTPModule.IdFTPServer1RenameFile(ASender: TIdFTPServerContext;
+  const ARenameFromFile, ARenameToFile: string);
+begin
+  if not MoveFile( pchar( TransLatePath( ARenameFromFile, ASender.HomeDir ) ) , pchar( TransLatePath( ARenameToFile, ASender.HomeDir ) ) ) then
+    RaiseLastWin32Error;
+end;
+
+procedure TdmFTPModule.IdFTPServer1RetrieveFile(ASender: TIdFTPServerContext;
+  const AFileName: string; var VStream: TStream);
+begin
+  VStream := TFileStream.create( translatepath( AFilename, ASender.HomeDir ) , fmopenread or fmShareDenyWrite ) ;
+end;
+
+procedure TdmFTPModule.IdFTPServer1StoreFile(ASender: TIdFTPServerContext;
+  const AFileName: string; AAppend: Boolean; var VStream: TStream);
+begin
+ {if not Aappend then
+   VStream := TFileStream.Create(ReplaceChars(G_stExeFolder+AFilename),fmCreate)
+ else
+   VStream := TFileStream.Create(ReplaceChars(G_stExeFolder+AFilename),fmOpenWrite);}
+  if FileExists( translatepath( AFilename, ASender.HomeDir ) ) and AAppend then
+  begin
+    VStream := TFileStream.create( translatepath( AFilename, ASender.HomeDir ) , fmOpenWrite or fmShareExclusive ) ;
+    VStream.Seek( 0, soFromEnd ) ;
+  end
+  else
+    VStream := TFileStream.create( translatepath( AFilename, ASender.HomeDir ) , fmCreate or fmShareExclusive ) ;
+end;
+
+procedure TdmFTPModule.IdFTPServer1UserLogin(ASender: TIdFTPServerContext;
+  const AUsername, APassword: string; var AAuthenticated: Boolean);
+begin
+  AAuthenticated := ( AUsername = 'zeron' ) and ( APassword = 'zeronpass' ) ;
+  if not AAuthenticated then
+    exit;
+
+  ASender.HomeDir := G_stExeFolder + '\data';
+  asender.currentdir := '/';
+end;
+
+function TdmFTPModule.ReplaceChars(APath: String):string;
+var
+ s:string;
+begin
+  s := StringReplace(APath, '/', '\', [rfReplaceAll]); //字符串替换函数
+  s := StringReplace(s, '\\', '\', [rfReplaceAll]);
+  Result := s;
+end;
+
+procedure TdmFTPModule.SetFTPPORT(const Value: string);
+begin
+  FFTPPORT := Value;
+  IdFTPServer.DefaultPort := strtoint(Value);
+end;
+
+procedure TdmFTPModule.SetFTPStart(const Value: Boolean);
+begin
+  if FFTPStart = Value then Exit;
+
+  FFTPStart := Value;
+  IdFTPServer.Active := Value;
+end;
+
+end.

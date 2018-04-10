@@ -1,0 +1,30 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<BorlandProject>
+	<Transactions>
+    <Transaction>1899-12-30 00:00:00.000.982,=Y:\[프로젝트]\[DELXE3]\[GMS]_GateManagerSystem\Lib\DataBase\uDataBaseConfig.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.154,Y:\[프로젝트]\[DELXE3]\[GMS]_GateManagerSystem\Lib\DataBase\uDataBaseConfig.pas=</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.112,=Y:\[프로젝트]\[DELXE3]\[GMS]_GateManagerSystem\Lib\DataBase\uDataBase.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.101,Y:\[프로젝트]\[DELXE3]\[GMS]_GateManagerSystem\Util\앞뒤바꿈\uMain.dfm=C:\Users\icon001\Documents\RAD Studio\Projects\Unit1.dfm</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.103,=Y:\[프로젝트]\[DELXE3]\[GMS]_GateManagerSystem\Lib\Common\uCommonFunction.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.383,=Y:\[프로젝트]\[DELXE3]\[MIAMS]_MultiIntigrationAlarmMonitoringSystem\Source\MIAMS_AccessMonitoring\ItemDetail1.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.233,=Y:\[프로젝트]\[DELXE3]\[MIAMS]_MultiIntigrationAlarmMonitoringSystem\Source\MIAMS_AccessMonitoring\GroupedItems1.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.335,=C:\Users\icon001\Documents\RAD Studio\Projects\GroupedItems1.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.413,=C:\Users\icon001\Documents\RAD Studio\Projects\GroupedItems1.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.595,Y:\[프로젝트]\[DELXE3]\[GMS]_GateManagerSystem\Lib\DataBase\uDataBase.pas=</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.814,=Y:\[프로젝트]\[DELXE3]\[GMS]_GateManagerSystem\Lib\DataBase\uDBFormName.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.094,Y:\[프로젝트]\[DELXE3]\[GMS]_GateManagerSystem\Lib\DataBase\uDBFormName.pas=</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.133,=Y:\[프로젝트]\[DELXE3]\[GMS]_GateManagerSystem\Lib\Common\uCommonVariable.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.040,=C:\Users\icon001\Documents\RAD Studio\Projects\Unit1.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.243,=C:\Users\icon001\Documents\RAD Studio\Projects\Unit1.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.674,=C:\Users\icon001\Documents\RAD Studio\Projects\Unit1.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.391,Y:\[프로젝트]\[DELXE3]\[GMS]_GateManagerSystem\Util\앞뒤바꿈\CardFRChange.dproj=C:\Users\icon001\Documents\RAD Studio\Projects\Project1.dproj</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.523,=C:\Users\icon001\Documents\RAD Studio\Projects\Unit1.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.306,=C:\Users\icon001\Documents\RAD Studio\Projects\Unit1.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.754,=Y:\[프로젝트]\[DELXE3]\[GMS]_GateManagerSystem\Lib\DataBase\uDBFormMessage.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.384,Y:\[프로젝트]\[DELXE3]\[GMS]_GateManagerSystem\Lib\DataBase\uDBFormMessage.pas=</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.101,Y:\[프로젝트]\[DELXE3]\[GMS]_GateManagerSystem\Util\앞뒤바꿈\uMain.pas=C:\Users\icon001\Documents\RAD Studio\Projects\Unit1.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.952,=Y:\[프로젝트]\[DELXE3]\[GMS]_GateManagerSystem\Lib\Common\uCommonEvent.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.469,=C:\Users\icon001\Documents\RAD Studio\Projects\ItemDetail1.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.554,=C:\Users\icon001\Documents\RAD Studio\Projects\ItemDetail1.pas</Transaction>
+  </Transactions>
+</BorlandProject>

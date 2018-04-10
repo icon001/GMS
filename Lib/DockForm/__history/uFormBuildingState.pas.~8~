@@ -1,0 +1,101 @@
+unit uFormBuildingState;
+
+interface
+
+uses
+  System.SysUtils, System.Classes;
+
+type
+  TBuildingState = Class(TComponent)
+  private
+    DeviceList : TStringList;
+    DoorList : TStringList;
+    ArmAreaList : TStringList;
+    FBuildingCode: string;
+    FBuildingBuildingName: string;
+    { Private declarations }
+  public
+    { Public declarations }
+    constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
+  public
+    procedure SetDevice_Add(aNodeNo,aEcuID,aEcuName:string);
+  published
+    property BuildingCode : string read FBuildingCode write FBuildingCode;
+    property BuildingName : string read FBuildingBuildingName write FBuildingBuildingName;
+
+  End;
+
+  TBuildingDeviceState = Class(TComponent)
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+    constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
+  public
+
+  End;
+
+  TBuildingDoorState = Class(TComponent)
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+    constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
+  public
+
+  End;
+
+  TBuildingArmAreaState = Class(TComponent)
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+    constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
+  public
+
+  End;
+
+  TDataModule1 = class(TDataModule)
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+  end;
+
+var
+  DataModule1: TDataModule1;
+
+implementation
+
+{%CLASSGROUP 'System.Classes.TPersistent'}
+
+{$R *.dfm}
+
+{ TBuildingState }
+
+constructor TBuildingState.Create(AOwner: TComponent);
+begin
+  inherited;
+  DeviceList := TStringList.Create;
+  DoorList := TStringList.Create;
+  ArmAreaList := TStringList.Create;
+end;
+
+destructor TBuildingState.Destroy;
+begin
+
+  inherited;
+end;
+
+procedure TBuildingState.SetDevice_Add(aNodeNo, aEcuID, aEcuName: string);
+var
+  nIndex : integer;
+begin
+
+end;
+
+end.

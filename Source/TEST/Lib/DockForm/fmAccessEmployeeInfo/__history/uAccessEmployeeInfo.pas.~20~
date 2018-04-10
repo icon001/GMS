@@ -1,0 +1,307 @@
+
+//---------------------------------------------------------------------------
+
+// This software is Copyright (c) 2011 Embarcadero Technologies, Inc. 
+// You may only use this software if you are an authorized licensee
+// of Delphi, C++Builder or RAD Studio (Embarcadero Products).
+// This software is considered a Redistributable as defined under
+// the software license agreement that comes with the Embarcadero Products
+// and is subject to that software license agreement.
+
+//---------------------------------------------------------------------------
+unit uAccessEmployeeInfo;
+
+interface
+
+uses
+  Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms, Dialogs, Menus,
+  ExtCtrls, StdCtrls, AppEvnts, Vcl.ComCtrls,uSubForm, W7Classes, W7Panels,Vcl.Imaging.jpeg,
+  Data.Win.ADODB,Winapi.ActiveX, CommandArray, AdvOfficeTabSet,
+  AdvOfficeTabSetStylers, AdvToolBar, AdvToolBarStylers, AdvPageControl;
+
+type
+  TfmAccessEmployeeInfo = class(TfmASubForm)
+    W7Panel1: TW7Panel;
+    AdvToolBarOfficeStyler1: TAdvToolBarOfficeStyler;
+    AdvOfficeTabSetOfficeStyler1: TAdvOfficeTabSetOfficeStyler;
+    AdvPageControl1: TAdvPageControl;
+    TabSheet1: TAdvTabSheet;
+    ed_DepartName: TEdit;
+    ed_EmCode: TEdit;
+    ed_Name: TEdit;
+    ed_Posiname: TEdit;
+    Label1: TLabel;
+    Label2: TLabel;
+    Label3: TLabel;
+    lb_name: TLabel;
+    Panel1: TPanel;
+    Image1: TImage;
+    procedure FormDockOver(Sender: TObject; Source: TDragDockObject; X, Y: Integer; State: TDragState; var Accept: Boolean);
+    procedure FormClose(Sender: TObject; var Action: TCloseAction);
+    procedure FormCreate(Sender: TObject);
+  private
+    procedure ImageLoading(aEmSeq:string);
+  private
+    FUndockedLeft: Integer;
+    FUndockedTop: Integer;
+    FFloatOnCloseDock: boolean;
+    FfmParent: TfmASubForm;
+    function  ComputeDockingRect(var DockRect: TRect; MousePos: TPoint): TAlign;   //도킹되어 있는 상태에서 다른 폼이 도킹을 시도하는 경우 발생
+    procedure CMDockClient(var Message: TCMDockClient); message CM_DOCKCLIENT;
+    procedure WMNCLButtonDown(var Msg: TMessage); message WM_NCLBUTTONDOWN;
+    procedure FontSetting;
+  public
+    procedure DeviceCardAccessEvent(aTime,aNodeNo, aEcuID, aDoorNo,aReaderNo, aInOut,aInOutName, aCardMode, aDoorMode, aChangeState, aAccessResult,
+                    aAccessPermitName,aDoorState, aATButton, aType, aArmAreaNo, aCardno, aCompanyCode,aCompanyName, aEmSeq,aEmCode, aEmName,aPosiCode,aPosiName:string);
+  public
+    property fmParent : TfmASubForm read FfmParent write FfmParent;
+    property UndockedLeft: Integer read FUndockedLeft;
+    property UndockedTop: Integer read FUndockedTop;
+    property FloatOnCloseDock: boolean read FFloatOnCloseDock write FFloatOnCloseDock;
+  end;
+
+implementation
+{$R *.dfm}
+uses
+  uCommonVariable,
+  uDBVariable,
+  uDataBase,
+  uFormUtil;
+
+procedure TfmAccessEmployeeInfo.FormDockOver(Sender: TObject; Source: TDragDockObject;
+  X, Y: Integer; State: TDragState; var Accept: Boolean);
+var
+  ARect: TRect;
+begin
+  Accept := (Source.Control is Tform);
+  //Draw dock preview depending on where the cursor is relative to our client area
+  if Accept and (ComputeDockingRect(ARect, Point(X, Y)) <> alNone) then
+  begin
+    ComputeDockingRect(ARect, Point(X, Y));
+    Source.DockRect := ARect;
+  end;
+end;
+
+procedure TfmAccessEmployeeInfo.ImageLoading(aEmSeq: string);
+var
+  MapJpg : TJpegImage;
+  MapStream : TMemoryStream;
+  stSql : string;
+  TempAdoQuery : TADOQuery;
+begin
+  Image1.Picture := nil;
+  //여기서 이미지 로딩 하자.
+  Try
+    MapJpg := TJpegImage.Create;
+    MapStream := TMemoryStream.Create;
+    if G_nDBType = POSTGRESQL then
+    begin
+      DeleteFile(G_stExeFolder + '\1.jpg');
+      stSql := ' SELECT lo_export(TB_EMPLOYEE.EM_IMAGE, ' + G_stExeFolder + '\1.jpg' + ') From TB_EMPLOYEE ' ;
+      stSql := stSql + ' Where GROUP_CODE = ''' + G_stGroupCode + ''' ';
+      stSql := stSql + ' AND EM_SEQ = ' + aEmSeq + ' ';
+    end else
+    begin
+      stSql := ' select * from TB_EMPLOYEE ' ;
+      stSql := stSql + ' Where GROUP_CODE = ''' + G_stGroupCode + ''' ';
+      stSql := stSql + ' AND EM_SEQ = ' + aEmSeq + ' ';
+    end;
+
+    CoInitialize(nil);
+    TempAdoQuery := TADOQuery.Create(nil);
+    TempAdoQuery.Connection := dmDataBase.ADOConnection;
+    with TempAdoQuery do
+    begin
+      Close;
+      Sql.Clear;
+      Sql.Text := stSql;
+      Try
+        Open;
+      Except
+        Exit;
+      End;
+
+      if RecordCount > 0 then
+      begin
+        if Not FindField('EM_IMAGE').IsNull then
+        begin
+          if G_nDBType = POSTGRESQL then
+          begin
+            if FileExists(G_stExeFolder + '\1.jpg') then
+              Image1.Picture.LoadFromFile(G_stExeFolder + '\1.jpg');
+          end else
+          begin
+            JPEGLoadFromDB(FieldByName('EM_IMAGE'), Image1);
+          end;
+        end;
+      end;
+    end;
+  Finally
+    TempAdoQuery.Free;
+    CoUninitialize;
+    MapJpg.Free;
+    MapStream.Free;
+  End;
+end;
+
+function TfmAccessEmployeeInfo.ComputeDockingRect(var DockRect: TRect; MousePos: TPoint): TAlign;
+var
+  DockTopRect,
+  DockLeftRect,
+  DockBottomRect,
+  DockRightRect,
+  DockCenterRect: TRect;
+begin
+  Result := alNone;
+  //divide form up into docking "Zones"
+  DockLeftRect.TopLeft := Point(0, 0);
+  DockLeftRect.BottomRight := Point(ClientWidth div 5, ClientHeight);
+
+  DockTopRect.TopLeft := Point(ClientWidth div 5, 0);
+  DockTopRect.BottomRight := Point(ClientWidth div 5 * 4, ClientHeight div 5);
+
+  DockRightRect.TopLeft := Point(ClientWidth div 5 * 4, 0);
+  DockRightRect.BottomRight := Point(ClientWidth, ClientHeight);
+
+  DockBottomRect.TopLeft := Point(ClientWidth div 5, ClientHeight div 5 * 4);
+  DockBottomRect.BottomRight := Point(ClientWidth div 5 * 4, ClientHeight);
+
+  DockCenterRect.TopLeft := Point(ClientWidth div 5, ClientHeight div 5);
+  DockCenterRect.BottomRight := Point(ClientWidth div 5 * 4, ClientHeight div 5 * 4);
+
+  //Find out where the mouse cursor is, to decide where to draw dock preview.
+  if PtInRect(DockLeftRect, MousePos) then
+  begin
+    Result := alLeft;
+    DockRect := DockLeftRect;
+    DockRect.Right := ClientWidth div 2;
+  end
+  else
+  if PtInRect(DockTopRect, MousePos) then
+  begin
+    Result := alTop;
+    DockRect := DockTopRect;
+    DockRect.Left := 0;
+    DockRect.Right := ClientWidth;
+    DockRect.Bottom := ClientHeight div 2;
+  end
+  else
+  if PtInRect(DockRightRect, MousePos) then
+  begin
+    Result := alRight;
+    DockRect := DockRightRect;
+    DockRect.Left := ClientWidth div 2;
+  end
+  else
+  if PtInRect(DockBottomRect, MousePos) then
+  begin
+    Result := alBottom;
+    DockRect := DockBottomRect;
+    DockRect.Left := 0;
+    DockRect.Right := ClientWidth;
+    DockRect.Top := ClientHeight div 2;
+ end
+  else
+  if PtInRect(DockCenterRect, MousePos) then
+  begin
+    Result := alClient;
+    DockRect := DockCenterRect;
+  end;
+  if Result = alNone then Exit;
+
+  //DockRect is in screen coordinates.
+  DockRect.TopLeft := ClientToScreen(DockRect.TopLeft);
+  DockRect.BottomRight := ClientToScreen(DockRect.BottomRight);
+end;
+
+procedure TfmAccessEmployeeInfo.DeviceCardAccessEvent(aTime, aNodeNo, aEcuID,
+  aDoorNo, aReaderNo, aInOut, aInOutName, aCardMode, aDoorMode, aChangeState,
+  aAccessResult, aAccessPermitName, aDoorState, aATButton, aType, aArmAreaNo,
+  aCardno, aCompanyCode, aCompanyName, aEmSeq, aEmCode, aEmName,aPosiCode,aPosiName: string);
+begin
+  ed_Name.Text := aEmName;
+  ed_Posiname.Text := aPosiName;
+  ed_DepartName.Text := aCompanyName;
+  ed_EmCode.Text := aEmCode;
+  ImageLoading(aEmSeq);
+end;
+
+procedure TfmAccessEmployeeInfo.FontSetting;
+begin
+  dmFormUtil.TravelFormFontSetting(self,G_stFontName,inttostr(G_nFontSize));
+  dmFormUtil.TravelAdvOfficeTabSetOfficeStylerFontSetting(AdvOfficeTabSetOfficeStyler1, G_stFontName,inttostr(G_nFontSize));
+  dmFormUtil.FormAdvOfficeTabSetOfficeStylerSetting(AdvOfficeTabSetOfficeStyler1,G_stFormStyle);
+  dmFormUtil.FormAdvToolBarOfficeStylerSetting(AdvToolBarOfficeStyler1,G_stFormStyle);
+  dmFormUtil.FormStyleSetting(self,AdvToolBarOfficeStyler1);
+
+end;
+
+procedure TfmAccessEmployeeInfo.FormClose(Sender: TObject;
+  var Action: TCloseAction);
+begin
+  //the action taken depends on how the form is docked.
+
+  //if docked to a panel, tell the panel to hide itself. If there are other
+  //visible dock clients on the panel, it ShowDockPanel won't allow it to
+  //be hidden
+  if (HostDockSite is TPanel) then
+    fmParent.ShowDockPanel(HostDockSite as TPanel, False, nil);
+
+  Action := caHide;
+
+  if not Floating and FloatOnCloseDock then
+  begin
+    // Float when close docked window
+    Hide;
+    ManualFloat(Rect(FUndockedLeft, FUndockedTop, FUndockedLeft + UndockWidth,
+      FUndockedTop + UndockHeight));
+  end;
+end;
+
+procedure TfmAccessEmployeeInfo.FormCreate(Sender: TObject);
+begin
+  inherited;
+  FontSetting;
+end;
+
+procedure TfmAccessEmployeeInfo.CMDockClient(var Message: TCMDockClient);
+var
+  ARect: TRect;
+  DockType: TAlign;
+  Host: TForm;
+  Pt: TPoint;
+begin
+  //Overriding this message allows the dock form to create host forms
+  //depending on the mouse position when docking occurs. If we don't override
+  //this message, the form will use VCL's default DockManager.
+
+  //NOTE: the only time ManualDock can be safely called during a drag
+  //operation is we override processing of CM_DOCKCLIENT.
+  if Message.DockSource.Control is Tform then
+  begin
+    //Find out how to dock (Using a TAlign as the result of ComputeDockingRect)
+    Pt.X := Message.MousePos.X;
+    Pt.Y := Message.MousePos.Y;
+    DockType := ComputeDockingRect(ARect, Pt);
+
+    //if we are over a dockable form docked to a panel in the
+    //main window, manually dock the dragged form to the panel with
+    //the correct orientation.
+    if (HostDockSite is TPanel) then
+    begin
+      Message.DockSource.Control.ManualDock(HostDockSite, nil, DockType);
+      Exit;
+    end;
+  end;
+end;
+
+procedure TfmAccessEmployeeInfo.WMNCLButtonDown(var Msg: TMessage);
+begin
+  inherited;
+  // This event happen when mouse click in caption
+  // save initial window position
+  FUndockedLeft:= Left;
+  FUndockedTop:= Top;
+end;
+
+end.

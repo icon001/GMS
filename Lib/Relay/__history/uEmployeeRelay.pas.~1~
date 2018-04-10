@@ -1,0 +1,25 @@
+unit uEmployeeRelay;
+
+interface
+
+uses
+  System.SysUtils, System.Classes;
+
+type
+  TdmEmployeeRelay = class(TDataModule)
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+  end;
+
+var
+  dmEmployeeRelay: TdmEmployeeRelay;
+
+implementation
+
+{%CLASSGROUP 'System.Classes.TPersistent'}
+
+{$R *.dfm}
+
+end.

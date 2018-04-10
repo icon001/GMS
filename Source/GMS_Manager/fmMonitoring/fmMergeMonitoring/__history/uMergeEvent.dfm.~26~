@@ -1,0 +1,88 @@
+inherited fmMergeEvent: TfmMergeEvent
+  Left = 117
+  Top = 294
+  Anchors = [akLeft]
+  BorderIcons = [biMinimize, biMaximize]
+  Caption = 'fmMergeEvent'
+  ClientHeight = 298
+  ClientWidth = 920
+  Color = 16577517
+  DockSite = True
+  DragKind = dkDock
+  DragMode = dmAutomatic
+  Font.Height = -10
+  Font.Name = 'MS Sans Serif'
+  OnClose = FormClose
+  OnCreate = FormCreate
+  OnDockOver = FormDockOver
+  OnShow = FormShow
+  ExplicitWidth = 936
+  ExplicitHeight = 336
+  PixelsPerInch = 96
+  TextHeight = 13
+  object BottomSplitter: TSplitter [0]
+    Left = 0
+    Top = 164
+    Width = 920
+    Height = 4
+    Cursor = crVSplit
+    Margins.Left = 2
+    Margins.Top = 2
+    Margins.Right = 2
+    Margins.Bottom = 2
+    Align = alTop
+    ExplicitLeft = 1
+    ExplicitTop = 294
+    ExplicitWidth = 897
+  end
+  object BottomDockPanel: TPanel [1]
+    Left = 0
+    Top = 168
+    Width = 920
+    Height = 130
+    Margins.Left = 2
+    Margins.Top = 2
+    Margins.Right = 2
+    Margins.Bottom = 2
+    Align = alClient
+    BevelOuter = bvNone
+    Color = 16577517
+    DockSite = True
+    ParentBackground = False
+    TabOrder = 0
+    OnResize = BottomDockPanelResize
+  end
+  object TopPanel: TPanel [2]
+    Left = 0
+    Top = 0
+    Width = 920
+    Height = 164
+    Margins.Left = 2
+    Margins.Top = 2
+    Margins.Right = 2
+    Margins.Bottom = 2
+    Align = alTop
+    BevelOuter = bvNone
+    Color = 16577517
+    DockSite = True
+    ParentBackground = False
+    TabOrder = 1
+    object TopDockPanel: TPanel
+      Left = 0
+      Top = 0
+      Width = 920
+      Height = 164
+      Margins.Left = 2
+      Margins.Top = 2
+      Margins.Right = 2
+      Margins.Bottom = 2
+      Align = alClient
+      BevelOuter = bvNone
+      Color = 16577517
+      DockSite = True
+      ParentBackground = False
+      TabOrder = 0
+      OnResize = TopDockPanelResize
+    end
+  end
+end

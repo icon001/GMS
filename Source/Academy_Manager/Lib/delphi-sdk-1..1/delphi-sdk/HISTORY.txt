@@ -1,0 +1,6 @@
+2015-06-12 REST-API Delphi 1.0 
+		- 출시
+
+2015-08-20 REST-API Delphi 1.1
+		- 사용자들 사용하기 편하게 coolsms.send 이런식으로 변경
+		- 코드정리 

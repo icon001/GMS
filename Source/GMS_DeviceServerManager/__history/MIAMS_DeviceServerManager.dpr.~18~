@@ -1,0 +1,70 @@
+program MIAMS_DeviceServerManager;
+
+uses
+  Classes,
+  IniFiles,
+  System.SysUtils,
+  Windows,
+  Winapi.Messages,
+  Vcl.Forms,
+  uMain in 'fmMain\uMain.pas' {fmMain},
+  uCommonFunction in '..\..\Lib\common\uCommonFunction.pas',
+  uCommonVariable in '..\..\Lib\common\uCommonVariable.pas',
+  uDataBase in '..\..\Lib\DataBase\uDataBase.pas' {dmDataBase: TDataModule},
+  uDataBaseConfig in '..\..\Lib\DataBase\uDataBaseConfig.pas' {fmDataBaseConfig},
+  uDBCreate in '..\..\Lib\DataBase\uDBCreate.pas' {dmDBCreate: TDataModule},
+  uDBFunction in '..\..\Lib\DataBase\uDBFunction.pas' {dmDBFunction: TDataModule},
+  uDBInsert in '..\..\Lib\DataBase\uDBInsert.pas' {dmDBInsert: TDataModule},
+  uSubForm in '..\..\Lib\Form\uSubForm.pas' {fmASubForm},
+  uPCComMonitoring in 'fmPCComMonitoring\uPCComMonitoring.pas' {fmPCComMonitoring},
+  uSharedMemory in '..\..\Lib\Common\SharedMemory\uSharedMemory.pas',
+  uFormVariable in '..\..\Lib\Form\uFormVariable.pas',
+  uCommonEvent in '..\..\Lib\Common\uCommonEvent.pas',
+  uSolarLunar in '..\..\Lib\Date\uSolarLunar.pas',
+  uDBFormMessage in '..\..\Lib\DataBase\uDBFormMessage.pas' {dmFormMessage: TDataModule},
+  uDBUpdate in '..\..\Lib\DataBase\uDBUpdate.pas' {dmDBUpdate: TDataModule},
+  uDBFormName in '..\..\Lib\DataBase\uDBFormName.pas' {dmFormName: TDataModule},
+  uDeviceVariable in '..\..\Lib\Device\uDeviceVariable.pas',
+  uDeviceCardNo in 'DataModule\uDeviceCardNo.pas' {dmDeviceCardNo: TDataModule};
+
+{$R *.res}
+{$R manifest.RES}
+
+var
+hMutex : LongInt;
+ini_fun : TiniFile;
+DaemonGubun:string;
+FindHandle: THandle;
+ProcessList : TStringList;
+i : integer;
+ProcId: DWORD;
+hProcess: THandle;
+//TermSucc: BOOL;
+pSelfID : DWORD;
+begin
+  ini_fun := TiniFile.Create(ExtractFileDir(Application.ExeName) + '\Config.INI');
+  G_nDecoderNo := ini_fun.ReadInteger('DECODER','NO',1);
+
+  ProcessList := TStringList.Create;
+  ProcessList.Clear;
+  Process32List(ProcessList);
+  GetWindowThreadProcessId(Application.Handle, @pSelfID);
+  for i := 0 to ProcessList.Count - 1 do
+  begin
+    if ProcessList.Strings[i] = ExtractFileName(Application.ExeName) then  //실행 되고 있으면
+    begin
+      ProcId := DWORD(ProcessList.Objects[i]);
+      if ProcID <> pSelfID then
+      begin
+        Exit; //실행 시키지 말자...
+      end;
+    end;
+  end;
+  Application.Initialize;
+  Application.MainFormOnTaskbar := True;
+  Application.CreateForm(TdmDataBase, dmDataBase);
+  Application.CreateForm(TfmMain, fmMain);
+  Application.CreateForm(TdmFormName, dmFormName);
+  Application.CreateForm(TdmDeviceCardNo, dmDeviceCardNo);
+  Application.Run;
+end.

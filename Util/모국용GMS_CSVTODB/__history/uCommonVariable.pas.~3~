@@ -1,0 +1,17 @@
+unit uCommonVariable;
+
+interface
+
+const
+  MDB = 1;
+  MSSQL = 2;
+  POSTGRESQL = 3;
+  FireBird = 4;
+
+var
+  G_stExeFolder : string;
+
+implementation
+
+
+end.

@@ -1,0 +1,249 @@
+unit uEmployeeRelay;
+
+interface
+
+uses
+  System.SysUtils, System.Classes,ActiveX,AdoDB;
+
+type
+  TdmEmployeeRelay = class(TDataModule)
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+    procedure ChungnamEmployeeDataProcess(aCompanyName,aEmCode,aEmName,aCardNo,aJijumName,aParentName,aDepartName,aEmStateName,aEmGroupName:string);
+  public
+    function InsertIntoIF_IO_TAG_Value(aEmCode,aEmName,aCardNo:string):Boolean;
+    function UpdateIF_IO_TAG_Field_StringValue(aEmCode,aFieldName,aValue:string):Boolean;
+    procedure CardInfoSKChungcheongRelay(aEmCode,aEmName,aCardNo:string);
+    function CheckIF_IO_TAG_EmCode(aEmCode:string):integer;
+  end;
+
+var
+  dmEmployeeRelay: TdmEmployeeRelay;
+
+implementation
+uses
+  uCommonFunction,
+  uCommonVariable,
+  uDBCardPermit,
+  uDBFunction,
+  uDBInsert,
+  uDBRelay,
+  uDBUpdate;
+
+{%CLASSGROUP 'System.Classes.TPersistent'}
+
+{$R *.dfm}
+
+{ TdmEmployeeRelay }
+
+procedure TdmEmployeeRelay.CardInfoSKChungcheongRelay(aEmCode, aEmName,
+  aCardNo: string);
+var
+  nTemp : int64;
+begin
+  if Length(aCardNo) > 10 then
+  begin
+    if aCardNo[9] = '*' then
+    begin
+      aCardNo := copy(aCardNo,1,8);
+      nTemp := Hex2Dec64(aCardNO);
+      aCardNo := FillZeroNumber(nTemp,10);
+    end else
+    begin
+      aCardNo := copy(aCardNO,1,10);
+    end;
+  end;
+  if CheckIF_IO_TAG_EmCode(aEmCode) = 1 then
+  begin
+    UpdateIF_IO_TAG_Field_StringValue(aEmCode,'TAG',aCardNo);
+  end else
+  begin
+    InsertIntoIF_IO_TAG_Value(aEmCode,aEmName,aCardNo);
+  end;
+end;
+
+function TdmEmployeeRelay.CheckIF_IO_TAG_EmCode(aEmCode: string): integer;
+var
+  stSql : string;
+  TempAdoQuery : TADOQuery;
+begin
+  if Not dmDBRelay.DB1Connected then
+  begin
+    dmDBRelay.AdoRelay1Connected(G_stSystmRelayDB1Type, G_stSystmRelayDB1IP, G_stSystmRelayDB1PORT,
+                      G_stSystmRelayDB1USERID, G_stSystmRelayDB1USERPW, G_stSystmRelayDB1NAME);
+  end;
+  result := -1;
+  stSql := ' Select * from IF_IO_TAG where DOC_NO = ''' + aEmCode + ''' ';
+  Try
+    CoInitialize(nil);
+    TempAdoQuery := TADOQuery.Create(nil);
+    TempAdoQuery.Connection := dmDBRelay.ADOConnection1;
+    TempAdoQuery.DisableControls;
+
+    with TempAdoQuery do
+    begin
+      Close;
+      Sql.Clear;
+      Sql.Text := stSql;
+
+      Try
+        Open;
+      Except
+        Exit;
+      End;
+      if recordcount = 0 then result := 0
+      else
+      begin
+        result := 1;
+      end;
+    end;
+  Finally
+    TempAdoQuery.EnableControls;
+    TempAdoQuery.Free;
+    CoUninitialize;
+  End;
+end;
+
+procedure TdmEmployeeRelay.ChungnamEmployeeDataProcess(aCompanyName, aEmCode,
+  aEmName, aCardNo, aJijumName, aParentName, aDepartName, aEmStateName,
+  aEmGroupName: string);
+var
+  stParentCode,stChildCode : string;
+  stDeepSeq : string;
+  stViewSeq : string;
+  stTemp : string;
+  stEmGroupCode : string;
+  stCompanyCode : string;
+  stEmStateCode : string;
+  stEmSeq,stACType,stATType,stFDType,stEmName : string;
+  stCardType,stEmCode,stPositionNum,stRelayID : string;
+begin
+  aEmName := Trim(aEmName);
+  aCompanyName := Trim(aCompanyName);
+  aJijumName := Trim(aJijumName);
+  aParentName := Trim(aParentName);
+  aDepartName := Trim(aDepartName);
+  aEmStateName := Trim(aEmStateName);
+  aEmGroupName := Trim(aEmGroupName);
+  aEmName := StringReplace(aEmName,'''','',[rfReplaceAll]);
+  aCompanyName := StringReplace(aCompanyName,'''','',[rfReplaceAll]);
+  aJijumName := StringReplace(aJijumName,'''','',[rfReplaceAll]);
+  aParentName := StringReplace(aParentName,'''','',[rfReplaceAll]);
+  aDepartName := StringReplace(aDepartName,'''','',[rfReplaceAll]);
+  aEmStateName := StringReplace(aEmStateName,'''','',[rfReplaceAll]);
+  aEmGroupName := StringReplace(aEmGroupName,'''','',[rfReplaceAll]);
+  if aCardNo <> '' then
+  begin
+    aCardNo := FillCharString(aCardNo,'*',16,False);
+  end;
+  stParentCode := dmdBFunction.GetTB_CompanyCode_codeFromName(aCompanyName,'1',stDeepSeq);
+  if stParentCode = '' then
+  begin
+    dmDBFunction.GetNextTB_COMPANYCODE_ChildCompanyCode('0',stParentCode,stDeepSeq,stViewSeq);
+    dmDBInsert.InsertIntoTB_COMPANYCODE_All(stParentCode,aCompanyName,stDeepSeq,'1',stViewSeq);
+  end;
+  stChildCode := dmdBFunction.GetTB_CompanyCode_codeFromName(aJijumName,'2',stDeepSeq);
+  if stChildCode = '' then
+  begin
+    dmDBFunction.GetNextTB_COMPANYCODE_ChildCompanyCode(stParentCode,stChildCode,stDeepSeq,stViewSeq);
+    dmDBInsert.InsertIntoTB_COMPANYCODE_All(stChildCode,aJijumName,stDeepSeq,'1',stViewSeq);
+  end;
+  stParentCode := dmdBFunction.GetTB_CompanyCode_codeFromName(aParentName,'',stDeepSeq);
+  if stParentCode <> '' then
+  begin
+    stChildCode := dmdBFunction.GetTB_CompanyCode_codeFromName(aDepartName,'',stTemp);
+    if stChildCode = '' then
+    begin
+      dmDBFunction.GetNextTB_COMPANYCODE_ChildCompanyCode(stParentCode,stChildCode,stDeepSeq,stViewSeq);
+      dmDBInsert.InsertIntoTB_COMPANYCODE_All(stChildCode,aDepartName,stDeepSeq,'1',stViewSeq);
+    end;
+  end;
+  stCompanyCode := stChildCode;
+  if Not isDigit(stCompanyCode) then stCompanyCode := '0';
+
+  stEmGroupCode := dmDBFunction.GetTB_EMPLOYEEGROUPCODE_codeFromName(aEmGroupName,'',stDeepSeq);
+  if stEmGroupCode = '' then
+  begin
+    dmDBFunction.GetNextTB_EMPLOYEEGROUPCODE_ChildEmGroupCode('0',stTemp,stDeepSeq,stViewSeq);
+    dmDBInsert.InsertIntoTB_EMPLOYEEGROUPCODE_All(stTemp,aEmGroupName,stDeepSeq,'1',stViewSeq);
+    stEmGroupCode := stTemp;
+  end;
+
+  stEmStateCode := dmDBFunction.GetTB_EMPLOYEESTATECODE_codeFromName(aEmStateName);
+  if stEmStateCode = '' then
+  begin
+    stEmStateCode := dmDBFunction.GetNextTB_EMPLOYEESTATECODE_Code;
+    dmDBInsert.InsertIntoTB_EMPLOYEESTATECODE_Value(stEmStateCode,aEmStateName,'1');
+  end;
+
+  if dmDBFunction.checkTB_EMPLOYEE_EMCODE_Variable(aEmCode,stEmSeq,stACType,stATType,stFDType,stEmName) = 1 then
+  begin
+    dmDBUpdate.UpdateTB_EMPLOYEE_Value(stEmSeq,aEmCode,aEmName,stCompanyCode,'0','1',
+               '','','','','','','1','','',stEmGroupCode,'','',stEmStateCode,'1');
+    dmDBInsert.InsertIntoTB_EMPLOYEEHIS_CopyEmployee(stEmSeq,con_ComWorkType_UPDATE); //사원정보 InSert 정보 남기자. 카드를 처리 하고 사원정보 입력 후에 남겨야 연동시 문제 없음
+    dmDBUpdate.UpdateTB_EMPLOYEE_Field_StringValue(stEmSeq,'EM_MEMLOAD','N');  //서버에서 메모리 로딩하자.
+  end else
+  begin
+    stEmSeq := dmDBFunction.GetNextTB_EMPLOYEE_EmSeq;
+    dmDBInsert.InsertIntoTB_EMPLOYEE_Value(stEmSeq,aEmCode,aEmName,stCompanyCode,'0','1','','','','',formatDateTime('yyyymmdd',now),'99991231','1','1','1',stEmGroupCode,'2','0',stEmStateCode,'1');
+    dmDBInsert.InsertIntoTB_EMPLOYEEHIS_CopyEmployee(stEmSeq,con_ComWorkType_INSERT); //사원정보 InSert 정보 남기자. 카드를 처리 하고 사원정보 입력 후에 남겨야 연동시 문제 없음
+    dmDBCardPermit.EmployeeGradeChange_Process(stEmSeq,stCompanyCode,stEmGroupCode,'2');
+    dmDBUpdate.UpdateTB_EMPLOYEE_Field_StringValue(stEmSeq,'EM_MEMLOAD','N');  //서버에서 메모리 로딩하자.
+  end;
+  if aCardNo = '' then Exit;
+  if dmDBFunction.CheckTB_CARD_CARDNO(aCardNo,stCardType,stTemp,stEmCode,stEmName) = 1 then
+  begin
+    if (stEmCode <> aEmCode) or (stCardType <> '1') then
+      dmDBUpdate.UpdateTB_CARD_Value(aCardNo,'1','',stEmSeq);
+  end else
+  begin
+    stPositionNum := dmDBFunction.GetNextTB_CARD_PositionNum;
+    stRelayID := dmDBFunction.GetNextTB_CARD_RelayID;
+    dmDBInsert.InsertIntoTB_CARD_Value(aCardNo,'1','1',stPositionNum,stRelayID,'0',stEmSeq);
+    dmDBInsert.InsertIntoTB_CARDHIS_CopyCard(aCardNo,aCardNo,con_ComWorkType_INSERT); //카드 입력 이력 남기자.
+  end;
+end;
+
+function TdmEmployeeRelay.InsertIntoIF_IO_TAG_Value(aEmCode, aEmName,
+  aCardNo: string): Boolean;
+var
+  stSql : string;
+begin
+  stSql := 'Insert Into IF_IO_TAG ( ';
+  stSql := stsql + ' DOC_NO,';
+  stSql := stsql + ' LBR_NAME,';
+  stSql := stsql + ' TAG,';
+  stSql := stsql + ' LS_GBN,';
+  stSql := stsql + ' DEL_YN,';
+  stSql := stsql + ' CHG_DATE,';
+  stSql := stsql + ' CHG_DESC,';
+  stSql := stsql + ' AREA_CD )';
+  stSql := stsql + ' VALUES(';
+  stSql := stsql + ' ''' + aEmCode + ''',';
+  stSql := stsql + ' ''' + aEmName + ''',';
+  stSql := stsql + ' ''' + aCardNo + ''',';
+  stSql := stsql + ' '''',';
+  stSql := stsql + ' '''',';
+  stSql := stsql + ' ''' + FormatDateTime('yyyymmddhhnnss',now) + ''',';
+  stSql := stsql + ' '''',';
+  stSql := stsql + ' ''' + G_stRelayCode2 + ''')';
+
+  result := dmDBRelay.Process1ExecSQL(stSql);
+
+end;
+
+function TdmEmployeeRelay.UpdateIF_IO_TAG_Field_StringValue(aEmCode, aFieldName,
+  aValue: string): Boolean;
+var
+  stSql : string;
+begin
+  stSql := 'Update IF_IO_TAG set ' + aFieldName + ' = ''' + aValue + ''', ';
+  stSql := stSql + ' CHG_DATE = ''' + FormatDateTime('yyyymmddhhnnss',now) + ''' ';
+  stSql := stSql + ' Where DOC_NO = ''' + aEmCode + ''' ';
+
+  result := dmDBRelay.Process1ExecSQL(stSql);
+end;
+
+end.

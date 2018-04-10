@@ -1,0 +1,663 @@
+unit uAttendSummary;
+
+interface
+
+uses
+  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
+  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.ComCtrls, Vcl.StdCtrls,
+  AdvGlowButton, Vcl.Grids, AdvObj, BaseGrid, AdvGrid, AdvAppStyler,
+  ADODB,ActiveX, uSubForm, CommandArray, Vcl.Imaging.pngimage, Vcl.ExtCtrls,
+  AdvProgr;
+
+type
+  TfmAttendSummary = class(TfmASubForm)
+    GroupBox1: TGroupBox;
+    lb_AtDate: TLabel;
+    lb_EMCODE: TLabel;
+    lb_EMNAME: TLabel;
+    lb_List: TLabel;
+    ed_EMName: TEdit;
+    ed_EmCode: TEdit;
+    dt_From: TDateTimePicker;
+    dt_To: TDateTimePicker;
+    Label1: TLabel;
+    sg_Employee: TAdvStringGrid;
+    btn_Close: TAdvGlowButton;
+    AdvFormStyler1: TAdvFormStyler;
+    btn_Summary: TAdvGlowButton;
+    btn_Cancel: TAdvGlowButton;
+    ed_emSeq: TEdit;
+    ProgressBar1: TProgressBar;
+    procedure FormCreate(Sender: TObject);
+    procedure btn_CancelClick(Sender: TObject);
+    procedure btn_CloseClick(Sender: TObject);
+    procedure dt_FromChange(Sender: TObject);
+    procedure dt_ToChange(Sender: TObject);
+    procedure dt_ToCloseUp(Sender: TObject);
+    procedure dt_FromCloseUp(Sender: TObject);
+    procedure ed_EmCodeKeyUp(Sender: TObject; var Key: Word;
+      Shift: TShiftState);
+    procedure ed_EMNameKeyUp(Sender: TObject; var Key: Word;
+      Shift: TShiftState);
+    procedure sg_EmployeeDblClick(Sender: TObject);
+    procedure btn_SummaryClick(Sender: TObject);
+    procedure FormClose(Sender: TObject; var Action: TCloseAction);
+  private
+    DeviceATTypeList : TStringList;
+    WorkTypeList : TStringList;
+    function AttendSummary:Boolean;
+    function GetEmployeeAttendWorkType(aEmSeq:string):string;
+    Function GetTB_ATTENDPOSITION : Boolean;
+    Function GetTB_ATTENDWORKTYPE : Boolean;
+    Function DeviceATTypeListClear : Boolean;
+    Function WorkTypeListClear : Boolean;
+
+    Function DeleteTB_ATTEND_EmSeqDate(aEmSeq,aFromDate,aToDate:string):Boolean;
+  private
+    { Private declarations }
+    procedure FormNameSetting;
+    function GetEmInfoFromEmCode(aEmCode:string;var aEmSeq:string; var aEmName:string):Boolean;
+    function GetEmInfoFromEmName(aEmName:string;var aEmSeq:string; var aEmCode:string):Boolean;
+  public
+    { Public declarations }
+  end;
+
+var
+  fmAttendSummary: TfmAttendSummary;
+
+implementation
+uses
+  uAttendEvent,
+  uCommonFunction,
+  uCommonVariable,
+  uDataBase,
+  uDBFormMessage,
+  uDBSelect,
+  uFormFunction;
+{$R *.dfm}
+
+function TfmAttendSummary.AttendSummary: Boolean;
+var
+  stSql : string;
+  TempAdoQuery : TADOQuery;
+  stAccessTime : string;
+  stEmSeq : string;
+  stAWCode : string;
+  stAtReaderNo : string;
+  nDeviceIndex : integer;
+  nWorkCodeIndex : integer;
+  stTemp : string;
+  stATToDate : string;
+begin
+  result := False;
+  stEmSeq := ed_emSeq.Text;
+  stATToDate := FormatdateTime('yyyymmdd',dt_To.Date);
+  DeleteTB_ATTEND_EmSeqDate(stEmSeq,FormatdateTime('yyyymmdd',dt_From.Date),FormatdateTime('yyyymmdd',dt_To.Date));
+  stSql := ' Select * from TB_ACCESSEVENT ';
+  stSql := stSql + ' WHERE GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  stSql := stSql + ' AND EM_SEQ = ' + stEmSeq + ' ';
+  stSql := stSql + ' AND AE_DATE Between ''' + FormatdateTime('yyyymmdd',dt_From.Date) + ''' and ''' + FormatdateTime('yyyymmdd',dt_To.Date + 1) + ''' ';  //근태작업 하루 후 까지
+  Try
+    CoInitialize(nil);
+    TempAdoQuery := TADOQuery.Create(nil);
+    TempAdoQuery.Connection := dmDataBase.ADOConnection;
+    TempAdoQuery.DisableControls;
+    with TempAdoQuery  do
+    begin
+      Close;
+      //SQL.Clear;
+      SQL.Text := stSql;
+
+      Try
+        Open;
+      Except
+        Exit;
+      End;
+      if recordCount < 1 then Exit;
+      stAWCode := GetEmployeeAttendWorkType(stEmSeq);
+      ProgressBar1.Visible := True;
+      ProgressBar1.Max := recordcount;
+      ProgressBar1.Position := 0;
+
+      While Not Eof do
+      begin
+        if G_bApplicationTerminate then Exit;
+
+        ProgressBar1.Position := ProgressBar1.Position + 1;
+
+        stAccessTime := FindField('AE_DATE').AsString + FindField('AE_TIME').AsString;
+        stAtReaderNo := FillZeroNumber(FindField('ND_NODENO').AsInteger,G_nNodeCodeLength) + FindField('DE_ECUID').AsString  + FindField('DE_EXTENDID').AsString + FindField('RE_READERNO').AsString;
+        nDeviceIndex := DeviceATTypeList.IndexOf(stAtReaderNo);
+        if nDeviceIndex > -1 then
+        begin
+          //근태리더 처리하자.
+          nWorkCodeIndex := WorkTypeList.IndexOf(stAWCode);
+          if nWorkCodeIndex > -1 then
+          begin
+            TdmAttendEvent(WorkTypeList.Objects[nWorkCodeIndex]).AttendProcess(stEmSeq,FindField('EM_CODE').AsString,FindField('EM_NAME').AsString,FindField('CO_COMPANYCODE').AsString,
+                           stAccessTime,stAtReaderNo,FindField('DO_DOORNO').AsString,FindField('CA_CARDNO').AsString,FindField('AE_CONTROLTYPECODE').AsString,FindField('AE_BUTTON').AsString,
+                           TAttendPosition(DeviceATTypeList.Objects[nDeviceIndex]).DEVICETYPE,TAttendPosition(DeviceATTypeList.Objects[nDeviceIndex]).STARTBUTTON,
+                           TAttendPosition(DeviceATTypeList.Objects[nDeviceIndex]).OFFBUTTON,TAttendPosition(DeviceATTypeList.Objects[nDeviceIndex]).INOUTDEVICETYPE,
+                           TAttendPosition(DeviceATTypeList.Objects[nDeviceIndex]).WORKOUTBUTTON,TAttendPosition(DeviceATTypeList.Objects[nDeviceIndex]).WORKINBUTTON,stATToDate,True);
+          end;
+        end;
+        Application.ProcessMessages;
+        Next;
+      end;
+      result := True;
+      ProgressBar1.Visible := False;
+    end;
+  Finally
+    TempAdoQuery.EnableControls;
+    TempAdoQuery.Free;
+    CoUninitialize;
+  End;
+end;
+
+procedure TfmAttendSummary.btn_CancelClick(Sender: TObject);
+begin
+  Close;
+end;
+
+procedure TfmAttendSummary.btn_CloseClick(Sender: TObject);
+begin
+  Close;
+end;
+
+procedure TfmAttendSummary.btn_SummaryClick(Sender: TObject);
+var
+  stMessage : string;
+begin
+  inherited;
+  if ed_emSeq.text = '' then
+  begin
+    stMessage := dmFormMessage.GetMessage('BLANKFIELD');
+    stMessage := stringReplace(stMessage,'$WORK',lb_EMCODE.Caption,[rfReplaceAll]);
+    Application.MessageBox(PChar(stMessage),'Error',MB_OK);
+    Exit;
+  end;
+  Try
+    btn_Summary.Enabled := False;
+    if AttendSummary then
+    begin
+      stMessage := dmFormMessage.GetMessage('WORKSUCCESS');
+      stMessage := stringReplace(stMessage,'$WORK',btn_Summary.Caption,[rfReplaceAll]);
+      Application.MessageBox(PChar(stMessage),'Success',MB_OK);
+    end else
+    begin
+      stMessage := dmFormMessage.GetMessage('WORKFAIL');
+      stMessage := stringReplace(stMessage,'$WORK',btn_Summary.Caption,[rfReplaceAll]);
+      Application.MessageBox(PChar(stMessage),'Error',MB_OK);
+    end;
+  Finally
+    btn_Summary.Enabled := True;
+  End;
+end;
+
+function TfmAttendSummary.DeleteTB_ATTEND_EmSeqDate(aEmSeq, aFromDate,
+  aToDate: string): Boolean;
+var
+  stSql : string;
+begin
+  stSql := ' Delete From TB_ATTENDEVENT ';
+  stSql := stSql + ' Where AT_DATE Between ''' + aFromDate + ''' and ''' + aToDate + ''' ';
+  stSql := stSql + ' AND EM_SEQ = ' + aEmSeq + ' ';
+  result := dmDataBase.ProcessExecSQL(stSql);
+end;
+
+function TfmAttendSummary.DeviceATTypeListClear: Boolean;
+var
+  i : integer;
+begin
+  for i := 0 to DeviceATTypeList.Count - 1 do
+  begin
+    TAttendPosition(DeviceATTypeList.Objects[i]).Free;
+  end;
+  DeviceATTypeList.Clear;
+end;
+
+procedure TfmAttendSummary.dt_FromChange(Sender: TObject);
+begin
+  if formatdateTime('yyyymmdd',dt_From.Date) > formatdateTime('yyyymmdd',now - 1) then
+  begin
+    dt_From.Date := now - 1;
+  end;
+end;
+
+procedure TfmAttendSummary.dt_FromCloseUp(Sender: TObject);
+begin
+  if formatdateTime('yyyymmdd',dt_From.Date) > formatdateTime('yyyymmdd',now - 1) then
+  begin
+    dt_From.Date := now - 1;
+  end;
+end;
+
+procedure TfmAttendSummary.dt_ToChange(Sender: TObject);
+begin
+  if formatdateTime('yyyymmdd',dt_To.Date) > formatdateTime('yyyymmdd',now - 1) then
+  begin
+    dt_To.Date := now - 1;
+  end;
+end;
+
+procedure TfmAttendSummary.dt_ToCloseUp(Sender: TObject);
+begin
+  if formatdateTime('yyyymmdd',dt_To.Date) > formatdateTime('yyyymmdd',now - 1) then
+  begin
+    dt_To.Date := now - 1;
+  end;
+end;
+
+procedure TfmAttendSummary.ed_EmCodeKeyUp(Sender: TObject; var Key: Word;
+  Shift: TShiftState);
+var
+  stEmSeq,stEmName : string;
+begin
+  GetEmInfoFromEmCode(ed_EmCode.Text,stEmSeq,stEmName);
+  ed_emSeq.Text := stEmSeq;
+  ed_emName.Text := stEmName;
+end;
+
+procedure TfmAttendSummary.ed_EMNameKeyUp(Sender: TObject; var Key: Word;
+  Shift: TShiftState);
+var
+  stEmSeq,stEmCode : string;
+begin
+  GetEmInfoFromEmName(ed_EmName.Text,stEmSeq,stEmCode);
+  ed_emSeq.Text := stEmSeq;
+  ed_EmCode.Text := stEmCode;
+
+end;
+
+procedure TfmAttendSummary.FormClose(Sender: TObject; var Action: TCloseAction);
+begin
+  inherited;
+  if WorkTypeList.Count > 0 then WorkTypeListClear;
+  if DeviceATTypeList.Count > 0 then DeviceATTypeListClear;
+
+  DeviceATTypeList.Free;
+  WorkTypeList.Free;
+end;
+
+procedure TfmAttendSummary.FormCreate(Sender: TObject);
+begin
+  DeviceATTypeList := TStringList.Create;
+  WorkTypeList := TStringList.Create;
+  FormNameSetting;
+  dt_From.Date := now - 1;
+  dt_To.Date := now - 1;
+  GetTB_ATTENDPOSITION;
+  GetTB_ATTENDWORKTYPE;
+end;
+
+procedure TfmAttendSummary.FormNameSetting;
+begin
+  Caption := dmFormFunction.GetFormName('2','1','BM4_022');
+  lb_List.Caption := dmFormFunction.GetFormName('2','1','BM4_022');
+  lb_AtDate.Caption := dmFormFunction.GetFormName('0','2','COMMONDATETERM');
+  lb_EMCODE.Caption := dmFormFunction.GetFormName('0','2','COMMONEMPLOYEECODE');
+  lb_EMNAME.Caption := dmFormFunction.GetFormName('0','2','COMMONEMPLOYEENAME');
+  with sg_Employee do
+  begin
+    cells[0,0]:= dmFormFunction.GetFormName('0','2','COMMONEMPLOYEECODE');
+    cells[1,0]:= dmFormFunction.GetFormName('0','2','COMMONEMPLOYEENAME');
+  end;
+  btn_Summary.Caption := dmFormFunction.GetFormName('0','2','COMMONATSUMMARY');
+  btn_Cancel.Caption := dmFormFunction.GetFormName('0','2','BUTTONMENU001');
+
+end;
+
+function TfmAttendSummary.GetEmInfoFromEmCode(aEmCode: string; var aEmSeq,
+  aEmName: string): Boolean;
+var
+  stSql : string;
+  TempAdoQuery : TADOQuery;
+  nRow : integer;
+begin
+  sg_Employee.Visible := False;
+  result := False;
+  aEmSeq := '';
+  aEmName := '';
+  if aEmCode = '' then Exit;
+
+
+  stSql := ' Select * from TB_EMPLOYEE where EM_CODE = ''' + aEmCode + ''' ';
+  stSql := stSql + ' Order by EM_NAME ';
+
+  Try
+    CoInitialize(nil);
+    TempAdoQuery := TADOQuery.Create(nil);
+    TempAdoQuery.Connection := dmDataBase.ADOConnection;
+    TempAdoQuery.DisableControls;
+
+    with TempAdoQuery do
+    begin
+      Close;
+      sql.Text := stSql;
+      Try
+        Open;
+      Except
+        Exit;
+      End;
+      if recordcount < 1 then Exit;
+      result := True;
+      if recordcount = 1 then
+      begin
+        aEmSeq := FindField('EM_SEQ').AsString;
+        aEmName := FindField('EM_NAME').AsString;
+      end else
+      begin
+        sg_Employee.Top := ed_EmCode.Top + ed_EmCode.Height;
+        sg_Employee.Visible := True;
+        GridInit(sg_Employee,2);
+        with sg_Employee do
+        begin
+          nRow := 1;
+          RowCount := RecordCount + 1;
+          while Not Eof do
+          begin
+            Cells[0,nRow] := FindField('EM_CODE').AsString;
+            Cells[1,nRow] := FindField('EM_NAME').AsString;
+            Cells[2,nRow] := FindField('EM_SEQ').AsString;
+            inc(nRow);
+            Next;
+          end;
+        end;
+      end;
+    end;
+  Finally
+    TempAdoQuery.EnableControls;
+    TempAdoQuery.Free;
+    CoUninitialize;
+  End;
+
+end;
+
+function TfmAttendSummary.GetEmInfoFromEmName(aEmName: string; var aEmSeq,
+  aEmCode: string): Boolean;
+var
+  stSql : string;
+  TempAdoQuery : TADOQuery;
+  nRow : integer;
+begin
+  sg_Employee.Visible := False;
+  result := False;
+  aEmSeq := '';
+  aEmCode := '';
+
+  if aEmName = '' then Exit;
+
+  stSql := ' Select * from TB_EMPLOYEE where EM_NAME Like N''' + aEmName + '%'' ';
+  stSql := stSql + ' Order by EM_NAME ';
+
+  Try
+    CoInitialize(nil);
+    TempAdoQuery := TADOQuery.Create(nil);
+    TempAdoQuery.Connection := dmDataBase.ADOConnection;
+    TempAdoQuery.DisableControls;
+
+    with TempAdoQuery do
+    begin
+      Close;
+      sql.Text := stSql;
+      Try
+        Open;
+      Except
+        Exit;
+      End;
+      if recordcount < 1 then Exit;
+      result := True;
+      if recordcount = 1 then
+      begin
+        aEmSeq := FindField('EM_SEQ').AsString;
+        aEmCode := FindField('EM_CODE').AsString;
+      end else
+      begin
+        sg_Employee.Top := ed_EmName.Top + ed_EmName.Height;
+        sg_Employee.Visible := True;
+        GridInit(sg_Employee,2);
+        with sg_Employee do
+        begin
+          nRow := 1;
+          RowCount := RecordCount + 1;
+          while Not Eof do
+          begin
+            Cells[0,nRow] := FindField('EM_CODE').AsString;
+            Cells[1,nRow] := FindField('EM_NAME').AsString;
+            Cells[2,nRow] := FindField('EM_SEQ').AsString;
+            inc(nRow);
+            Next;
+          end;
+        end;
+      end;
+    end;
+  Finally
+    TempAdoQuery.EnableControls;
+    TempAdoQuery.Free;
+    CoUninitialize;
+  End;
+
+end;
+
+function TfmAttendSummary.GetEmployeeAttendWorkType(aEmSeq: string): string;
+var
+  stSql : string;
+  nIndex : integer;
+  TempAdoQuery : TADOQuery;
+  oEmployee : TAttendEmployee;
+  stNowDate : string;
+begin
+  result := '';
+  stSql := 'Select * from TB_EMPLOYEE ';
+  stSql := stSql + ' Where GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  stSql := stSql + ' AND EM_SEQ = ' + aEmSeq + ' ';
+  Try
+    CoInitialize(nil);
+    TempAdoQuery := TADOQuery.Create(nil);
+    TempAdoQuery.Connection := dmDataBase.ADOConnection;
+    TempAdoQuery.DisableControls;
+    with TempAdoQuery do
+    begin
+      Close;
+      Sql.Text := stSql;
+      Try
+        Open;
+      Except
+        Exit;
+      End;
+      if recordCount < 1 then Exit;
+      result := FindField('AW_CODE').AsString;
+    end;
+  Finally
+    TempAdoQuery.EnableControls;
+    TempAdoQuery.Free;
+    CoUninitialize;
+  End;
+
+end;
+
+function TfmAttendSummary.GetTB_ATTENDPOSITION: Boolean;
+var
+  stSql : string;
+  TempAdoQuery : TADOQuery;
+  i : integer;
+  oAttendPosition :TAttendPosition;
+  stReaderID : string;
+begin
+  Result := False;
+  if DeviceATTypeList.Count > 0 then DeviceATTypeListClear;
+  DeviceATTypeList.Clear;
+
+  stSql := 'select a.ND_NODENO,a.DE_ECUID,a.DE_EXTENDID,a.RE_READERNO,b.* from TB_READER a ';
+  stSql := stSql + ' Inner Join TB_ATTENDPOSITION b ';
+  stSql := stSql + ' ON(a.AP_CODE = b.AP_CODE) ';
+  stSql := stSql + ' Where a.GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  stSql := stSql + ' AND a.RE_ATTYPE = ''1'' ';
+  stSql := stSql + ' Order by a.ND_NODENO,a.DE_ECUID,a.DE_EXTENDID,a.RE_READERNO ';
+  Try
+    CoInitialize(nil);
+    TempAdoQuery := TADOQuery.Create(nil);
+    TempAdoQuery.Connection := dmDataBase.ADOConnection;
+    TempAdoQuery.DisableControls;
+
+    with TempAdoQuery do
+    begin
+      Close;
+      Sql.Text := stSql;
+      Try
+        Open;
+      Except
+        Exit;
+      End;
+      if recordCount < 1 then Exit;
+      While Not Eof do
+      begin
+        if G_bApplicationTerminate then Exit;
+        oAttendPosition:= TAttendPosition.Create(Self);
+        oAttendPosition.APCODE := FindField('AP_CODE').AsString;
+        oAttendPosition.APNAME := FindField('AP_NAME').AsString;
+        oAttendPosition.DEVICETYPE := FindField('AP_DEVICETYPE').AsString;
+        oAttendPosition.STARTBUTTON := FindField('AP_ATSTARTBUTTON').AsString;
+        oAttendPosition.OFFBUTTON := FindField('AP_ATOFFBUTTON').AsString;
+        oAttendPosition.INOUTDEVICETYPE := FindField('AP_INOUTDEVICETYPE').AsString;
+        oAttendPosition.WORKOUTBUTTON := FindField('AP_WORKOUTBUTTON').AsString;
+        oAttendPosition.WORKINBUTTON := FindField('AP_WORKINBUTTON').AsString;
+        stReaderID := FillZeroNumber(FindField('ND_NODENO').AsInteger,G_nNodeCodeLength) + FindField('DE_ECUID').AsString + FindField('DE_EXTENDID').AsString + FindField('RE_READERNO').AsString;
+        DeviceATTypeList.AddObject(stReaderID,oAttendPosition);
+        Next;
+      end;
+    end;
+  Finally
+    TempAdoQuery.EnableControls;
+    TempAdoQuery.Free;
+    CoUninitialize;
+  End;
+  Result := True;
+end;
+
+function TfmAttendSummary.GetTB_ATTENDWORKTYPE: Boolean;
+var
+  stSql : string;
+  TempAdoQuery : TADOQuery;
+  dmAttend : TdmAttendEvent;
+  stWorkTypeCode : string;
+  nWorkTypeIndex : integer;
+  i : integer;
+begin
+  Result := False;
+  if WorkTypeList.Count > 0 then WorkTypeListClear;
+  WorkTypeList.Clear;
+
+  stSql := 'select * from TB_ATTENDWORKTYPE ';
+  stSql := stSql + ' Order by AW_CODE ';
+  Try
+    CoInitialize(nil);
+    TempAdoQuery := TADOQuery.Create(nil);
+    TempAdoQuery.Connection := dmDataBase.ADOConnection;
+    TempAdoQuery.DisableControls;
+
+    with TempAdoQuery do
+    begin
+      Close;
+      Sql.Text := stSql;
+      Try
+        Open;
+      Except
+        Exit;
+      End;
+      if recordCount < 1 then Exit;
+      While Not Eof do
+      begin
+        dmAttend:= TdmAttendEvent.Create(Self);
+        dmAttend.StringListClear;
+        dmAttend.AttendWorkTypeCode := FindField('AW_CODE').AsInteger;
+        if isDigit(FindField('AW_SATURDAYTYPE').AsString) then
+          dmAttend.SaturdayType := strtoint(FindField('AW_SATURDAYTYPE').AsString)
+        else dmAttend.SaturdayType := 0;
+        if isDigit(FindField('AW_FIXATTYPE').AsString) then
+          dmAttend.ATOutFixedType := strtoint(FindField('AW_FIXATTYPE').AsString)
+        else dmAttend.ATOutFixedType := 0;
+        if isDigit(FindField('AW_NOTBACKUPTYPE').AsString) then
+          dmAttend.ATWorkNotBackupType := strtoint(FindField('AW_NOTBACKUPTYPE').AsString)
+        else dmAttend.ATWorkNotBackupType := 0;
+
+        WorkTypeList.AddObject(FindField('AW_CODE').AsString,dmAttend);
+        Next;
+      end;
+    end;
+
+    stSql := 'select * from TB_ATTENDCODE ';
+    stSql := stSql + 'where GROUP_CODE = ''' + G_stGroupCode + ''' ';
+    with TempAdoQuery do
+    begin
+      Close;
+      //Sql.Clear;
+      Sql.Text := stSql;
+      Try
+        Open;
+      Except
+        Exit;
+      End;
+
+      if recordCount < 1 then Exit;
+      First;
+      while Not Eof do
+      begin
+        stWorkTypeCode := '1';
+        if Not FindField('AW_CODE').IsNull then
+        begin
+          if FindField('AW_CODE').AsString <> '' then stWorkTypeCode := FindField('AW_CODE').AsString;
+        end;
+        nWorkTypeIndex := WorkTypeList.IndexOf(stWorkTypeCode);
+        if nWorkTypeIndex > -1 then
+        begin
+          TdmAttendEvent(WorkTypeList.Objects[nWorkTypeIndex]).AttendCode_Add(FindField('AT_ATCODE').AsString,FindField('AT_CODENAME').AsString,
+                         FindField('AT_YESTERDAYTIME').AsString,FindField('AT_WORKSTARTTIME').AsString,FindField('AT_WORKENDTIME').AsString,FindField('AT_INFROMTIME').AsString,FindField('AT_INTOTIME').AsString,
+                         FindField('AT_EXTENDTIME').AsString,FindField('AT_NIGHTTIME').AsString,FindField('AT_NORMALADD').AsString,FindField('AT_EARLYADD').AsString,FindField('AT_JIGAKADD').AsString,
+                         FindField('AT_JOTAEADD').AsString,FindField('AT_EXTENDADD').AsString,FindField('AT_NIGHTADD').AsString,
+                         FindField('AT_SWORKSTARTTIME').AsString,FindField('AT_SWORKENDTIME').AsString,FindField('AT_SINFROMTIME').AsString,FindField('AT_SINTOTIME').AsString,
+                         FindField('AT_SEXTENDTIME').AsString,FindField('AT_SNIGHTTIME').AsString,FindField('AT_SNORMALADD').AsString,FindField('AT_SEARLYADD').AsString,FindField('AT_SJIGAKADD').AsString,
+                         FindField('AT_SJOTAEADD').AsString,FindField('AT_SEXTENDADD').AsString,FindField('AT_SNIGHTADD').AsString,
+                         FindField('AT_HWORKSTARTTIME').AsString,FindField('AT_HWORKENDTIME').AsString,FindField('AT_HINFROMTIME').AsString,FindField('AT_HINTOTIME').AsString,
+                         FindField('AT_HEXTENDTIME').AsString,FindField('AT_HNIGHTTIME').AsString,FindField('AT_HNORMALADD').AsString,FindField('AT_HEARLYADD').AsString,FindField('AT_HJIGAKADD').AsString,
+                         FindField('AT_HJOTAEADD').AsString,FindField('AT_HEXTENDADD').AsString,FindField('AT_HNIGHTADD').AsString,
+                         FindField('AT_OUTRANGE').AsString,FindField('AT_SOUTRANGE').AsString,FindField('AT_HOUTRANGE').AsString);
+        end;
+
+        Next;
+      end;
+
+    end;
+  Finally
+    TempAdoQuery.EnableControls;
+    TempAdoQuery.Free;
+    CoUninitialize;
+  End;
+  Result := True;
+end;
+
+procedure TfmAttendSummary.sg_EmployeeDblClick(Sender: TObject);
+begin
+  inherited;
+  with sg_Employee do
+  begin
+    ed_emSeq.Text := Cells[2,Row];
+    ed_emCode.Text := Cells[0,Row];
+    ed_emName.Text := Cells[1,Row];
+    sg_Employee.Visible := False;
+  end;
+
+end;
+
+function TfmAttendSummary.WorkTypeListClear: Boolean;
+var
+  i : integer;
+begin
+  for i := 0 to WorkTypeList.Count - 1 do
+  begin
+    TdmAttendEvent(WorkTypeList.Objects[i]).Free;
+  end;
+  WorkTypeList.Clear;
+end;
+
+end.

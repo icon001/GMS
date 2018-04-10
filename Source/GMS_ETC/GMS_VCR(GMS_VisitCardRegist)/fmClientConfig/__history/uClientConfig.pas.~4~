@@ -1,0 +1,85 @@
+unit uClientConfig;
+
+interface
+
+uses
+  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
+  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, AdvGlowButton, Vcl.StdCtrls,System.IniFiles;
+
+type
+  TfmClientConfig = class(TForm)
+    GroupBox1: TGroupBox;
+    lb_RegCardType: TLabel;
+    cmb_RegType: TComboBox;
+    lb_cardPort: TLabel;
+    cmb_Comport: TComboBox;
+    ed_FingerIP: TEdit;
+    btn_Save: TAdvGlowButton;
+    btn_Close: TAdvGlowButton;
+    procedure btn_CloseClick(Sender: TObject);
+    procedure cmb_RegTypeChange(Sender: TObject);
+    procedure btn_SaveClick(Sender: TObject);
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+  end;
+
+var
+  fmClientConfig: TfmClientConfig;
+
+implementation
+
+{$R *.dfm}
+
+procedure TfmClientConfig.btn_CloseClick(Sender: TObject);
+begin
+  Close;
+end;
+
+procedure TfmClientConfig.btn_SaveClick(Sender: TObject);
+var
+  nComPort : integer;
+  i : integer;
+  ini_fun : TiniFile;
+begin
+  nComPort := 0;
+  Try
+    ini_fun := TiniFile.Create(G_stExeFolder + '\MIAMS.INI');
+    with ini_fun do
+    begin
+      WriteInteger('Config','CardRegType',cmb_RegType.ItemIndex);
+      WriteString('Config','CardRegIP',ed_FingerIP.Text);
+      if ComPortList.Count > 0 then
+      begin
+        if cmb_ComPort.ItemIndex > -1 then
+        begin
+          if cmb_ComPort.ItemIndex = 0 then nComPort := 0
+          else
+          begin
+            nComPort := Integer(ComPortList.Objects[cmb_ComPort.ItemIndex - 1]);
+          end;
+          WriteInteger('Config','CardRegPort',nComPort);
+          G_nCardRegisterPort := nComPort;
+        end;
+      end;
+
+end;
+
+procedure TfmClientConfig.cmb_RegTypeChange(Sender: TObject);
+begin
+  if cmb_RegType.ItemIndex = 0 then
+  begin
+    lb_cardPort.Caption := '카드리더 포트';
+    cmb_Comport.Visible := True;
+    ed_FingerIP.Visible := False;
+  end else if cmb_RegType.ItemIndex = 1 then
+  begin
+    lb_cardPort.Caption := '지문리더아이피';
+    cmb_Comport.Visible := False;
+    ed_FingerIP.Visible := True;
+    ed_FingerIP.Left := cmb_Comport.Left;
+  end;
+end;
+
+end.

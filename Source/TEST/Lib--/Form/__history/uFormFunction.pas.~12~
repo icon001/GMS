@@ -1,0 +1,194 @@
+unit uFormFunction;
+
+interface
+
+uses
+  System.SysUtils, System.Classes,AdvGrid,Vcl.StdCtrls,Vcl.ExtCtrls,
+  ADODB,ActiveX;
+
+type
+  TdmFormFunction = class(TDataModule)
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+
+    function GetAlarmDeviceTypeName(aAlarmDeviceType:string):string;
+    function GetAlarmModeName(aAlarmMode:string):string;
+    function GetCardToEmployeeInfo(aCardNo:string;var aEmSeq,aEmName,aCompanyName,aEmCode,aPosiName:string):Boolean;
+    //*************************
+    //Group Box 내에서 컴포넌트 찾는 함수
+    //*************************
+    Function TravelGroupCheckBoxItem(GroupBox:TGroupBox;stName:string; no:Integer):TCheckBox;
+    Function TravelGroupEditItem(GroupBox:TGroupBox;stName:string; no:Integer):TEdit;
+    Function TravelGroupLabelItem(GroupBox:TGroupBox;stName:string; no:Integer):TLabel;
+    //*************************
+    //Panel 내에서 컴포넌트 찾는 함수
+    //*************************
+    Function TravelPanelEditItem(Panel:TPanel;stName:string; no:Integer):TEdit;
+    Function TravelPanelLabelItem(Panel:TPanel;stName:string; no:Integer):TLabel;
+  end;
+
+var
+  dmFormFunction: TdmFormFunction;
+
+implementation
+uses
+  uDataBase,
+  uFormVariable;
+
+{%CLASSGROUP 'System.Classes.TPersistent'}
+
+{$R *.dfm}
+
+{ TdmFormFunction }
+
+function TdmFormFunction.GetAlarmDeviceTypeName(
+  aAlarmDeviceType: string): string;
+var
+  stSql : string;
+  nIndex : integer;
+  TempAdoQuery : TADOQuery;
+  oAlarmDeviceType : TAlarmDeviceType;
+begin
+  result := aAlarmDeviceType;
+  nIndex := AlarmDeviceTypeCodeList.IndexOf(aAlarmDeviceType);
+  if nIndex > -1 then
+  begin
+    result := TAlarmDeviceType(AlarmDeviceTypeCodeList.Objects[nIndex]).AlarmDeviceTypeName;
+    Exit;
+  end;
+  stSql := ' Select * from TB_ALARMDEVICETYPE ' ;
+  stSql := stSql + ' Where AL_ALARMDEVICETYPE = ''' + aAlarmDeviceType + ''' ';
+  Try
+    CoInitialize(nil);
+    TempAdoQuery := TADOQuery.Create(nil);
+    TempAdoQuery.Connection := dmDataBase.ADOConnection;
+    TempAdoQuery.DisableControls;
+
+    with TempAdoQuery do
+    begin
+      Close;
+      Sql.Text := stSql;
+      Try
+        Open;
+      Except
+        Exit;
+      End;
+
+      if RecordCount < 1 then Exit;
+
+      oAlarmDeviceType := TAlarmDeviceType.Create(nil);
+      oAlarmDeviceType.AlarmDeviceTypeCode := aAlarmDeviceType;
+      oAlarmDeviceType.AlarmDeviceTypeName := FindField('AL_ALARMDEVICETYPENAME').AsString;
+      AlarmDeviceTypeCodeList.AddObject(aAlarmDeviceType,oAlarmDeviceType);
+      result := FindField('AL_ALARMDEVICETYPENAME').AsString;
+    end;
+
+  Finally
+    TempAdoQuery.EnableControls;
+    TempAdoQuery.Free;
+    CoUninitialize;
+  End;
+
+end;
+
+function TdmFormFunction.GetAlarmModeName(aAlarmMode: string): string;
+begin
+
+end;
+
+function TdmFormFunction.GetCardToEmployeeInfo(aCardNo: string; var aEmSeq,
+  aEmName, aCompanyName, aEmCode, aPosiName: string): Boolean;
+begin
+
+end;
+
+function TdmFormFunction.TravelGroupCheckBoxItem(GroupBox: TGroupBox;
+  stName: string; no: Integer): TCheckBox;
+var
+Loop:integer;
+begin
+  Result:= Nil;
+
+  For Loop:=0 to GroupBox.ControlCount-1 do
+  Begin
+    If LowerCase(GroupBox.Controls[Loop].name) = LowerCase(stName) + inttostr(no) then
+    Begin
+      Result:=TCheckBox(GroupBox.Controls[Loop]);
+      exit;
+    End;
+  End;
+end;
+
+function TdmFormFunction.TravelGroupEditItem(GroupBox: TGroupBox;
+  stName: string; no: Integer): TEdit;
+var
+Loop:integer;
+begin
+  Result:= Nil;
+
+  For Loop:=0 to GroupBox.ControlCount-1 do
+  Begin
+    If LowerCase(GroupBox.Controls[Loop].name) = LowerCase(stName) + inttostr(no) then
+    Begin
+      Result:=TEdit(GroupBox.Controls[Loop]);
+      exit;
+    End;
+  End;
+end;
+
+function TdmFormFunction.TravelGroupLabelItem(GroupBox: TGroupBox;
+  stName: string; no: Integer): TLabel;
+var
+Loop:integer;
+begin
+  Result:= Nil;
+
+  For Loop:=0 to GroupBox.ControlCount-1 do
+  Begin
+    If LowerCase(GroupBox.Controls[Loop].name) = LowerCase(stName) + inttostr(no) then
+    Begin
+      Result:=TLabel(GroupBox.Controls[Loop]);
+      exit;
+    End;
+  End;
+end;
+
+function TdmFormFunction.TravelPanelEditItem(Panel: TPanel; stName: string;
+  no: Integer): TEdit;
+var
+Loop:integer;
+begin
+  Result:= Nil;
+
+  For Loop:=0 to Panel.ControlCount-1 do
+  Begin
+    If LowerCase(Panel.Controls[Loop].name) = LowerCase(stName) + inttostr(no) then
+    Begin
+      Result:=TEdit(Panel.Controls[Loop]);
+      exit;
+    End;
+  End;
+
+end;
+
+function TdmFormFunction.TravelPanelLabelItem(Panel: TPanel; stName: string;
+  no: Integer): TLabel;
+var
+Loop:integer;
+begin
+  Result:= Nil;
+
+  For Loop:=0 to Panel.ControlCount-1 do
+  Begin
+    If LowerCase(Panel.Controls[Loop].name) = LowerCase(stName) + inttostr(no) then
+    Begin
+      Result:=TLabel(Panel.Controls[Loop]);
+      exit;
+    End;
+  End;
+
+end;
+
+end.

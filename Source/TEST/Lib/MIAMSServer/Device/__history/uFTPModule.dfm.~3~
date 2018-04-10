@@ -1,0 +1,48 @@
+object dmFTPModule: TdmFTPModule
+  OldCreateOrder = False
+  Height = 150
+  Width = 215
+  object IdFTPServer1: TIdFTPServer
+    Bindings = <>
+    DefaultPort = 5101
+    OnConnect = IdFTPServer1Connect
+    OnDisconnect = IdFTPServer1Disconnect
+    CommandHandlers = <>
+    ExceptionReply.Code = '500'
+    ExceptionReply.Text.Strings = (
+      'Unknown Internal Error')
+    Greeting.Code = '220'
+    Greeting.Text.Strings = (
+      'Indy FTP Server ready.')
+    HelpReply.Text.Strings = (
+      'Help is not implemented')
+    MaxConnectionReply.Code = '300'
+    MaxConnectionReply.Text.Strings = (
+      'Too many connections. Try again later.')
+    ReplyTexts = <>
+    ReplyUnknownCommand.Code = '500'
+    ReplyUnknownCommand.Text.Strings = (
+      'Unknown Command')
+    AnonymousAccounts.Strings = (
+      'anonymous'
+      'ftp'
+      'guest')
+    OnChangeDirectory = IdFTPServer1ChangeDirectory
+    OnGetFileSize = IdFTPServer1GetFileSize
+    OnUserLogin = IdFTPServer1UserLogin
+    OnListDirectory = IdFTPServer1ListDirectory
+    OnRenameFile = IdFTPServer1RenameFile
+    OnDeleteFile = IdFTPServer1DeleteFile
+    OnRetrieveFile = IdFTPServer1RetrieveFile
+    OnStoreFile = IdFTPServer1StoreFile
+    OnMakeDirectory = IdFTPServer1MakeDirectory
+    OnRemoveDirectory = IdFTPServer1RemoveDirectory
+    SITECommands = <>
+    MLSDFacts = []
+    ReplyUnknownSITCommand.Code = '500'
+    ReplyUnknownSITCommand.Text.Strings = (
+      'Invalid SITE command.')
+    Left = 40
+    Top = 8
+  end
+end

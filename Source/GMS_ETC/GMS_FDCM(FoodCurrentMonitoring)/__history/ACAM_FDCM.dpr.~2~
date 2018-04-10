@@ -1,0 +1,44 @@
+program ACAM_FDCM;
+
+uses
+  Vcl.Forms,
+  uMain in 'fmMain\uMain.pas' {Form1},
+  uDataBase in '..\..\..\Lib\DataBase\uDataBase.pas' {dmDataBase: TDataModule},
+  uDataBaseConfig in '..\..\..\Lib\DataBase\uDataBaseConfig.pas' {fmDataBaseConfig},
+  uDBAlter in '..\..\..\Lib\DataBase\uDBAlter.pas' {dmDBAlter: TDataModule},
+  uDBCardPermit in '..\..\..\Lib\DataBase\uDBCardPermit.pas' {dmDBCardPermit: TDataModule},
+  uDBCreate in '..\..\..\Lib\DataBase\uDBCreate.pas' {dmDBCreate: TDataModule},
+  uDBDelete in '..\..\..\Lib\DataBase\uDBDelete.pas' {dmDBDelete: TDataModule},
+  uDBFormMessage in '..\..\..\Lib\DataBase\uDBFormMessage.pas' {dmFormMessage: TDataModule},
+  uDBFormName in '..\..\..\Lib\DataBase\uDBFormName.pas' {dmFormName: TDataModule},
+  uDBFunction in '..\..\..\Lib\DataBase\uDBFunction.pas' {dmDBFunction: TDataModule},
+  uDBInsert in '..\..\..\Lib\DataBase\uDBInsert.pas' {dmDBInsert: TDataModule},
+  uDBSelect in '..\..\..\Lib\DataBase\uDBSelect.pas' {dmDBSelect: TDataModule},
+  uDBSql in '..\..\..\Lib\DataBase\uDBSql.pas' {dmDBSql: TDataModule},
+  uDBUpdate in '..\..\..\Lib\DataBase\uDBUpdate.pas' {dmDBUpdate: TDataModule},
+  uDBVariable in '..\..\..\Lib\DataBase\uDBVariable.pas',
+  uCommonFunction in '..\..\..\Lib\Common\uCommonFunction.pas',
+  uCommonVariable in '..\..\..\Lib\Common\uCommonVariable.pas',
+  uFormVariable in '..\..\..\Lib\DockForm\uFormVariable.pas';
+
+{$R *.res}
+
+begin
+  Application.Initialize;
+  Application.MainFormOnTaskbar := True;
+  Application.CreateForm(TForm1, Form1);
+  Application.CreateForm(TdmDataBase, dmDataBase);
+  Application.CreateForm(TfmDataBaseConfig, fmDataBaseConfig);
+  Application.CreateForm(TdmDBAlter, dmDBAlter);
+  Application.CreateForm(TdmDBCardPermit, dmDBCardPermit);
+  Application.CreateForm(TdmDBCreate, dmDBCreate);
+  Application.CreateForm(TdmDBDelete, dmDBDelete);
+  Application.CreateForm(TdmFormMessage, dmFormMessage);
+  Application.CreateForm(TdmFormName, dmFormName);
+  Application.CreateForm(TdmDBFunction, dmDBFunction);
+  Application.CreateForm(TdmDBInsert, dmDBInsert);
+  Application.CreateForm(TdmDBSelect, dmDBSelect);
+  Application.CreateForm(TdmDBSql, dmDBSql);
+  Application.CreateForm(TdmDBUpdate, dmDBUpdate);
+  Application.Run;
+end.

@@ -1,0 +1,30 @@
+program GMS_DBConfig;
+
+uses
+  Forms,
+  uLink in 'uLink.pas' {Form1},
+  uDataBase in '..\..\Lib\DataBase\uDataBase.pas' {dmDataBase: TDataModule},
+  uDataBaseConfig in '..\..\Lib\DataBase\uDataBaseConfig.pas' {fmDataBaseConfig},
+  uCommonEvent in '..\..\Lib\Common\uCommonEvent.pas',
+  uDBInsert in '..\..\Lib\DataBase\uDBInsert.pas' {dmDBInsert: TDataModule},
+  uDBUpdate in '..\..\Lib\DataBase\uDBUpdate.pas' {dmDBUpdate: TDataModule},
+  uCommonVariable in '..\..\Lib\Common\uCommonVariable.pas',
+  uDBCreate in '..\..\Lib\DataBase\uDBCreate.pas' {dmDBCreate: TDataModule},
+  uCommonFunction in '..\..\Lib\Common\uCommonFunction.pas',
+  uDBFormName in '..\..\Lib\DataBase\uDBFormName.pas' {dmFormName: TDataModule},
+  uDBFormMessage in '..\..\Lib\DataBase\uDBFormMessage.pas' {dmFormMessage: TDataModule};
+
+{$R *.res}
+
+begin
+  Application.Initialize;
+  Application.CreateForm(TForm1, Form1);
+  Application.CreateForm(TdmDataBase, dmDataBase);
+  Application.CreateForm(TfmDataBaseConfig, fmDataBaseConfig);
+  Application.CreateForm(TdmDBInsert, dmDBInsert);
+  Application.CreateForm(TdmDBUpdate, dmDBUpdate);
+  Application.CreateForm(TdmDBCreate, dmDBCreate);
+  Application.CreateForm(TdmFormName, dmFormName);
+  Application.CreateForm(TdmFormMessage, dmFormMessage);
+  Application.Run;
+end.

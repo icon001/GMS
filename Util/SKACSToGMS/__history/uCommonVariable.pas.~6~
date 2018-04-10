@@ -1,0 +1,28 @@
+unit uCommonVariable;
+
+interface
+
+const
+  MDB = 1;
+  MSSQL = 2;
+  POSTGRESQL = 3;
+  FireBird = 4;
+
+const
+  con_ComWorkType_INSERT = '1';
+  con_ComWorkType_UPDATE = '2';
+  con_ComWorkType_DELETE = '3';
+const
+  con_ComLogTYPE_DOOR = '1';
+
+type
+  TAdoConnectedEvent = procedure(Sender: TObject;  Connected:Boolean) of object;
+
+var
+  G_stExeFolder : string;
+  G_stGroupCode : string = '1234567890';
+
+implementation
+
+
+end.

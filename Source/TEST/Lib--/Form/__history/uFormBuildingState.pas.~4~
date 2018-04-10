@@ -1,0 +1,72 @@
+unit uFormBuildingState;
+
+interface
+
+uses
+  System.SysUtils, System.Classes;
+
+type
+  TBuildingState = Class(TComponent)
+  private
+    DeviceList : TStringList;
+    DoorList : TStringList;
+    ArmAreaList : TStringList;
+    { Private declarations }
+  public
+    { Public declarations }
+    constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
+  public
+
+  End;
+
+  TBuildingDeviceState = Class(TComponent)
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+    constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
+  public
+
+  End;
+
+  TBuildingDoorState = Class(TComponent)
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+    constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
+  public
+
+  End;
+
+  TBuildingArmAreaState = Class(TComponent)
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+    constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
+  public
+
+  End;
+
+  TDataModule1 = class(TDataModule)
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+  end;
+
+var
+  DataModule1: TDataModule1;
+
+implementation
+
+{%CLASSGROUP 'System.Classes.TPersistent'}
+
+{$R *.dfm}
+
+end.

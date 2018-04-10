@@ -1,0 +1,44 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<BorlandProject>
+	<Transactions>
+    <Transaction>1899-12-30 00:00:00.000.642,=E:\[프로젝트]\[DELXE2]\[Project]\[BMS_XE2]\Source\SupremaFingerServer\Unit1.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.338,=E:\[프로젝트]\[DELXE2]\[Project]\[BMS_XE2]\Lib\DataBase\uDBVariable.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.605,=E:\[프로젝트]\[DELXE2]\[Project]\[BMS_XE2]\Lib\FingerReader\uFingerVariable.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.567,E:\[프로젝트]\[DELXE2]\[Project]\[BMS_XE2]\Source\SupremaFingerServer\Unit1.pas=E:\[프로젝트]\[DELXE2]\[Project]\[BMS_XE2]\Lib\FingerReader\uSupremaServer.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.106,=E:\[프로젝트]\[DELXE2]\[Project]\[BMS_XE2]\Lib\Common\uCommonFunction.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.202,=E:\[프로젝트]\[DELXE2]\[Project]\[BMS_XE2]\Lib\DataBase\uDBFormMessage.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.172,=E:\[프로젝트]\[DELXE2]\[Project]\[BMS_XE2]\Lib\DataBase\uDBDelete.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.094,=E:\[프로젝트]\[DELXE2]\[Project]\[BMS_XE2]\Lib\Common\DIMime.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.621,E:\[프로젝트]\[DELXE2]\[Project]\[BMS_XE2]\Lib\Common\DIMime.pas=</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.294,E:\[프로젝트]\[DELXE2]\[Project]\[BMS_XE2]\Source\SupremaFingerServer\uMain.pas=C:\Windows\system32\Projects\Unit2.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.361,=C:\Windows\system32\Projects\Unit2.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.840,=E:\[프로젝트]\[DELXE2]\[Project]\[BMS_XE2]\Lib\Form\uFormDevice.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.705,=E:\[프로젝트]\[DELXE2]\[Project]\[BMS_XE2]\Source\SupremaFingerServer\fmDeviceComMonitoring\uDeviceComMonitoring.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.691,=E:\[프로젝트]\[DELXE2]\[Project]\[BMS_XE2]\Lib\Device\uDeviceFunction.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.210,=E:\[프로젝트]\[DELXE2]\[Project]\[BMS_XE2]\Lib\DataBase\uDataBase.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.204,C:\[프로젝트]\[ACAM_XE3]\Source\4.ACAM_Finger\ACAM_Finger.dproj=C:\[프로젝트]\[ACAM_XE3]\Source\4.ACAM_Finger\SupremaFingerServer.dproj</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.294,E:\[프로젝트]\[DELXE2]\[Project]\[BMS_XE2]\Source\SupremaFingerServer\uMain.dfm=C:\Windows\system32\Projects\Unit2.dfm</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.260,=E:\[프로젝트]\[DELXE2]\[Project]\[BMS_XE2]\Lib\DataBase\uDataBaseConfig.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.524,=E:\[프로젝트]\[DELXE2]\[Project]\[BMS_XE2]\Lib\Form\uFormVariable.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.732,=E:\[프로젝트]\[DELXE2]\[Project]\[BMS_XE2]\Lib\DataBase\uDBUpdate.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.163,=E:\[프로젝트]\[DELXE2]\[Project]\[BMS_XE2]\Lib\DataBase\uDBCreate.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.567,E:\[프로젝트]\[DELXE2]\[Project]\[BMS_XE2]\Source\SupremaFingerServer\Unit1.dfm=E:\[프로젝트]\[DELXE2]\[Project]\[BMS_XE2]\Lib\FingerReader\uSupremaServer.dfm</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.241,=E:\[프로젝트]\[DELXE2]\[Project]\[BMS_XE2]\Lib\DataBase\uDBFormName.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.619,=E:\[프로젝트]\[DELXE2]\[Project]\[BMS_XE2]\Lib\Common\uCommonVariable.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.639,=E:\[프로젝트]\[DELXE2]\[Project]\[BMS_XE2]\Lib\Form\uSubForm.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.670,=E:\[프로젝트]\[DELXE2]\[Project]\[BMS_XE2]\Lib\DataBase\uDBSelect.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.600,E:\[프로젝트]\[DELXE2]\[Project]\[BMS_XE2]\Source\SupremaFingerServer\SupremaFingerServer.dproj=C:\Windows\system32\Projects\Project2.dproj</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.427,=E:\[프로젝트]\[DELXE2]\[Project]\[BMS_XE2]\Source\SupremaFingerServer\fmFingerDevice\uFingerDevice.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.329,=E:\[프로젝트]\[DELXE2]\[Project]\[BMS_XE2]\Lib\DataBase\uDBInsert.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.741,=E:\[프로젝트]\[DELXE2]\[Project]\[BMS_XE2]\Lib\Login\uLoginVariable.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.924,=E:\[프로젝트]\[DELXE2]\[Project]\[BMS_XE2]\Lib\Device\uDeviceVariable.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.181,E:\[프로젝트]\[DELXE2]\[Project]\[BMS_XE2]\Source\SupremaFingerServer\fmNode\uNode.dfm=E:\[프로젝트]\[DELXE2]\[Project]\[BMS_XE2]\Source\SupremaFingerServer\fmFingerDevice\uFingerDevice.dfm</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.638,=E:\[프로젝트]\[DELXE2]\[Project]\[BMS_XE2]\Source\SupremaFingerServer\fmNode\uNode.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.181,E:\[프로젝트]\[DELXE2]\[Project]\[BMS_XE2]\Source\SupremaFingerServer\fmNode\uNode.pas=E:\[프로젝트]\[DELXE2]\[Project]\[BMS_XE2]\Source\SupremaFingerServer\fmFingerDevice\uFingerDevice.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.284,=E:\[프로젝트]\[DELXE2]\[Project]\[BMS_XE2]\Lib\DataBase\uDBFunction.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.596,E:\[프로젝트]\[DELXE2]\[Project]\[BMS_XE2]\Source\SupremaFingerServer\fmFingerDeviceState\uFingerDeviceState.dfm=E:\[프로젝트]\[DELXE2]\[Project]\[BMS_XE2]\Source\SupremaFingerServer\fmFingerDevice\uFingerDevice.dfm</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.117,=E:\[프로젝트]\[DELXE2]\[Project]\[BMS_XE2]\Lib\DataBase\uDBAlter.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.560,=E:\[프로젝트]\[DELXE2]\[Project]\[BMS_XE2]\Lib\Date\uSolarLunar.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.596,E:\[프로젝트]\[DELXE2]\[Project]\[BMS_XE2]\Source\SupremaFingerServer\fmFingerDeviceState\uFingerDeviceState.pas=E:\[프로젝트]\[DELXE2]\[Project]\[BMS_XE2]\Source\SupremaFingerServer\fmFingerDevice\uFingerDevice.pas</Transaction>
+  </Transactions>
+</BorlandProject>

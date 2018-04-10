@@ -1,0 +1,157 @@
+unit UDemo;
+
+interface
+uses
+  Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms,
+  Dialogs, AdvToolBar, AdvToolBarStylers, AdvPreviewMenu, CustomItemsContainer,
+  AdvPreviewMenuStylers, AdvShapeButton, AdvOfficeStatusBar,
+  AdvOfficeStatusBarStylers, AdvGlowButton, StdCtrls, ComCtrls,
+  Grids, GDIPCustomItem, ImgList, AdvOfficeHint, AdvAppStyler, AdvObj, BaseGrid,
+  AdvGrid;
+
+type
+  TTMSForm2 = class(TAdvToolBarForm)
+    AdvToolBarOfficeStyler1: TAdvToolBarOfficeStyler;
+    AdvOfficeStatusBar1: TAdvOfficeStatusBar;
+    AdvOfficeStatusBarOfficeStyler1: TAdvOfficeStatusBarOfficeStyler;
+    AdvToolBarPager1: TAdvToolBarPager;
+    AdvPage1: TAdvPage;
+    AdvQuickAccessToolBar1: TAdvQuickAccessToolBar;
+    AdvShapeButton1: TAdvShapeButton;
+    SaveDialog1: TSaveDialog;
+    OpenDialog1: TOpenDialog;
+    AdvToolBar2: TAdvToolBar;
+    AdvToolBar4: TAdvToolBar;
+    AdvGlowButton7: TAdvGlowButton;
+    AdvGlowButton8: TAdvGlowButton;
+    AdvGlowButton1: TAdvGlowButton;
+    ImageList1: TImageList;
+    AdvToolBar3: TAdvToolBar;
+    agb_Bold: TAdvGlowButton;
+    agb_Underline: TAdvGlowButton;
+    agb_StrickOut: TAdvGlowButton;
+    agb_Italic: TAdvGlowButton;
+    agb_font: TAdvGlowButton;
+    FontDialog1: TFontDialog;
+    AdvOfficeHint1: TAdvOfficeHint;
+    AdvToolBar1: TAdvToolBar;
+    ComboBox1: TComboBox;
+    Label1: TLabel;
+    AdvGlowButton2: TAdvGlowButton;
+    ColorDialog1: TColorDialog;
+    AdvFormStyler1: TAdvFormStyler;
+    procedure FormCreate(Sender: TObject);
+    procedure AdvGlowButton1Click(Sender: TObject);
+    procedure AdvGlowButton2Click(Sender: TObject);
+    procedure TMSFrame11ImageTextItem6ItemClick(Sender: TObject;
+      Item: TCustomItem);
+    procedure ComboBox1Change(Sender: TObject);
+  private
+    { Private declarations }
+  protected
+    { Protected declarations }
+  public
+    { Public declarations }
+    procedure ClearValues;
+    procedure SaveValues(AFile: String);
+    procedure LoadValues(AFile: String);
+  end;
+
+var
+  TMSForm2: TTMSForm2;
+
+implementation
+
+{$R *.dfm}
+
+uses
+  AdvStyleIF;
+
+
+procedure TTMSForm2.AdvGlowButton1Click(Sender: TObject);
+begin
+  if WindowState = wsNormal then
+  begin
+    WindowState := wsMaximized;
+    AdvGlowButton1.Caption := 'Normal';
+  end
+  else
+  begin
+    WindowState := wsNormal;
+    AdvGlowButton1.Caption := 'Maximize';
+  end;
+end;
+
+procedure TTMSForm2.AdvGlowButton2Click(Sender: TObject);
+begin
+  ColorDialog1.Color := AdvShapeButton1.Appearance.Color;
+  if ColorDialog1.Execute then
+  begin
+    AdvShapeButton1.UseGlobalColor := True;
+    AdvShapeButton1.Appearance.Color := ColorDialog1.Color;
+  end;
+end;
+
+procedure TTMSForm2.ClearValues;
+begin
+end;
+
+procedure TTMSForm2.ComboBox1Change(Sender: TObject);
+begin
+  AdvFormStyler1.Metro := false;
+  AdvFormStyler1.Style := tsCustom;
+  AdvToolBarOfficeStyler1.Style := AdvToolbarStylers.bsCustom;
+  AdvShapeButton1.UseGlobalColor := false;
+
+  case ComboBox1.ItemIndex of
+    0: AdvFormStyler1.Style := tsOffice2010Blue;
+    1: AdvFormStyler1.Style := tsOffice2010Silver;
+    2: AdvFormStyler1.Style := tsOffice2010Black;
+    3:
+    begin
+      AdvFormStyler1.MetroColor := clHighlight;
+      AdvFormStyler1.MetroStyle := msLight;
+    end;
+    4:
+    begin
+      AdvFormStyler1.MetroColor := clFuchsia;
+      AdvFormStyler1.MetroStyle := msDark;
+    end;
+  end;
+
+  AdvFormStyler1.Metro := ComboBox1.ItemIndex in [3,4];
+  AdvShapeButton1.UseGlobalColor := not AdvFormStyler1.Metro;
+
+  if AdvFormStyler1.Metro then
+    AdvToolBarPager1.Caption.Caption := 'TMS software - Metro ribbon and menu'
+  else
+    AdvToolBarPager1.Caption.Caption := 'TMS software - Office 2010 ribbon and menu';
+end;
+
+procedure TTMSForm2.FormCreate(Sender: TObject);
+begin
+
+  ColorDialog1.Color := AdvShapeButton1.Appearance.ColorDownMirror;
+  AdvShapeButton1.UseGlobalColor := true;
+
+end;
+
+procedure TTMSForm2.LoadValues(AFile: String);
+var
+  I: Integer;
+begin
+  AdvToolBarPager1.Caption.Caption := 'TMS software - Office 2010 ribbon and menu ['+ExtractFileName(AFile)+']';
+  AdvOfficeStatusBar1.Panels[0].Text := ExtractFileName(AFile);
+end;
+
+procedure TTMSForm2.SaveValues(AFile: String);
+begin
+end;
+
+procedure TTMSForm2.TMSFrame11ImageTextItem6ItemClick(Sender: TObject;
+  Item: TCustomItem);
+begin
+  Close;
+end;
+
+end.

@@ -1,0 +1,25 @@
+program CardFRChange;
+
+uses
+  Vcl.Forms,
+  uMain in 'uMain.pas' {Form1},
+  uDataBaseConfig in '..\..\Lib\DataBase\uDataBaseConfig.pas' {fmDataBaseConfig},
+  uDataBase in '..\..\Lib\DataBase\uDataBase.pas' {dmDataBase: TDataModule},
+  uCommonEvent in '..\..\Lib\Common\uCommonEvent.pas',
+  uCommonFunction in '..\..\Lib\Common\uCommonFunction.pas',
+  uCommonVariable in '..\..\Lib\Common\uCommonVariable.pas',
+  uDBFormMessage in '..\..\Lib\DataBase\uDBFormMessage.pas' {dmFormMessage: TDataModule},
+  uDBFormName in '..\..\Lib\DataBase\uDBFormName.pas' {dmFormName: TDataModule};
+
+{$R *.res}
+
+begin
+  Application.Initialize;
+  Application.MainFormOnTaskbar := True;
+  Application.CreateForm(TForm1, Form1);
+  Application.CreateForm(TfmDataBaseConfig, fmDataBaseConfig);
+  Application.CreateForm(TdmDataBase, dmDataBase);
+  Application.CreateForm(TdmFormMessage, dmFormMessage);
+  Application.CreateForm(TdmFormName, dmFormName);
+  Application.Run;
+end.

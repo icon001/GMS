@@ -1,0 +1,16 @@
+unit uMessage;
+
+interface
+var
+  //에러처리 메시지
+  G_stMSGDATABASEDUPLICATE : string = '데이터가 중복으로 존재합니다.';
+  G_stMSGDATABASESAVEERROR : string = '데이터 저장 실패';
+  G_stMSGEXISTNOTWORK : string = '$EXISTNAME가(이) 존재하여 $CURRENTNAME를(을) $WORK 할 수 없습니다.';
+  G_stMSGMAINCONTROLERNOTCHANGE : string = '메인컨트롤러의 아이디는 변경 불가능합니다.';
+  G_stMSGNAMEERROR :string = '$NAME가(이) 올바르지 않습니다.';
+  G_stMSGSELECTERROR :string = '$WORK 데이터를 선택 하세요.';
+  G_stMSGWORKCOUNTINFO :string = '$COUNT건의 $WORK를(을) 수행하시겠습니까?';
+
+implementation
+
+end.

@@ -1,0 +1,45 @@
+unit uDeviceFunction;
+
+interface
+
+uses
+  System.SysUtils, System.Classes;
+
+type
+  TdmDeviceFunction = class(TDataModule)
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+    function GetFixedCardNoCheck(aCardNo:string;bCardFixedUse:Boolean;
+             aCardFixedFillChar:string;nCardFixedPosition,nCardFixedLength:integer):string;
+  end;
+
+var
+  dmDeviceFunction: TdmDeviceFunction;
+
+implementation
+uses
+  uCommonFunction;
+
+{%CLASSGROUP 'System.Classes.TPersistent'}
+
+{$R *.dfm}
+
+{ TDataModule1 }
+
+function TdmDeviceFunction.GetFixedCardNoCheck(aCardNo: string;
+  bCardFixedUse: Boolean; aCardFixedFillChar: string; nCardFixedPosition,
+  nCardFixedLength: integer): string;
+var
+  bFront : Boolean;
+begin
+  result := aCardNo;
+  if Not bCardFixedUse then Exit; //고정길이 사용하지 않으면 원 카드데이터 리턴
+  bFront := True;
+  if nCardFixedPosition <> 0 then bFront := False;//뒤에 채움문자 채우는 경우
+  result := FillCharString(aCardNo,aCardFixedFillChar[1],nCardFixedLength,bFront);
+
+end;
+
+end.

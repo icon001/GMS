@@ -1,0 +1,276 @@
+unit uDoor;
+
+interface
+
+uses
+  System.SysUtils, System.Classes,
+  uDevice;
+
+const MAXDOORRCVCOUNT = 100;
+
+const
+    con_DOORTYPE = 1;
+    con_DOORCARDMODE = 2;
+    con_DOORDOORMODE = 3;
+    con_DOORCONTROLTIME = 4;
+    con_DOORLONGOPENTIME = 5;
+    con_DOORLONGOPENALARM = 6;
+    con_DOORDOORSTATE = 7;
+    con_DOORSCHEDULEUSE = 8;
+    con_DOORFIREDOOROPEN = 9;
+    con_DOORLOCKTYPE = 10;
+    con_DOORDSOPENSTATE = 11;
+    con_DOORREMOTEDISARMDOOROPEN = 12;
+    con_DOORARMAREANO = 13;
+    con_DOORDSCHECKUSE = 14;
+    con_DOORDSCHECKTIME = 15;
+    con_DOORARMDSCHECK = 16;
+
+type
+  TDeviceDoor = Class(TComponent)
+  private
+    L_cDoorRCVSTATE: Array [0..MAXDOORRCVCOUNT] of char;     //수신상태
+    FDoorUse: Boolean;
+    FDoorNo: integer;
+    FDevice: TDevice;
+    FREMOTEDISARMDOOROPEN: string;
+    FDOORTYPE: string;
+    FARMAREANO: integer;
+    FLOCKTYPE: string;
+    FDSCHECKUSE: string;
+    FARMDSCHECK: string;
+    FFIREDOOROPEN: string;
+    FDOORNAME: string;
+    FSCHEDULEUSE: string;
+    FDOORMODE: string;
+    FDOORSTATE: string;
+    FDSCHECKTIME: string;
+    FLONGOPENTIME: string;
+    FCARDMODE: string;
+    FLONGOPENALARM: string;
+    FDSOPENSTATE: string;
+    FCONTROLTIME: string;
+    FARMAREANORCV: string;
+    FLOCKTYPERCV: string;
+    FDSCHECKUSERCV: string;
+    FARMDSCHECKRCV: string;
+    FFIREDOOROPENRCV: string;
+    FSCHEDULEUSERCV: string;
+    FDOORMODERCV: string;
+    FDOORSTATERCV: string;
+    FDSCHECKTIMERCV: string;
+    FLONGOPENTIMERCV: string;
+    FCARDMODERCV: string;
+    FLONGOPENALARMRCV: string;
+    FDSOPENSTATERCV: string;
+    FCONTROLTIMERCV: string;
+    FREMOTEDISARMDOOROPENRCV: string;
+    FDOORTYPERCV: string;
+    FReciveStateChange: Boolean;
+    procedure SetDOORTYPE(const Value: string);
+    procedure SetFIREDOOROPEN(const Value: string);
+    procedure SetSCHEDULEUSE(const Value: string);
+    procedure SetARMAREANORCV(const Value: string);
+    procedure SetARMDSCHECKRCV(const Value: string);
+    procedure SetCARDMODERCV(const Value: string);
+    procedure SetCONTROLTIMERCV(const Value: string);
+    procedure SetDOORMODERCV(const Value: string);
+    procedure SetDOORSTATERCV(const Value: string);
+    procedure SetDOORTYPERCV(const Value: string);
+    procedure SetDSCHECKTIMERCV(const Value: string);
+    procedure SetDSCHECKUSERCV(const Value: string);
+    procedure SetDSOPENSTATERCV(const Value: string);
+    procedure SetFIREDOOROPENRCV(const Value: string);
+    procedure SetLOCKTYPERCV(const Value: string);
+    procedure SetLONGOPENALARMRCV(const Value: string);
+    procedure SetLONGOPENTIMERCV(const Value: string);
+    procedure SetREMOTEDISARMDOOROPENRCV(const Value: string);
+    procedure SetSCHEDULEUSERCV(const Value: string);
+    procedure SetReciveStateChange(const Value: Boolean);
+    { Private declarations }
+  published
+    property ReciveStateChange : Boolean read FReciveStateChange write SetReciveStateChange; //수신 상태 변경 여부
+  published
+    property Device : TDevice read FDevice write FDevice;
+    property DoorNo : integer read FDoorNo write FDoorNo;
+    property DoorUse : Boolean read FDoorUse write FDoorUse; //출입문사용유무
+    property DOORNAME : string read FDOORNAME write FDOORNAME;
+    property DOORTYPE : string read FDOORTYPE write SetDOORTYPE;
+    property CARDMODE : string read FCARDMODE write FCARDMODE;
+    property DOORMODE : string read FDOORMODE write FDOORMODE;
+    property CONTROLTIME : string read FCONTROLTIME write FCONTROLTIME;
+    property LONGOPENTIME : string read FLONGOPENTIME write FLONGOPENTIME;
+    property LONGOPENALARM : string read FLONGOPENALARM write FLONGOPENALARM;
+    property DOORSTATE : string read FDOORSTATE write FDOORSTATE;
+    property SCHEDULEUSE : string read FSCHEDULEUSE write SetSCHEDULEUSE;
+    property FIREDOOROPEN : string read FFIREDOOROPEN write SetFIREDOOROPEN;
+    property LOCKTYPE : string read FLOCKTYPE write FLOCKTYPE;
+    property DSOPENSTATE : string read FDSOPENSTATE write FDSOPENSTATE;
+    property REMOTEDISARMDOOROPEN : string read FREMOTEDISARMDOOROPEN write FREMOTEDISARMDOOROPEN;
+    property ARMAREANO : integer read FARMAREANO write FARMAREANO;
+    property DSCHECKUSE : string read FDSCHECKUSE write FDSCHECKUSE;
+    property DSCHECKTIME : string read FDSCHECKTIME write FDSCHECKTIME;
+    property ARMDSCHECK : string read FARMDSCHECK write FARMDSCHECK;
+  published
+    property DOORTYPERCV : string read FDOORTYPERCV write SetDOORTYPERCV;
+    property CARDMODERCV : string read FCARDMODERCV write SetCARDMODERCV;
+    property DOORMODERCV : string read FDOORMODERCV write SetDOORMODERCV;
+    property CONTROLTIMERCV : string read FCONTROLTIMERCV write SetCONTROLTIMERCV;
+    property LONGOPENTIMERCV : string read FLONGOPENTIMERCV write SetLONGOPENTIMERCV;
+    property LONGOPENALARMRCV : string read FLONGOPENALARMRCV write SetLONGOPENALARMRCV;
+    property DOORSTATERCV : string read FDOORSTATERCV write SetDOORSTATERCV;
+    property SCHEDULEUSERCV : string read FSCHEDULEUSERCV write SetSCHEDULEUSERCV;
+    property FIREDOOROPENRCV : string read FFIREDOOROPENRCV write SetFIREDOOROPENRCV;
+    property LOCKTYPERCV : string read FLOCKTYPERCV write SetLOCKTYPERCV;
+    property DSOPENSTATERCV : string read FDSOPENSTATERCV write SetDSOPENSTATERCV;
+    property REMOTEDISARMDOOROPENRCV : string read FREMOTEDISARMDOOROPENRCV write SetREMOTEDISARMDOOROPENRCV;
+    property ARMAREANORCV : string read FARMAREANORCV write SetARMAREANORCV;
+    property DSCHECKUSERCV : string read FDSCHECKUSERCV write SetDSCHECKUSERCV;
+    property DSCHECKTIMERCV : string read FDSCHECKTIMERCV write SetDSCHECKTIMERCV;
+    property ARMDSCHECKRCV : string read FARMDSCHECKRCV write SetARMDSCHECKRCV;
+  public
+    { Public declarations }
+    constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
+  end;
+
+  TdmDoor = class(TDataModule)
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+  end;
+
+var
+  dmDoor: TdmDoor;
+
+implementation
+
+{%CLASSGROUP 'System.Classes.TPersistent'}
+
+{$R *.dfm}
+
+{ TDeviceDoor }
+
+constructor TDeviceDoor.Create(AOwner: TComponent);
+var
+  i : integer;
+begin
+  inherited;
+  for i := 0 to HIGH(L_cDoorRCVSTATE) do
+  begin
+    L_cDoorRCVSTATE[i] := 'Y';
+  end;
+
+end;
+
+destructor TDeviceDoor.Destroy;
+begin
+
+  inherited;
+end;
+
+procedure TDeviceDoor.SetARMAREANORCV(const Value: string);
+begin
+  FARMAREANORCV := Value;
+end;
+
+procedure TDeviceDoor.SetARMDSCHECKRCV(const Value: string);
+begin
+  FARMDSCHECKRCV := Value;
+end;
+
+procedure TDeviceDoor.SetCARDMODERCV(const Value: string);
+begin
+  FCARDMODERCV := Value;
+end;
+
+procedure TDeviceDoor.SetCONTROLTIMERCV(const Value: string);
+begin
+  FCONTROLTIMERCV := Value;
+end;
+
+procedure TDeviceDoor.SetDOORMODERCV(const Value: string);
+begin
+  FDOORMODERCV := Value;
+end;
+
+procedure TDeviceDoor.SetDOORSTATERCV(const Value: string);
+begin
+  FDOORSTATERCV := Value;
+end;
+
+procedure TDeviceDoor.SetDOORTYPE(const Value: string);
+begin
+  FDOORTYPE := Value;
+end;
+
+procedure TDeviceDoor.SetDOORTYPERCV(const Value: string);
+begin
+  FDOORTYPERCV := Value;
+end;
+
+procedure TDeviceDoor.SetDSCHECKTIMERCV(const Value: string);
+begin
+  FDSCHECKTIMERCV := Value;
+end;
+
+procedure TDeviceDoor.SetDSCHECKUSERCV(const Value: string);
+begin
+  FDSCHECKUSERCV := Value;
+end;
+
+procedure TDeviceDoor.SetDSOPENSTATERCV(const Value: string);
+begin
+  FDSOPENSTATERCV := Value;
+end;
+
+procedure TDeviceDoor.SetFIREDOOROPEN(const Value: string);
+begin
+  FFIREDOOROPEN := Value;
+end;
+
+procedure TDeviceDoor.SetFIREDOOROPENRCV(const Value: string);
+begin
+  FFIREDOOROPENRCV := Value;
+end;
+
+procedure TDeviceDoor.SetLOCKTYPERCV(const Value: string);
+begin
+  FLOCKTYPERCV := Value;
+end;
+
+procedure TDeviceDoor.SetLONGOPENALARMRCV(const Value: string);
+begin
+  FLONGOPENALARMRCV := Value;
+end;
+
+procedure TDeviceDoor.SetLONGOPENTIMERCV(const Value: string);
+begin
+  FLONGOPENTIMERCV := Value;
+end;
+
+procedure TDeviceDoor.SetReciveStateChange(const Value: Boolean);
+begin
+  if FReciveStateChange = Value then Exit;
+  FReciveStateChange := Value;
+  if Value then
+     TDevice(Device).ReciveStateChange := True;
+end;
+
+procedure TDeviceDoor.SetREMOTEDISARMDOOROPENRCV(const Value: string);
+begin
+  FREMOTEDISARMDOOROPENRCV := Value;
+end;
+
+procedure TDeviceDoor.SetSCHEDULEUSE(const Value: string);
+begin
+  FSCHEDULEUSE := Value;
+end;
+
+procedure TDeviceDoor.SetSCHEDULEUSERCV(const Value: string);
+begin
+  FSCHEDULEUSERCV := Value;
+end;
+
+end.

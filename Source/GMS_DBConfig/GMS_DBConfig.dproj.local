@@ -1,0 +1,20 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<BorlandProject>
+	<Transactions>
+    <Transaction>1899-12-30 00:00:00.000.117,=Y:\[프로젝트]\[DELXE3]\[GMS]_GateManagerSystem\Lib\DataBase\uDataBaseConfig.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.224,=Y:\[프로젝트]\[DELXE3]\[GMS]_GateManagerSystem\Lib\DataBase\uDBFunction.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.798,=Y:\[프로젝트]\[DELXE3]\[GMS]_GateManagerSystem\Lib\Common\uCommonFunction.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.114,=Y:\[프로젝트]\[DELXE3]\[GMS]_GateManagerSystem\Lib\DataBase\uDBUpdate.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.835,=Y:\[프로젝트]\[DELXE3]\[GMS]_GateManagerSystem\Lib\DataBase\uDBCreate.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.023,=Y:\[프로젝트]\[DELXE3]\[GMS]_GateManagerSystem\Lib\DataBase\uDBFormName.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.061,=Y:\[프로젝트]\[DELXE3]\[GMS]_GateManagerSystem\Lib\DataBase\uDataBase.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.806,E:\[프로젝트]\[DELXE2]\[Project]\[BMS_XE2]\Util\클라이언트서버아이피셋팅\uLink.pas=</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.717,=Y:\[프로젝트]\[DELXE3]\[GMS]_GateManagerSystem\Lib\Common\uCommonEvent.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.452,=Y:\[프로젝트]\[DELXE3]\[GMS]_GateManagerSystem\Lib\DataBase\uDBInsert.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.314,Y:\[프로젝트]\[DELXE3]\[GMS]_GateManagerSystem\Source\GMS_DBConfig\GMS_DBConfig.dproj=Y:\[프로젝트]\[DELXE3]\[GMS]_GateManagerSystem\Source\GMS_DBConfig\ClientConfig.dproj</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.994,=Y:\[프로젝트]\[DELXE3]\[GMS]_GateManagerSystem\Lib\DataBase\uDBFormMessage.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.429,=E:\[프로젝트]\[DELXE2]\[Project]\[BMS_XE2]\Util\클라이언트서버아이피셋팅\uLink.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.473,=Y:\[프로젝트]\[DELXE3]\[GMS]_GateManagerSystem\Lib\Common\uCommonVariable.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.046,=Y:\[프로젝트]\[DELXE3]\[GMS]_GateManagerSystem\Lib\Date\uSolarLunar.pas</Transaction>
+  </Transactions>
+</BorlandProject>

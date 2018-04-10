@@ -1,0 +1,5 @@
+object dmMIAMSDataBase: TdmMIAMSDataBase
+  OldCreateOrder = False
+  Height = 150
+  Width = 215
+end

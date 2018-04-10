@@ -1,0 +1,19 @@
+; BioStar16.def : Declares the module parameters for the DLL.
+
+LIBRARY      "BioStar16"
+;DESCRIPTION  'BioStar16 Windows Dynamic Link Library'
+
+EXPORTS
+    ; Explicit exports can go here
+
+
+F_BS_InitSDK @1
+F_BS_OpenSocket @2
+F_BS_ReadCardNo @3
+F_BS_ScanTemplate @4
+F_BS_ScanTemplateADD @5
+F_BS_ReadImage @6
+F_BS_CloseSocket @7
+F_BS_DeleteUser @8
+F_BS_SetTime @9
+F_BS_DeleteAllUser @10

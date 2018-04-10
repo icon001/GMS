@@ -1,0 +1,14 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<BorlandProject>
+	<Transactions>
+    <Transaction>1899-12-30 00:00:00.000.179,=Y:\My Document\RAD Studio\Projects\Unit1.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.987,=Z:\My Document\RAD Studio\Projects\Unit1.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.171,=Y:\My Document\RAD Studio\Projects\Unit1.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.593,=Y:\My Document\RAD Studio\Projects\Unit1.pas</Transaction>
+    <Transaction>2013-11-12 17:19:18.939,=Z:\My Document\RAD Studio\Projects\Unit1.pas</Transaction>
+    <Transaction>2013-11-12 17:20:44.633,=E:\[프로젝트]\[DELXE2]\[Project]\[BMS_XE2]\Lib\Common\uCommonFunction.pas</Transaction>
+    <Transaction>2013-11-12 18:11:05.827,E:\[프로젝트]\[DELXE2]\[Project]\[TEST]\encodeTest\uEncodeTest.pas=Z:\My Document\RAD Studio\Projects\Unit1.pas</Transaction>
+    <Transaction>2013-11-12 18:11:05.827,E:\[프로젝트]\[DELXE2]\[Project]\[TEST]\encodeTest\uEncodeTest.dfm=Z:\My Document\RAD Studio\Projects\Unit1.dfm</Transaction>
+    <Transaction>2013-11-12 18:11:12.957,E:\[프로젝트]\[DELXE2]\[Project]\[BMS_XE2]\Lib\Common\EncodeTest.dproj=Z:\My Document\RAD Studio\Projects\Project1.dproj</Transaction>
+  </Transactions>
+</BorlandProject>

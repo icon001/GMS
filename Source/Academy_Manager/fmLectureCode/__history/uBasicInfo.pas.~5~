@@ -1,0 +1,50 @@
+unit uBasicInfo;
+
+interface
+
+uses
+  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
+  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, AdvEdBtn, AdvGlowButton, Vcl.Grids,
+  AdvObj, BaseGrid, AdvGrid, Vcl.StdCtrls, AdvGroupBox, AdvEdit, AdvSmoothLabel;
+
+type
+  TfmBasicInfo = class(TForm)
+    lb_AddBookName: TAdvSmoothLabel;
+    ed_bookName: TAdvEdit;
+    AdvSmoothLabel3: TAdvSmoothLabel;
+    ed_bookAmt: TAdvEdit;
+    lb_Month: TAdvSmoothLabel;
+    ed_Month: TAdvEdit;
+    lb_List: TLabel;
+    gb_Card: TAdvGroupBox;
+    ed_LectureAmt: TAdvEdit;
+    sg_Tuition: TAdvStringGrid;
+    btn_LectureAmtAdd: TAdvGlowButton;
+    eb_Company: TAdvEditBtn;
+  private
+    FClassCode: string;
+    FClassName: string;
+    procedure SetClassName(const Value: string);
+    { Private declarations }
+  public
+    { Public declarations }
+    property ClassCode : string read FClassCode write FClassCode;
+    property ClassName : string read FClassName write SetClassName;
+  end;
+
+var
+  fmBasicInfo: TfmBasicInfo;
+
+implementation
+
+{$R *.dfm}
+
+{ TfmBasicInfo }
+
+procedure TfmBasicInfo.SetClassName(const Value: string);
+begin
+  FClassName := Value;
+
+end;
+
+end.

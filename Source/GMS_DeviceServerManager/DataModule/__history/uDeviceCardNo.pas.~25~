@@ -1,0 +1,1026 @@
+unit uDeviceCardNo;
+
+interface
+
+uses
+  System.SysUtils, System.Classes,
+  uDeviceVariable;
+
+const
+  con_CardLastUsedate = 1;
+
+type
+  TCardChangePacket = procedure(Sender: TObject;  aCmd: integer;aCardNo:string; aData:string) of object;
+
+  TCard = Class(TComponent)
+  private
+    FCOMPANYNAME: string;
+    FCOMPANYCODE: string;
+    FEMSEQ: integer;
+    FEMNAME: string;
+    FEMCODE: string;
+    FCARDNO: string;
+    FPOSINAME: string;
+    FPOSICODE: string;
+    FLastUseDate: string;
+    FOnCardChangePacket: TCardChangePacket;
+    FATUSE: string;
+    FFDUSE: string;
+    FPRINTNO: string;
+    FLoadDate: string;
+    FHandPhoneNum: string;
+    procedure SetLastUseDate(const Value: string);
+  published
+    property CARDNO : string read FCARDNO write FCARDNO;
+    property EMSEQ : integer read FEMSEQ write FEMSEQ;
+    property EMCODE : string read FEMCODE write FEMCODE;
+    property EMNAME : string read FEMNAME write FEMNAME;
+    property COMPANYCODE : string read FCOMPANYCODE write FCOMPANYCODE;
+    property COMPANYNAME : string read FCOMPANYNAME write FCOMPANYNAME;
+    property POSICODE : string read FPOSICODE write FPOSICODE;
+    property POSINAME : string read FPOSINAME write FPOSINAME;
+    property PRINTNO : string read FPRINTNO write FPRINTNO;
+    property HandPhoneNum : string read FHandPhoneNum write FHandPhoneNum;
+    property LastUseDate : string read FLastUseDate write SetLastUseDate;
+    property LoadDate : string read FLoadDate write FLoadDate;
+    property ATUSE : string read FATUSE write FATUSE;
+    property FDUSE : string read FFDUSE write FFDUSE;
+  published
+    property OnCardChangePacket : TCardChangePacket read FOnCardChangePacket write FOnCardChangePacket;
+  End;
+
+  TvNodeCard = class(TComponent)
+    NodeDeviceList : TStringList;
+  private
+    FNodeNo: string;
+  public
+    { Public declarations }
+    constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
+  public
+    Function CheckDeviceCardGrade(aECUID,aExtID,aDoorNo,aArmAreaNo,aCardNo,aResult,aTime:string):integer;
+    Function GetCardArmAreaPermit(aEcuID,aCardNo:string):string;
+    Function GetCardDoorPermit(aEcuID,aCardNo:string):string;
+    Function GetCardEMState(aEcuID,aCardNo:string):string;
+    Function GetCardEndDate(aEcuID,aCardNo:string):string;
+    Function GetCardPermit(aEcuID,aCardNo:string):string;
+    Function GetCardPositionNum(aEcuID,aCardNo:string):string;
+    Function GetCardStartDate(aEcuID,aCardNo:string):string;
+    Function GetCardTimeCode(aEcuID,aCardNo:string):string;
+    Function GetCardTimeCodeUse(aEcuID,aCardNo:string):string;
+    Function GetCardTimeGroup(aEcuID,aCardNo:string):string;
+    Function GetCardWeekCode(aEcuID,aCardNo:string):string;
+    function SetNodeToCardPermitInitialize(aEcuID,aCardNo,aCardPermit,aCardState,aDoor1,aDoor2,aDoor3,aDoor4,aDoor5,aDoor6,aDoor7,aDoor8,
+          aArmArea0,aArmArea1,aArmArea2,aArmArea3,aArmArea4,aArmArea5,aArmArea6,aArmArea7,aArmArea8,aRcvAck,aPositionNum,
+          aTimeCodeUse,aTCGroup,aTime1,aTime2,aTime3,aTime4,aTCWeekCode,aRegDate,aEndDate,aEmState:string):integer;
+  published
+    property NodeNo : string read FNodeNo write FNodeNo;
+  end;
+
+  TvDeviceCard = class(TComponent)
+    DeviceCardList : TStringList;
+  private
+    FECUID: string;
+  public
+    { Public declarations }
+    constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
+  public
+    Function CheckDeviceCardGrade(aDoorNo,aArmAreaNo,aCardNo,aResult,aTime:string):integer;
+    Function GetCardArmAreaPermit(aCardNo:string):string;
+    Function GetCardDoorPermit(aCardNo:string):string;
+    Function GetCardEMState(aCardNo:string):string;
+    Function GetCardEndDate(aCardNo:string):string;
+    Function GetCardPermit(aCardNo:string):string;
+    Function GetCardPositionNum(aCardNo:string):string;
+    Function GetCardStartDate(aCardNo:string):string;
+    Function GetCardTimeCode(aCardNo:string):string;
+    Function GetCardTimeCodeUse(aCardNo:string):string;
+    Function GetCardTimeGroup(aCardNo:string):string;
+    Function GetCardWeekCode(aCardNo:string):string;
+
+    function SetNodeToCardPermitInitialize(aCardNo,aCardPermit,aCardState,aDoor1,aDoor2,aDoor3,aDoor4,aDoor5,aDoor6,aDoor7,aDoor8,
+          aArmArea0,aArmArea1,aArmArea2,aArmArea3,aArmArea4,aArmArea5,aArmArea6,aArmArea7,aArmArea8,aRcvAck,aPositionNum,
+          aTimeCodeUse,aTCGroup,aTime1,aTime2,aTime3,aTime4,aTCWeekCode,aRegDate,aEndDate,aEmState:string):integer;
+  published
+    property ECUID : string read FECUID write FECUID;
+  end;
+
+
+  TDeviceCard = Class(TComponent)
+  private
+    L_cDoorPermit: Array [0..8] of char;     //출입문 권한
+    L_cArmAreaPermit: Array [0..8] of char;     //방범구역 권한
+    L_cTimeCode: Array [0..4] of char;     //타임코드
+    L_stTimeCodeUse : string;
+    L_stTimeGroup : string;
+    L_stWeekCode : string;
+    { Private declarations }
+    procedure CardPermitCheck;
+  private
+    FCARDNO: string;
+    FRCVACK: string;
+    FPermitChange: Boolean;
+    FPositionNum: string;
+    FEMSEQ: string;
+    FEMNAME: string;
+    FCOMPANYCODE: string;
+    FACUSE: string;
+    FATUSE: string;
+    FFDUSE: string;
+    FCARDPERMIT: Boolean;
+    FENDDATE: string;
+    FREGDATE: string;
+    FOnCardPermitChange: TCardPermitPacket;
+    FOnCardRcvAckChange: TCardRcvPacket;
+    FEMSTATE: string;
+    procedure SetRCVACK(const Value: string);
+  public
+    { Public declarations }
+    constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
+  public
+    { Public declarations }
+    procedure InitArmAreaPermit(aArmAreaNo:integer;aPermit:string); //초기에 DB에서 데이터 불러와서 설정 하는 부분
+    procedure InitCardPermit(aPermit:string);       //초기에 DB에서 데이터 불러와서 설정 하는 부분
+    procedure InitDoorPermit(aDoorNo:integer;aPermit:string);       //초기에 DB에서 데이터 불러와서 설정 하는 부분
+    procedure InitRCVACK(aRcvAck:string);       //초기에 DB에서 데이터 불러와서 설정 하는 부분
+    procedure InitTimeCode(aSeq:integer;aTimeCode:string);       //초기에 DB에서 데이터 불러와서 설정 하는 부분
+    procedure InitTimeCodeUse(aTimeCodeUse:string);       //초기에 DB에서 데이터 불러와서 설정 하는 부분
+    procedure InitTimeGroup(aTimeGroup:string);       //초기에 DB에서 데이터 불러와서 설정 하는 부분
+    procedure InitWeekCode(aWeekCode:string);       //초기에 DB에서 데이터 불러와서 설정 하는 부분
+
+    procedure PermitSetting(aRcvAck:string);                                        //권한 작업 완료 후 작업 완료 이벤트 발생 하기 위해서
+
+    procedure SetArmAreaPermit(aArmAreaNo:integer;aPermit:string);
+    procedure SetDoorPermit(aDoorNo:integer;aPermit:string);
+    procedure SetTimeCode(aSeq:integer;aTimeCode:string);
+    procedure SetTimeCodeUse(aTimeCodeUse:string);
+    procedure SetTimeGroup(aTimeGroup:string);
+    procedure SetWeekCode(aWeekCode:string);
+  public
+    function CheckArmAreaPermit(aArmAreaNo : string):Boolean;
+    function CheckDoorPermit(aDoorNo : string):Boolean;
+    function CheckValidDate(aDate : string) : Boolean;
+
+    function GetArmAreaPermit : string;
+    function GetDoorPermit(aMaxDoorCount:integer) : string;
+    function GetTimeCode : string;
+    function GetTimeCodeUse : string;
+    function GetTimeGroup : string;
+    function GetWeekCode : string;
+  published
+    property CARDNO : string read FCARDNO write FCARDNO;
+    property PermitChange : Boolean  read FPermitChange write FPermitChange;
+    property RCVACK : string read FRCVACK write SetRCVACK;    //수신상태
+
+    property CARDPERMIT : Boolean read FCARDPERMIT write FCARDPERMIT;   //권한 상태
+    property PositionNum : string read FPositionNum write FPositionNum;
+    property REGDATE : string read FREGDATE write FREGDATE;
+    property ENDDATE : string read FENDDATE write FENDDATE;
+    property EMSTATE : string read FEMSTATE write FEMSTATE;
+  published
+    property OnCardPermitChange : TCardPermitPacket read FOnCardPermitChange write FOnCardPermitChange;
+    property OnCardRcvAckChange : TCardRcvPacket read FOnCardRcvAckChange write FOnCardRcvAckChange;
+  end;
+
+  TdmDeviceCardNo = class(TDataModule)
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+  end;
+
+var
+  dmDeviceCardNo: TdmDeviceCardNo;
+
+implementation
+uses
+  uCommonFunction,
+  uCommonVariable;
+
+{%CLASSGROUP 'Vcl.Controls.TControl'}
+
+{$R *.dfm}
+
+{ TDeviceCard }
+
+procedure TDeviceCard.CardPermitCheck;
+var
+  i : integer;
+  bPermit : Boolean;
+begin
+  bPermit := False;
+  for i := Low(L_cDoorPermit) to High(L_cDoorPermit) do
+  begin
+    if L_cDoorPermit[i] = '1' then
+    begin
+      bPermit := True;
+      break;
+    end;
+  end;
+  if Not bPermit then
+  begin
+    for i := Low(L_cArmAreaPermit) to High(L_cArmAreaPermit) do
+    begin
+      if L_cArmAreaPermit[i] = '1' then
+      begin
+        bPermit := True;
+        break;
+      end;
+    end;
+  end;
+  CARDPERMIT := bPermit;
+end;
+
+function TDeviceCard.CheckArmAreaPermit(aArmAreaNo: string): Boolean;
+var
+  nArmAreaNo :integer;
+begin
+  result := False;
+  if Not isDigit(aArmAreaNo) then Exit;
+
+  nArmAreaNo := strtoint(aArmAreaNo);
+  if nArmAreaNo > High(L_cArmAreaPermit)  then Exit;
+
+  if L_cArmAreaPermit[nArmAreaNo] = '1' then result := True;
+end;
+
+function TDeviceCard.CheckDoorPermit(aDoorNo: string): Boolean;
+var
+  nDoorNo :integer;
+begin
+  result := False;
+  if Not isDigit(aDoorNo) then Exit;
+
+  nDoorNo := strtoint(aDoorNo);
+  if nDoorNo > High(L_cDoorPermit)  then Exit;
+
+  if L_cDoorPermit[nDoorNo] = '1' then result := True;
+end;
+
+function TDeviceCard.CheckValidDate(aDate: string): Boolean;
+begin
+  if ENDDATE = '' then
+  begin
+    result := True;
+    Exit;
+  end;
+  result := False;
+  if copy(aDate,3,6) <= copy(ENDDATE,3,6) then result := True;
+end;
+
+constructor TDeviceCard.Create(AOwner: TComponent);
+var
+  i : integer;
+begin
+  inherited;
+  for i := Low(L_cDoorPermit) to High(L_cDoorPermit) do
+  begin
+    L_cDoorPermit[i] := '0';
+  end;
+  for i := Low(L_cArmAreaPermit) to High(L_cArmAreaPermit) do
+  begin
+    L_cArmAreaPermit[i] := '0';
+  end;
+  for i := Low(L_cTimeCode) to High(L_cTimeCode) do
+  begin
+    L_cTimeCode[i] := '0';
+  end;
+  CARDPERMIT := False;
+  PermitChange := False;
+end;
+
+destructor TDeviceCard.Destroy;
+begin
+
+  inherited;
+end;
+
+function TDeviceCard.GetArmAreaPermit: string;
+var
+  i : integer;
+  stArmAreaPermit : string;
+begin
+  stArmAreaPermit := '';
+  for i := High(L_cArmAreaPermit) downto 0 do
+  begin
+    if L_cArmAreaPermit[i] = '' then L_cArmAreaPermit[i] := '0';
+    stArmAreaPermit := stArmAreaPermit + L_cArmAreaPermit[i];
+  end;
+  result := stArmAreaPermit;
+end;
+
+function TDeviceCard.GetDoorPermit(aMaxDoorCount: integer): string;
+var
+  i : integer;
+  stDoorPermit : string;
+begin
+  stDoorPermit := '';
+  for i := High(L_cDoorPermit) downto 1 do
+  begin
+    if L_cDoorPermit[i] = '' then L_cDoorPermit[i] := '0';
+    if i > aMaxDoorCount then stDoorPermit := stDoorPermit + '0'
+    else stDoorPermit := stDoorPermit + L_cDoorPermit[i];
+  end;
+  result := stDoorPermit;
+end;
+
+function TDeviceCard.GetTimeCode: string;
+var
+  i : integer;
+  stTimeCode : string;
+begin
+  stTimeCode := '';
+  for i := High(L_cTimeCode) downto 1 do
+  begin
+    if L_cTimeCode[i] = '' then L_cTimeCode[i] := '0';
+    stTimeCode := stTimeCode + L_cTimeCode[i];
+  end;
+  result := stTimeCode;
+end;
+
+function TDeviceCard.GetTimeCodeUse: string;
+begin
+  if L_stTimeCodeUse = '' then L_stTimeCodeUse := '0';
+  result := L_stTimeCodeUse;
+end;
+
+function TDeviceCard.GetTimeGroup: string;
+begin
+  if L_stTimeGroup = '' then L_stTimeGroup := '0';
+  result := L_stTimeGroup;
+end;
+
+function TDeviceCard.GetWeekCode: string;
+begin
+  L_stWeekCode := FillCharString(L_stWeekCode,'0',7,False);
+  result := L_stWeekCode;
+end;
+
+procedure TDeviceCard.InitArmAreaPermit(aArmAreaNo: integer; aPermit: string);
+begin
+  L_cArmAreaPermit[aArmAreaNo] := aPermit[1];
+end;
+
+procedure TDeviceCard.InitCardPermit(aPermit: string);
+begin
+  if aPermit = '0' then CARDPERMIT := False
+  else CARDPERMIT := True;
+end;
+
+procedure TDeviceCard.InitDoorPermit(aDoorNo: integer; aPermit: string);
+begin
+  L_cDoorPermit[aDoorNo] := aPermit[1];
+end;
+
+procedure TDeviceCard.InitRCVACK(aRcvAck: string);
+begin
+  RCVACK := aRcvAck;
+end;
+
+procedure TDeviceCard.InitTimeCode(aSeq: integer; aTimeCode: string);
+begin
+  L_cTimeCode[aSeq] := aTimeCode[1];
+end;
+
+procedure TDeviceCard.InitTimeCodeUse(aTimeCodeUse: string);
+begin
+  L_stTimeCodeUse := aTimeCodeUse;
+end;
+
+procedure TDeviceCard.InitTimeGroup(aTimeGroup: string);
+begin
+  L_stTimeGroup := aTimeGroup;
+end;
+
+procedure TDeviceCard.InitWeekCode(aWeekCode: string);
+begin
+  L_stWeekCode := aWeekCode;
+end;
+
+procedure TDeviceCard.PermitSetting(aRcvAck: string);
+var
+  stPermit : string;
+  stDoorPermit : string;
+  stArmPermit : string;
+  stTimeCode : string;
+  i : integer;
+begin
+  if PermitChange then
+  begin
+    //여기에서 권한 체크 모든 출입문과 방범 권한이 없으면 Permit 을 False로 처리 하자.
+    CardPermitCheck;
+    //여기에서 변경 이벤트 발생
+    if Assigned(FOnCardPermitChange) then
+    begin
+      if CARDPERMIT then stPermit := '1'
+      else stPermit := '0';
+      stDoorPermit := '';
+      for i := 1 to High(L_cDoorPermit) do
+      begin
+        stDoorPermit := stDoorPermit + L_cDoorPermit[i];
+      end;
+      stArmPermit := '';
+      for i := 0 to High(L_cArmAreaPermit) do
+      begin
+        stArmPermit := stArmPermit + L_cArmAreaPermit[i];
+      end;
+      stTimeCode := '';
+      for i := 1 to High(L_cTimeCode) do
+      begin
+        stTimeCode := stTimeCode + L_cTimeCode[i];
+      end;
+    end;
+    if aRcvAck = '' then aRcvAck := 'Y';  //전송 성공한 자료
+
+    RCVACK := aRcvAck;
+  end;
+  PermitChange := False;
+end;
+
+procedure TDeviceCard.SetArmAreaPermit(aArmAreaNo: integer; aPermit: string);
+begin
+  if L_cArmAreaPermit[aArmAreaNo] = aPermit[1] then Exit;
+  L_cArmAreaPermit[aArmAreaNo] := aPermit[1];
+  PermitChange := True;
+end;
+
+procedure TDeviceCard.SetDoorPermit(aDoorNo: integer; aPermit: string);
+begin
+  if L_cDoorPermit[aDoorNo] = aPermit[1] then Exit;
+  L_cDoorPermit[aDoorNo] := aPermit[1];
+  PermitChange := True;
+end;
+
+procedure TDeviceCard.SetRCVACK(const Value: string);
+begin
+  if FRCVACK = Value then Exit;
+  FRCVACK := Value;
+end;
+
+procedure TDeviceCard.SetTimeCode(aSeq: integer; aTimeCode: string);
+begin
+  L_cTimeCode[aSeq] := aTimeCode[1];
+end;
+
+procedure TDeviceCard.SetTimeCodeUse(aTimeCodeUse: string);
+begin
+  L_stTimeCodeUse := aTimeCodeUse;
+end;
+
+procedure TDeviceCard.SetTimeGroup(aTimeGroup: string);
+begin
+  L_stTimeGroup := aTimeGroup;
+end;
+
+procedure TDeviceCard.SetWeekCode(aWeekCode: string);
+begin
+  L_stWeekCode := aWeekCode;
+end;
+
+{ TCard }
+
+procedure TCard.SetLastUseDate(const Value: string);
+begin
+  if FLastUseDate <> '' then
+  begin
+    if FLastUseDate >= Value then Exit;  //기존 날짜가 들어온 날짜보다 크거나 같으면 빠져 나간다.
+  end;
+  FLastUseDate := Value;
+
+  if Assigned(FOnCardChangePacket) then
+  begin
+    OnCardChangePacket(Self,con_CardLastUsedate,CARDNO,Value);
+  end;
+
+end;
+
+{ TvNodeCard }
+
+function TvNodeCard.CheckDeviceCardGrade(aECUID, aExtID, aDoorNo, aArmAreaNo,
+  aCardNo, aResult, aTime: string): integer;
+var
+  nIndex : integer;
+  oDeviceCard : TvDeviceCard;
+begin
+  result := -1;
+  nIndex := NodeDeviceList.IndexOf(aEcuID);
+  if nIndex < 0 then
+  begin
+    oDeviceCard := TvDeviceCard.Create(nil);
+    oDeviceCard.ECUID := aEcuID;
+    NodeDeviceList.AddObject(aEcuID,oDeviceCard);
+    nIndex := NodeDeviceList.IndexOf(aEcuID);
+  end;
+  if nIndex < 0 then Exit; //여기서 빠져 나가면 안된다.
+
+  result := TvDeviceCard(NodeDeviceList.Objects[nIndex]).CheckDeviceCardGrade(aDoorNo, aArmAreaNo,aCardNo, aResult,aTime);
+
+end;
+
+constructor TvNodeCard.Create(AOwner: TComponent);
+begin
+  inherited;
+  NodeDeviceList := TStringList.Create;
+
+end;
+
+destructor TvNodeCard.Destroy;
+var
+  i : integer;
+begin
+  inherited;
+  if NodeDeviceList.Count > 0 then
+  begin
+    for i := NodeDeviceList.Count - 1 downto 0 do
+       TvDeviceCard(NodeDeviceList.Objects[i]).Free;
+  end;
+  NodeDeviceList.Free;
+end;
+
+function TvNodeCard.GetCardArmAreaPermit(aEcuID, aCardNo: string): string;
+var
+  nIndex : integer;
+begin
+  result := '000000000'; //9자리
+  nIndex := NodeDeviceList.IndexOf(aEcuID);
+  if nIndex < 0 then Exit;
+  result := TvDeviceCard(NodeDeviceList.Objects[nIndex]).GetCardArmAreaPermit(aCardNo);
+end;
+
+function TvNodeCard.GetCardDoorPermit(aEcuID, aCardNo: string): string;
+var
+  nIndex : integer;
+begin
+  result := '00000000'; //8자리
+  nIndex := NodeDeviceList.IndexOf(aEcuID);
+  if nIndex < 0 then Exit;
+  result := TvDeviceCard(NodeDeviceList.Objects[nIndex]).GetCardDoorPermit(aCardNo);
+end;
+
+function TvNodeCard.GetCardEMState(aEcuID, aCardNo: string): string;
+var
+  nIndex : integer;
+begin
+  result := '1';
+  nIndex := NodeDeviceList.IndexOf(aEcuID);
+  if nIndex < 0 then Exit;
+  result := TvDeviceCard(NodeDeviceList.Objects[nIndex]).GetCardEMState(aCardNo);
+end;
+
+function TvNodeCard.GetCardEndDate(aEcuID, aCardNo: string): string;
+var
+  nIndex : integer;
+begin
+  result := '00000000'; //8자리
+  nIndex := NodeDeviceList.IndexOf(aEcuID);
+  if nIndex < 0 then Exit;
+  result := TvDeviceCard(NodeDeviceList.Objects[nIndex]).GetCardEndDate(aCardNo);
+end;
+
+function TvNodeCard.GetCardPermit(aEcuID, aCardNo: string): string;
+var
+  nIndex : integer;
+begin
+  result := '';
+  nIndex := NodeDeviceList.IndexOf(aEcuID);
+  if nIndex < 0 then Exit;
+  result := TvDeviceCard(NodeDeviceList.Objects[nIndex]).GetCardPermit(aCardNo);
+end;
+
+function TvNodeCard.GetCardPositionNum(aEcuID, aCardNo: string): string;
+var
+  nIndex : integer;
+begin
+  result := '00000';
+  nIndex := NodeDeviceList.IndexOf(aEcuID);
+  if nIndex < 0 then Exit;
+  result := TvDeviceCard(NodeDeviceList.Objects[nIndex]).GetCardPositionNum(aCardNo);
+end;
+
+function TvNodeCard.GetCardStartDate(aEcuID, aCardNo: string): string;
+var
+  nIndex : integer;
+begin
+  result := '00000000'; //8자리
+  nIndex := NodeDeviceList.IndexOf(aEcuID);
+  if nIndex < 0 then Exit;
+  result := TvDeviceCard(NodeDeviceList.Objects[nIndex]).GetCardStartDate(aCardNo);
+end;
+
+function TvNodeCard.GetCardTimeCode(aEcuID, aCardNo: string): string;
+var
+  nIndex : integer;
+begin
+  result := '0000';
+  nIndex := NodeDeviceList.IndexOf(aEcuID);
+  if nIndex < 0 then Exit;
+  result := TvDeviceCard(NodeDeviceList.Objects[nIndex]).GetCardTimeCode(aCardNo);
+end;
+
+function TvNodeCard.GetCardTimeCodeUse(aEcuID, aCardNo: string): string;
+var
+  nIndex : integer;
+begin
+  result := '0';
+  nIndex := NodeDeviceList.IndexOf(aEcuID);
+  if nIndex < 0 then Exit;
+  result := TvDeviceCard(NodeDeviceList.Objects[nIndex]).GetCardTimeCodeUse(aCardNo);
+end;
+
+function TvNodeCard.GetCardTimeGroup(aEcuID, aCardNo: string): string;
+var
+  nIndex : integer;
+begin
+  result := '0';
+  nIndex := NodeDeviceList.IndexOf(aEcuID);
+  if nIndex < 0 then Exit;
+  result := TvDeviceCard(NodeDeviceList.Objects[nIndex]).GetCardTimeGroup(aCardNo);
+end;
+
+function TvNodeCard.GetCardWeekCode(aEcuID, aCardNo: string): string;
+var
+  nIndex : integer;
+begin
+  result := '0000000';
+  nIndex := NodeDeviceList.IndexOf(aEcuID);
+  if nIndex < 0 then Exit;
+  result := TvDeviceCard(NodeDeviceList.Objects[nIndex]).GetCardWeekCode(aCardNo);
+end;
+
+function TvNodeCard.SetNodeToCardPermitInitialize(aEcuID, aCardNo, aCardPermit,
+  aCardState, aDoor1, aDoor2, aDoor3, aDoor4, aDoor5, aDoor6, aDoor7, aDoor8,
+  aArmArea0, aArmArea1, aArmArea2, aArmArea3, aArmArea4, aArmArea5, aArmArea6,
+  aArmArea7, aArmArea8, aRcvAck, aPositionNum, aTimeCodeUse, aTCGroup, aTime1,
+  aTime2, aTime3, aTime4, aTCWeekCode, aRegDate, aEndDate,
+  aEmState: string): integer;
+var
+  nIndex : integer;
+  oDeviceCard : TvDeviceCard;
+begin
+  result := -1;
+  nIndex := NodeDeviceList.IndexOf(aEcuID);
+  if nIndex < 0 then
+  begin
+    oDeviceCard := TvDeviceCard.Create(nil);
+    oDeviceCard.ECUID := aEcuID;
+    NodeDeviceList.AddObject(aEcuID,oDeviceCard);
+    nIndex := NodeDeviceList.IndexOf(aEcuID);
+  end;
+  if nIndex < 0 then Exit; //여기서 빠져 나가면 안된다.
+
+  result := TvDeviceCard(NodeDeviceList.Objects[nIndex]).SetNodeToCardPermitInitialize(aCardNo,aCardPermit,aCardState,aDoor1,aDoor2,aDoor3,aDoor4,aDoor5,aDoor6,aDoor7,aDoor8,
+          aArmArea0,aArmArea1,aArmArea2,aArmArea3,aArmArea4,aArmArea5,aArmArea6,aArmArea7,aArmArea8,aRcvAck,aPositionNum,
+          aTimeCodeUse,aTCGroup,aTime1,aTime2,aTime3,aTime4,aTCWeekCode,aRegDate,aEndDate,aEmState);
+
+end;
+
+{ TvDeviceCard }
+
+function TvDeviceCard.CheckDeviceCardGrade(aDoorNo, aArmAreaNo, aCardNo,
+  aResult, aTime: string): integer;
+var
+  nIndex : integer;
+  bCardReSending : Boolean;
+  i : integer;
+  bArmGrade : Boolean;
+begin
+  result := -1;
+  bCardReSending := False;
+
+  nIndex := DeviceCardList.IndexOf(aCardNo);
+  if nIndex < 0 then Exit;
+
+  case aResult[1] of
+    '1','2' : begin   //출입카드 승인
+      if Not TDeviceCard(DeviceCardList.Objects[nIndex]).CheckValidDate(copy(aTime,1,8))  then bCardReSending := True
+      else
+      begin
+        if Not TDeviceCard(DeviceCardList.Objects[nIndex]).CheckDoorPermit(aDoorNo) then bCardReSending := True;
+      end;
+      if TDeviceCard(DeviceCardList.Objects[nIndex]).EMSTATE <> '1' then bCardReSending := True; //퇴직상태면 재전송
+    end;
+    '3','4' : begin   //방범 경/해 승인
+      if Not TDeviceCard(DeviceCardList.Objects[nIndex]).CheckValidDate(copy(aTime,1,8))  then bCardReSending := True
+      else
+      begin
+        if isdigit(aArmAreaNo) then
+        begin
+          if Not TDeviceCard(DeviceCardList.Objects[nIndex]).CheckArmAreaPermit(aArmAreaNo) then bCardReSending := True;
+        end else
+        begin
+          //한개의 방범구역이라도 권한이 있어야 한다.
+          bArmGrade := False;
+          for i := 0 to 8 do
+          begin
+            if TDeviceCard(DeviceCardList.Objects[nIndex]).CheckArmAreaPermit(inttostr(i)) then
+            begin
+              bArmGrade := True;
+              break;
+            end;
+          end;
+          if Not bArmGrade then bCardReSending := True;
+        end;
+      end;
+      if TDeviceCard(DeviceCardList.Objects[nIndex]).EMSTATE <> '1' then bCardReSending := True; //퇴직상태면 재전송
+    end;
+    'A' : begin       //미등록 카드
+      if TDeviceCard(DeviceCardList.Objects[nIndex]).CheckValidDate(copy(aTime,1,8))  and
+         TDeviceCard(DeviceCardList.Objects[nIndex]).CARDPERMIT and
+         (TDeviceCard(DeviceCardList.Objects[nIndex]).EMSTATE = '1') then bCardReSending := True; //등록된 카드면 재전송
+    end;
+    'B' : begin       //출입조작 권한 불가
+      if TDeviceCard(DeviceCardList.Objects[nIndex]).CheckValidDate(copy(aTime,1,8))  and
+         TDeviceCard(DeviceCardList.Objects[nIndex]).CheckDoorPermit(aDoorNo) and
+         (TDeviceCard(DeviceCardList.Objects[nIndex]).EMSTATE = '1') then bCardReSending := True;
+    end;
+    'C' : begin       //방범조작 권한 불가
+      if TDeviceCard(DeviceCardList.Objects[nIndex]).CheckValidDate(copy(aTime,1,8)) and
+         (TDeviceCard(DeviceCardList.Objects[nIndex]).EMSTATE = '1')  then
+      begin
+        if isDigit(aArmAreaNo) then
+        begin
+          if TDeviceCard(DeviceCardList.Objects[nIndex]).CheckArmAreaPermit(aArmAreaNo) then bCardReSending := True;
+        end else
+        begin
+          //한개의 방범구역이라도 권한이 있으면
+          bArmGrade := False;
+          for i := 0 to 8 do
+          begin
+            if TDeviceCard(DeviceCardList.Objects[nIndex]).CheckArmAreaPermit(inttostr(i)) then
+            begin
+              bArmGrade := True;
+              break;
+            end;
+          end;
+          if bArmGrade then bCardReSending := True;
+        end;
+      end;
+    end;
+    'D' : begin       //경계모드 출입 불가
+
+    end;
+    'E' : begin       //출입 제한 시간
+
+    end;
+    'F' : begin       //유효기간 만료
+      if TDeviceCard(DeviceCardList.Objects[nIndex]).CheckValidDate(copy(aTime,1,8))  then bCardReSending := True;
+    end;
+    'G' : begin       //근태
+
+    end;
+    'H' : begin       //폐쇄모드출입불가
+
+    end;
+    'I' : begin       //구역 다름
+
+    end;
+
+    'J' : begin       //안티패스 출입불가
+
+    end;
+  end;
+  if bCardReSending then result := 0    //재전송시 0
+  else result := 1;                     //정상이면 1
+end;
+
+constructor TvDeviceCard.Create(AOwner: TComponent);
+begin
+  inherited;
+  DeviceCardList := TStringList.Create;
+
+end;
+
+destructor TvDeviceCard.Destroy;
+var
+  i : integer;
+begin
+  inherited;
+  if DeviceCardList.Count > 0 then
+  begin
+    for i := DeviceCardList.Count - 1 downto 0 do
+       TDeviceCard(DeviceCardList.Objects[i]).Free;
+  end;
+  DeviceCardList.Free;
+end;
+
+function TvDeviceCard.GetCardArmAreaPermit(aCardNo: string): string;
+var
+  nIndex : integer;
+begin
+  result := '000000000';
+  nIndex := DeviceCardList.IndexOf(aCardNo);
+  if nIndex < 0 then Exit;
+  result := TDeviceCard(DeviceCardList.Objects[nIndex]).GetArmAreaPermit;
+
+end;
+
+function TvDeviceCard.GetCardDoorPermit(aCardNo: string): string;
+var
+  nIndex : integer;
+begin
+  result := '00000000';
+  nIndex := DeviceCardList.IndexOf(aCardNo);
+  if nIndex < 0 then Exit;
+  result := TDeviceCard(DeviceCardList.Objects[nIndex]).GetDoorPermit(8);
+
+end;
+
+function TvDeviceCard.GetCardEMState(aCardNo: string): string;
+var
+  nIndex : integer;
+begin
+  result := '1';
+  nIndex := DeviceCardList.IndexOf(aCardNo);
+  if nIndex < 0 then Exit;
+  result := TDeviceCard(DeviceCardList.Objects[nIndex]).EMSTATE;
+end;
+
+function TvDeviceCard.GetCardEndDate(aCardNo: string): string;
+var
+  nIndex : integer;
+begin
+  result := '00000000';
+  nIndex := DeviceCardList.IndexOf(aCardNo);
+  if nIndex < 0 then Exit;
+  result :=  FillCharString(TDeviceCard(DeviceCardList.Objects[nIndex]).ENDDATE,'0',8,True);
+
+end;
+
+function TvDeviceCard.GetCardPermit(aCardNo: string): string;
+var
+  nIndex : integer;
+begin
+  result := '';
+  nIndex := DeviceCardList.IndexOf(aCardNo);
+  if nIndex < 0 then Exit;
+  if TDeviceCard(DeviceCardList.Objects[nIndex]).CARDPERMIT then result := '1'
+  else result := '0';
+end;
+
+function TvDeviceCard.GetCardPositionNum(aCardNo: string): string;
+var
+  nIndex : integer;
+begin
+  result := '00000';
+  nIndex := DeviceCardList.IndexOf(aCardNo);
+  if nIndex < 0 then Exit;
+  result :=  FillCharString(TDeviceCard(DeviceCardList.Objects[nIndex]).PositionNum,'0',5,True);
+end;
+
+function TvDeviceCard.GetCardStartDate(aCardNo: string): string;
+var
+  nIndex : integer;
+begin
+  result := '00000000';
+  nIndex := DeviceCardList.IndexOf(aCardNo);
+  if nIndex < 0 then Exit;
+  result :=  FillCharString(TDeviceCard(DeviceCardList.Objects[nIndex]).REGDATE,'0',8,True);
+
+end;
+
+function TvDeviceCard.GetCardTimeCode(aCardNo: string): string;
+var
+  nIndex : integer;
+begin
+  result := '0000';
+  nIndex := DeviceCardList.IndexOf(aCardNo);
+  if nIndex < 0 then Exit;
+  result :=  TDeviceCard(DeviceCardList.Objects[nIndex]).GetTimeCode;
+end;
+
+function TvDeviceCard.GetCardTimeCodeUse(aCardNo: string): string;
+var
+  nIndex : integer;
+begin
+  result := '0';
+  nIndex := DeviceCardList.IndexOf(aCardNo);
+  if nIndex < 0 then Exit;
+  result :=  TDeviceCard(DeviceCardList.Objects[nIndex]).GetTimeCodeUse;
+end;
+
+function TvDeviceCard.GetCardTimeGroup(aCardNo: string): string;
+var
+  nIndex : integer;
+begin
+  result := '0';
+  nIndex := DeviceCardList.IndexOf(aCardNo);
+  if nIndex < 0 then Exit;
+  result :=  TDeviceCard(DeviceCardList.Objects[nIndex]).GetTimeGroup;
+end;
+
+function TvDeviceCard.GetCardWeekCode(aCardNo: string): string;
+var
+  nIndex : integer;
+begin
+  result := '0000000';
+  nIndex := DeviceCardList.IndexOf(aCardNo);
+  if nIndex < 0 then Exit;
+  result :=  TDeviceCard(DeviceCardList.Objects[nIndex]).GetWeekCode;
+end;
+
+function TvDeviceCard.SetNodeToCardPermitInitialize(aCardNo, aCardPermit,
+  aCardState, aDoor1, aDoor2, aDoor3, aDoor4, aDoor5, aDoor6, aDoor7, aDoor8,
+  aArmArea0, aArmArea1, aArmArea2, aArmArea3, aArmArea4, aArmArea5, aArmArea6,
+  aArmArea7, aArmArea8, aRcvAck, aPositionNum, aTimeCodeUse, aTCGroup, aTime1,
+  aTime2, aTime3, aTime4, aTCWeekCode, aRegDate, aEndDate,
+  aEmState: string): integer;
+var
+  nIndex : integer;
+  oDeviceCard : TDeviceCard;
+begin
+  Try
+    if aCardState <> '1' then aCardPermit := '0';
+    if aTimeCodeUse = '' then aTimeCodeUse := '0';
+    if aTCGroup = '' then aTCGroup := '0';
+    if aTime1 = '' then aTime1 := '0';
+    if aTime2 = '' then aTime2 := '0';
+    if aTime3 = '' then aTime3 := '0';
+    if aTime4 = '' then aTime4 := '0';
+    if aTCWeekCode = '' then aTCWeekCode := '0000000';
+    if aEmState = '' then aEmState := '1';
+
+
+    nIndex := DeviceCardList.IndexOf(aCardNo);
+    if nIndex > -1 then
+    begin
+      TDeviceCard(DeviceCardList.Objects[nIndex]).CARDNO := aCardNo ;
+      TDeviceCard(DeviceCardList.Objects[nIndex]).InitCardPermit(aCardPermit);
+      TDeviceCard(DeviceCardList.Objects[nIndex]).InitDoorPermit(1,aDoor1);
+      TDeviceCard(DeviceCardList.Objects[nIndex]).InitDoorPermit(2,aDoor2);
+      TDeviceCard(DeviceCardList.Objects[nIndex]).InitDoorPermit(3,aDoor3);
+      TDeviceCard(DeviceCardList.Objects[nIndex]).InitDoorPermit(4,aDoor4);
+      TDeviceCard(DeviceCardList.Objects[nIndex]).InitDoorPermit(5,aDoor5);
+      TDeviceCard(DeviceCardList.Objects[nIndex]).InitDoorPermit(6,aDoor6);
+      TDeviceCard(DeviceCardList.Objects[nIndex]).InitDoorPermit(7,aDoor7);
+      TDeviceCard(DeviceCardList.Objects[nIndex]).InitDoorPermit(8,aDoor8);
+      TDeviceCard(DeviceCardList.Objects[nIndex]).InitArmAreaPermit(0,aArmArea0);
+      TDeviceCard(DeviceCardList.Objects[nIndex]).InitArmAreaPermit(1,aArmArea1);
+      TDeviceCard(DeviceCardList.Objects[nIndex]).InitArmAreaPermit(2,aArmArea2);
+      TDeviceCard(DeviceCardList.Objects[nIndex]).InitArmAreaPermit(3,aArmArea3);
+      TDeviceCard(DeviceCardList.Objects[nIndex]).InitArmAreaPermit(4,aArmArea4);
+      TDeviceCard(DeviceCardList.Objects[nIndex]).InitArmAreaPermit(5,aArmArea5);
+      TDeviceCard(DeviceCardList.Objects[nIndex]).InitArmAreaPermit(6,aArmArea6);
+      TDeviceCard(DeviceCardList.Objects[nIndex]).InitArmAreaPermit(7,aArmArea7);
+      TDeviceCard(DeviceCardList.Objects[nIndex]).InitArmAreaPermit(8,aArmArea8);
+      TDeviceCard(DeviceCardList.Objects[nIndex]).PositionNum := aPositionNum;
+      TDeviceCard(DeviceCardList.Objects[nIndex]).InitTimeCodeUse(aTimeCodeUse);
+      TDeviceCard(DeviceCardList.Objects[nIndex]).InitTimeGroup(aTCGroup);
+      TDeviceCard(DeviceCardList.Objects[nIndex]).InitTimeCode(1,aTime1);
+      TDeviceCard(DeviceCardList.Objects[nIndex]).InitTimeCode(2,aTime2);
+      TDeviceCard(DeviceCardList.Objects[nIndex]).InitTimeCode(3,aTime3);
+      TDeviceCard(DeviceCardList.Objects[nIndex]).InitTimeCode(4,aTime4);
+      TDeviceCard(DeviceCardList.Objects[nIndex]).InitWeekCode(aTCWeekCode);
+      TDeviceCard(DeviceCardList.Objects[nIndex]).REGDATE := aRegDate ;
+      TDeviceCard(DeviceCardList.Objects[nIndex]).ENDDATE := aEndDate ;
+      TDeviceCard(DeviceCardList.Objects[nIndex]).EMSTATE := aEmState ;
+      TDeviceCard(DeviceCardList.Objects[nIndex]).InitRCVACK(aRcvAck);
+    end else
+    begin
+      if (aCardState <> '1') or (aCardPermit = '0') then
+      begin
+        if aRcvAck = 'Y' then Exit; //카드가 정상이 아니거나 권한이 없는 카드인경우 수신상태가 'Y'이면 추가 하지 말자.
+      end;
+
+      oDeviceCard := TDeviceCard.Create(nil);
+      oDeviceCard.CARDNO := aCardNo ;
+      oDeviceCard.InitCardPermit(aCardPermit);
+      oDeviceCard.InitDoorPermit(1,aDoor1);
+      oDeviceCard.InitDoorPermit(2,aDoor2);
+      oDeviceCard.InitDoorPermit(3,aDoor3);
+      oDeviceCard.InitDoorPermit(4,aDoor4);
+      oDeviceCard.InitDoorPermit(5,aDoor5);
+      oDeviceCard.InitDoorPermit(6,aDoor6);
+      oDeviceCard.InitDoorPermit(7,aDoor7);
+      oDeviceCard.InitDoorPermit(8,aDoor8);
+      oDeviceCard.InitArmAreaPermit(0,aArmArea0);
+      oDeviceCard.InitArmAreaPermit(1,aArmArea1);
+      oDeviceCard.InitArmAreaPermit(2,aArmArea2);
+      oDeviceCard.InitArmAreaPermit(3,aArmArea3);
+      oDeviceCard.InitArmAreaPermit(4,aArmArea4);
+      oDeviceCard.InitArmAreaPermit(5,aArmArea5);
+      oDeviceCard.InitArmAreaPermit(6,aArmArea6);
+      oDeviceCard.InitArmAreaPermit(7,aArmArea7);
+      oDeviceCard.InitArmAreaPermit(8,aArmArea8);
+      oDeviceCard.PositionNum := aPositionNum;
+      oDeviceCard.InitTimeCodeUse(aTimeCodeUse);
+      oDeviceCard.InitTimeGroup(aTCGroup);
+      oDeviceCard.InitTimeCode(1,aTime1);
+      oDeviceCard.InitTimeCode(2,aTime2);
+      oDeviceCard.InitTimeCode(3,aTime3);
+      oDeviceCard.InitTimeCode(4,aTime4);
+      oDeviceCard.InitWeekCode(aTCWeekCode);
+      oDeviceCard.REGDATE := aRegDate ;
+      oDeviceCard.ENDDATE := aEndDate ;
+      oDeviceCard.EMSTATE := aEmState ;
+      oDeviceCard.InitRCVACK(aRcvAck);
+
+      DeviceCardList.AddObject(aCardNo,oDeviceCard);
+    end;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Device.SetNodeToCardPermitInitialize');
+  End;
+end;
+
+end.

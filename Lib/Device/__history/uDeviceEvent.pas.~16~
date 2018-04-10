@@ -1,0 +1,25 @@
+unit uDeviceEvent;
+
+interface
+uses uDeviceVariable;
+
+type
+  TAccessEvent = procedure(Sender:TObject;NodeNo:integer;aEcuID,aDoorNo,aReaderNo,aCardNo,aTime,aPermit,aInputType,aButton:string) of object;
+  TAlarmEventAnalysis = procedure(Sender:TObject;NodeNo:integer;ECUID:string;
+                                  aCmd,aMsgNo,aTime,aSubClass,aSubAddr,
+                                  aAlarmArea,aMode,aStatusCode,aPortNo,aState,
+                                  aOperator,aNewStateCode:string;
+                                  aAlarmView,aAlarmSound:Boolean;
+                                  aAlarmColor:string) of object;
+  TCardReadingEvent = procedure(Sender: TObject;  aCardNo:string) of object;
+  TDeviceAlarmStateChange = procedure(Sender:TObject;NodeNo:integer;aECUID,aAlarmArea:string;aAlaramState:TAlarmEventState) of object;
+  TDeviceConnected = procedure(Sender:TObject;aNodeNo:integer;aEcuID:string;aValue:Boolean) of object;
+  TDevicePacketData = procedure (Sender:TObject;NodeNo:integer;aEcuID,aPacketData:string) of object;
+  TDoorLockStateChange = procedure(Sender:TObject;aNodeNo:integer;aEcuID,aDoorNo:string;aDoorLockState:TDoorLockState) of object;
+  TDoorLockEventChange = procedure(Sender:TObject;aNodeNo:integer;aEcuID,aDoorNo:string;aDoorLockEvent:TDoorLockEvent) of object;
+  TExitButton = procedure (Sender:TObject;aNodeNo:integer;aEcuID,aDoorNo,aTime,aInputType:string) of object;
+  TWatchModeChange = procedure(Sender:TObject;aNodeNo:integer;aEcuID,aArmAreaNo:string;aWatchMode:TWatchMode) of object;
+
+implementation
+
+end.

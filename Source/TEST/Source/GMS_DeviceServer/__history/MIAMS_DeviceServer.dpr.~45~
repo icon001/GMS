@@ -1,0 +1,103 @@
+program MIAMS_DeviceServer;
+
+uses
+  Classes,
+  IniFiles,
+  System.SysUtils,
+  Windows,
+  Winapi.Messages,
+  Vcl.Forms,
+  uMain in 'fmMain\uMain.pas' {fmMain},
+  uDataBase in '..\..\Lib\DataBase\uDataBase.pas' {dmDataBase: TDataModule},
+  uCommonFunction in '..\..\Lib\Common\uCommonFunction.pas',
+  uCommonVariable in '..\..\Lib\Common\uCommonVariable.pas',
+  uCommonEvent in '..\..\Lib\Common\uCommonEvent.pas',
+  uSubForm in '..\..\Lib\Form\uSubForm.pas' {fmASubForm},
+  uDataBaseConfig in '..\..\Lib\DataBase\uDataBaseConfig.pas' {fmDataBaseConfig},
+  uDBCreate in '..\..\Lib\DataBase\uDBCreate.pas' {dmDBCreate: TDataModule},
+  uDBDelete in '..\..\Lib\DataBase\uDBDelete.pas' {dmDBDelete: TDataModule},
+  uDBInsert in '..\..\Lib\DataBase\uDBInsert.pas' {dmDBInsert: TDataModule},
+  uDBUpdate in '..\..\Lib\DataBase\uDBUpdate.pas' {dmDBUpdate: TDataModule},
+  uDBFormMessage in '..\..\Lib\DataBase\uDBFormMessage.pas' {dmFormMessage: TDataModule},
+  uDBFormName in '..\..\Lib\DataBase\uDBFormName.pas' {dmFormName: TDataModule},
+  uDBFunction in '..\..\Lib\DataBase\uDBFunction.pas' {dmDBFunction: TDataModule},
+  uSolarLunar in '..\..\Lib\Date\uSolarLunar.pas',
+  uNode in '..\..\Lib\Device\uNode.pas' {dmNode: TDataModule},
+  uDeviceVariable in '..\..\Lib\Device\uDeviceVariable.pas',
+  u_c_basic_object in '..\..\Lib\Device\Winsockclasses\u_c_basic_object.pas',
+  u_c_byte_buffer in '..\..\Lib\Device\Winsockclasses\u_c_byte_buffer.pas',
+  u_c_display in '..\..\Lib\Device\Winsockclasses\u_c_display.pas',
+  u_c_log in '..\..\Lib\Device\Winsockclasses\u_c_log.pas',
+  u_winsock in '..\..\Lib\Device\Winsocket\u_winsock.pas',
+  u_characters in '..\..\Lib\Device\Winsockunits\u_characters.pas',
+  u_dir in '..\..\Lib\Device\Winsockunits\u_dir.pas',
+  u_display_hex_2 in '..\..\Lib\Device\Winsockunits\u_display_hex_2.pas',
+  u_file in '..\..\Lib\Device\Winsockunits\u_file.pas',
+  u_strings in '..\..\Lib\Device\Winsockunits\u_strings.pas',
+  u_types_constants in '..\..\Lib\Device\Winsockunits\u_types_constants.pas',
+  uDevicePacket in '..\..\Lib\Device\uDevicePacket.pas' {dmDevicePacket: TDataModule},
+  uDevice in '..\..\Lib\Device\uDevice.pas' {dmDevice: TDataModule},
+  uAlarmEventStateCode in '..\..\Lib\Code\uAlarmEventStateCode.pas' {dmAlarmEventStateCode: TDataModule},
+  FileInfo in '..\..\Lib\Common\FileInfo.pas',
+  uDeviceArmArea in '..\..\Lib\Device\uDeviceArmArea.pas' {dmDeviceArmArea: TDataModule},
+  uDeviceCard in '..\..\Lib\Device\uDeviceCard.pas' {dmDeviceCard: TDataModule},
+  uDeviceReader in '..\..\Lib\Device\uDeviceReader.pas' {dmDeviceReader: TDataModule},
+  uDeviceZone in '..\..\Lib\Device\uDeviceZone.pas' {dmDeviceZone: TDataModule},
+  uDeviceZoneExtention in '..\..\Lib\Device\uDeviceZoneExtention.pas' {dmDeviceZoneExtention: TDataModule},
+  uDeviceDoor in '..\..\Lib\Device\uDeviceDoor.pas' {dmDeviceDoor: TDataModule},
+  uFormVariable in '..\..\Lib\Form\uFormVariable.pas',
+  uDeviceComMonitoring in 'fmDeviceComMonitoring\uDeviceComMonitoring.pas' {fmDeviceComMonitoring},
+  uFormDevice in '..\..\Lib\Form\uFormDevice.pas' {dmFormDevice: TDataModule},
+  uFormFunction in '..\..\Lib\Form\uFormFunction.pas' {dmFormFunction: TDataModule},
+  uSharedMemory in '..\..\Lib\Common\SharedMemory\uSharedMemory.pas',
+  uNodeServer in '..\..\Lib\Device\uNodeServer.pas' {dmNodeServer: TDataModule},
+  uWinSockClient in '..\..\Lib\WinSocket\WinSockClient\uWinSockClient.pas' {dmWinSockClient: TDataModule},
+  uPCComMonitoring in '..\..\Lib\Form\fmPCComMonitoring\uPCComMonitoring.pas' {fmPCComMonitoring},
+  uMonitoringServer in '..\..\Lib\MIAMSServer\uMonitoringServer.pas' {dmMonitoringServer: TDataModule},
+  uServerClientVariable in '..\..\Lib\MIAMSServer\uServerClientVariable.pas',
+  uServerClientFunction in '..\..\Lib\MIAMSServer\uServerClientFunction.pas';
+
+{$R *.res}
+{$R manifest.RES}
+
+var
+hMutex : LongInt;
+ini_fun : TiniFile;
+DaemonGubun:string;
+FindHandle: THandle;
+ProcessList : TStringList;
+i : integer;
+ProcId: DWORD;
+hProcess: THandle;
+//TermSucc: BOOL;
+pSelfID : DWORD;
+begin
+  Try
+    ini_fun := TiniFile.Create(ExtractFileDir(Application.ExeName) + '\Config.INI');
+    G_nDecoderNo := ini_fun.ReadInteger('DECODER','NO',1);
+  Finally
+    ini_fun.Free;
+  End;
+
+  ProcessList := TStringList.Create;
+  ProcessList.Clear;
+  Process32List(ProcessList);
+  GetWindowThreadProcessId(Application.Handle, @pSelfID);
+  for i := 0 to ProcessList.Count - 1 do
+  begin
+    if ProcessList.Strings[i] = ExtractFileName(Application.ExeName) then  //실행 되고 있으면
+    begin
+      ProcId := DWORD(ProcessList.Objects[i]);
+      if ProcID <> pSelfID then
+      begin
+        Exit; //실행 시키지 말자...
+      end;
+    end;
+  end;
+
+  Application.Initialize;
+  Application.MainFormOnTaskbar := True;
+  Application.CreateForm(TdmDataBase, dmDataBase);
+  Application.CreateForm(TfmMain, fmMain);
+  Application.Run;
+end.

@@ -1,0 +1,152 @@
+unit uCard;
+
+interface
+
+uses
+  System.SysUtils, System.Classes;
+
+const
+  con_CardLastUsedate = 1;
+
+type
+  TCardChangePacket = procedure(Sender: TObject;  aCmd: integer;aCardNo:string; aData:string) of object;
+
+  TCard = Class(TComponent)
+  private
+    FCOMPANYNAME: string;
+    FCOMPANYCODE: string;
+    FEMSEQ: integer;
+    FEMNAME: string;
+    FEMCODE: string;
+    FCARDNO: string;
+    FPOSINAME: string;
+    FPOSICODE: string;
+    FLastUseDate: string;
+    FOnCardChangePacket: TCardChangePacket;
+    FATUSE: string;
+    FFDUSE: string;
+    FPRINTNO: string;
+    FLoadDate: string;
+    FHandPhoneNum: string;
+    procedure SetLastUseDate(const Value: string);
+  published
+    property CARDNO : string read FCARDNO write FCARDNO;
+    property EMSEQ : integer read FEMSEQ write FEMSEQ;
+    property EMCODE : string read FEMCODE write FEMCODE;
+    property EMNAME : string read FEMNAME write FEMNAME;
+    property COMPANYCODE : string read FCOMPANYCODE write FCOMPANYCODE;
+    property COMPANYNAME : string read FCOMPANYNAME write FCOMPANYNAME;
+    property POSICODE : string read FPOSICODE write FPOSICODE;
+    property POSINAME : string read FPOSINAME write FPOSINAME;
+    property PRINTNO : string read FPRINTNO write FPRINTNO;
+    property HandPhoneNum : string read FHandPhoneNum write FHandPhoneNum;
+    property LastUseDate : string read FLastUseDate write SetLastUseDate;
+    property LoadDate : string read FLoadDate write FLoadDate;
+    property ATUSE : string read FATUSE write FATUSE;
+    property FDUSE : string read FFDUSE write FFDUSE;
+  published
+    property OnCardChangePacket : TCardChangePacket read FOnCardChangePacket write FOnCardChangePacket;
+  End;
+
+  TCardGrade = Class(TComponent)
+  private
+    FGRADE: char;
+    FcardType: char;
+    FArmGrade: char;
+    FDOOR2: char;
+    FDOOR1: char;
+    FValidDay: string;
+    FRcvState: string;
+    FCardPositionNum: string;
+    FCardPositionUse: Boolean;
+    FDOOR4: char;
+    FDOOR5: char;
+    FDOOR8: char;
+    FDOOR3: char;
+    FDOOR6: char;
+    FDOOR7: char;
+    FArmArea7: char;
+    FArmArea6: char;
+    FArmArea5: char;
+    FArmArea4: char;
+    FArmArea1: char;
+    FArmArea2: char;
+    FArmArea8: char;
+    FArmArea0: char;
+    FArmArea3: char;
+    FRegCode: char;
+    FTimeCode: char;
+    FDoorGrade: string;
+    FArmAreaGrade: string;
+    FCardGroup: string;
+    FCardTimeCode: string;
+    FCardWeekCode: string;
+    FMaster: string;
+  published
+    Property GRADE: char Read FGRADE write FGRADE;
+    property ArmAreaGrade : string read FArmAreaGrade write FArmAreaGrade;
+    Property ArmArea0: char Read FArmArea0 write FArmArea0;
+    Property ArmArea1: char Read FArmArea1 write FArmArea1;
+    Property ArmArea2: char Read FArmArea2 write FArmArea2;
+    Property ArmArea3: char Read FArmArea3 write FArmArea3;
+    Property ArmArea4: char Read FArmArea4 write FArmArea4;
+    Property ArmArea5: char Read FArmArea5 write FArmArea5;
+    Property ArmArea6: char Read FArmArea6 write FArmArea6;
+    Property ArmArea7: char Read FArmArea7 write FArmArea7;
+    Property ArmArea8: char Read FArmArea8 write FArmArea8;
+    property DoorGrade : string read FDoorGrade write FDoorGrade;
+    Property DOOR1: char Read FDOOR1 write FDOOR1;
+    Property DOOR2: char Read FDOOR2 write FDOOR2;
+    Property DOOR3: char Read FDOOR3 write FDOOR3;
+    Property DOOR4: char Read FDOOR4 write FDOOR4;
+    Property DOOR5: char Read FDOOR5 write FDOOR5;
+    Property DOOR6: char Read FDOOR6 write FDOOR6;
+    Property DOOR7: char Read FDOOR7 write FDOOR7;
+    Property DOOR8: char Read FDOOR8 write FDOOR8;
+    property CardPositionNum : string Read FCardPositionNum write FCardPositionNum;
+    property CardPositionUse : Boolean Read FCardPositionUse write FCardPositionUse;
+    property CardGroup : string Read FCardGroup write FCardGroup;
+    property CardTimeCode : string Read FCardTimeCode write FCardTimeCode;
+    property CardWeekCode : string Read FCardWeekCode write FCardWeekCode;
+    property cardType : char read FcardType write FcardType;   // 카드타입(0:출입,1:방범,2:출입+방범)
+    property Master : string read FMaster write FMaster;        //마스터 카드 유무
+    property ValidDay : string read FValidDay write FValidDay;
+    property RegCode : char read FRegCode write FRegCode;
+    property TimeCode : char read FTimeCode write FTimeCode;
+    property RcvState : string read FRcvState write FRcvState;
+  end;
+
+  TdmCard = class(TDataModule)
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+  end;
+
+var
+  dmCard: TdmCard;
+
+implementation
+
+{%CLASSGROUP 'Vcl.Controls.TControl'}
+
+{$R *.dfm}
+
+{ TCard }
+
+procedure TCard.SetLastUseDate(const Value: string);
+begin
+  if FLastUseDate <> '' then
+  begin
+    if FLastUseDate >= Value then Exit;  //기존 날짜가 들어온 날짜보다 크거나 같으면 빠져 나간다.
+  end;
+  FLastUseDate := Value;
+
+  if Assigned(FOnCardChangePacket) then
+  begin
+    OnCardChangePacket(Self,con_CardLastUsedate,CARDNO,Value);
+  end;
+
+end;
+
+end.

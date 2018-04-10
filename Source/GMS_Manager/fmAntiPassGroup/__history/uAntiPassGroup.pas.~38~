@@ -1,0 +1,480 @@
+﻿unit uAntiPassGroup;
+
+interface
+
+uses
+  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
+  Vcl.Controls, Vcl.Forms, Vcl.Dialogs,uSubForm, AdvOfficeTabSet,
+  AdvOfficeTabSetStylers, CommandArray, Vcl.Grids, AdvObj, BaseGrid, AdvGrid,
+  Vcl.StdCtrls, AdvEdit, Vcl.Buttons, AdvSmoothLabel, AdvSmoothPanel, W7Classes,
+  W7Panels, AdvGlassButton,ADODB,ActiveX, frmshape, Vcl.Mask, AdvSpin,
+  DBAdvSmoothLabel, AdvSmoothProgressBar, Vcl.ExtCtrls, AdvCombo, AdvGlowButton,
+  AdvOfficePager, Vcl.Imaging.pngimage, Vcl.Menus, AdvOfficePagerStylers,
+  AdvAppStyler;
+
+type
+  TfmAntiPassGroup = class(TfmASubForm)
+    BodyPanel: TAdvSmoothPanel;
+    sg_List: TAdvStringGrid;
+    pan_AntiGroup: TAdvSmoothPanel;
+    cmb_AntiGroup: TAdvComboBox;
+    AdvSmoothLabel1: TAdvSmoothLabel;
+    AdvOfficePager1: TAdvOfficePager;
+    AdvOfficePage1: TAdvOfficePage;
+    btn_minimize: TAdvGlowButton;
+    btn_Close: TAdvGlowButton;
+    lb_List: TLabel;
+    btn_AntiGroup: TAdvGlowButton;
+    AdvFormStyler1: TAdvFormStyler;
+    AdvOfficePagerOfficeStyler1: TAdvOfficePagerOfficeStyler;
+    AdvOfficeTabSetOfficeStyler1: TAdvOfficeTabSetOfficeStyler;
+    btn_AntiGroupSelect: TAdvGlowButton;
+    btn_AntiGroupCancel: TAdvGlowButton;
+    btn_AntiGroupAdd: TAdvGlowButton;
+    procedure FormShow(Sender: TObject);
+    procedure FormClose(Sender: TObject; var Action: TCloseAction);
+    procedure FormResize(Sender: TObject);
+    procedure btn_SearchClick(Sender: TObject);
+    procedure FormCreate(Sender: TObject);
+    procedure sg_ListCheckBoxClick(Sender: TObject; ACol, ARow: Integer;
+      State: Boolean);
+    procedure ed_SearchNameChange(Sender: TObject);
+    procedure CommandArrayCommandsTGRADEREFRESHExecute(Command: TCommand;
+      Params: TStringList);
+    procedure CommandArrayCommandsTMENUIDExecute(Command: TCommand;
+      Params: TStringList);
+    procedure ed_NodeIpKeyPress(Sender: TObject; var Key: Char);
+    procedure CommandArrayCommandsTFORMNAMEExecute(Command: TCommand;
+      Params: TStringList);
+    procedure btn_AntiGroupClick(Sender: TObject);
+    procedure btn_CloseClick(Sender: TObject);
+    procedure btn_minimizeClick(Sender: TObject);
+    procedure btn_AntiGroupAddClick(Sender: TObject);
+    procedure btn_AntiGroupSelectClick(Sender: TObject);
+    procedure btn_AntiGroupCancelClick(Sender: TObject);
+  private
+    L_nPageListMaxCount : integer;
+    L_nCheckCount : integer;
+    L_nProgress : integer;
+    L_stMenuID : string;
+    L_stButtonCloseCaption : string;
+    L_stButtonPreCaption : string;
+    L_stNodeAddCaption : string;
+    L_stNodeUpdateCaption : string;
+    L_stWork : string;
+    L_bDoorChange : Boolean;
+    AntiGroupCodeList : TStringList;
+    { Private declarations }
+    Function FormNameSetting:Boolean;
+    Function SearchList(aCurrentCode:string;aTopRow:integer = 0):Boolean;
+    Function GetAntiNo(aAntiGroupCode:string):string;
+  private
+    procedure AdvStrinGridSetAllCheck(Sender: TObject;bchkState:Boolean);
+
+  public
+    { Public declarations }
+    procedure FormChangeEvent(aFormName:integer);
+  end;
+
+var
+  fmAntiPassGroup: TfmAntiPassGroup;
+
+implementation
+uses
+  uCommonFunction,
+  uCommonVariable,
+  uDataBase,
+  uDBDelete,
+  uDBFormMessage,
+  uDBFunction,
+  uDBInsert,
+  uDBUpdate,
+  uDBSelect,
+  uDBVariable,
+  uFormFunction,
+  uFormVariable,
+  uComboBoxCodeLoad,
+  uAntiGroupCode,
+  uWinsockNode,
+  uDeviceVariable;
+{$R *.dfm}
+
+
+procedure TfmAntiPassGroup.AdvStrinGridSetAllCheck(Sender: TObject;
+  bchkState: Boolean);
+var
+  i : integer;
+begin
+    for i:= 1 to (Sender as TAdvStringGrid).RowCount - 1  do
+    begin
+      (Sender as TAdvStringGrid).SetCheckBoxState(0,i,bchkState);
+    end;
+end;
+
+procedure TfmAntiPassGroup.btn_CloseClick(Sender: TObject);
+begin
+  inherited;
+  Close;
+end;
+
+procedure TfmAntiPassGroup.btn_AntiGroupAddClick(Sender: TObject);
+var
+  nIndex : integer;
+begin
+  inherited;
+  fmAntiGroupcode := TfmAntiGroupcode.Create(nil);
+  fmAntiGroupcode.ShowModal;
+  fmAntiGroupcode.Free;
+  nIndex := cmb_AntiGroup.ItemIndex;
+  LoadAntiGroupCode(AntiGroupCodeList,TComboBox(cmb_AntiGroup),True,'사용안함');
+  if cmb_AntiGroup.Items.Count > nIndex  then cmb_AntiGroup.ItemIndex := nIndex;
+
+end;
+
+procedure TfmAntiPassGroup.btn_AntiGroupCancelClick(Sender: TObject);
+begin
+  inherited;
+  sg_List.Enabled := True;
+  pan_AntiGroup.Visible := False;
+end;
+
+procedure TfmAntiPassGroup.btn_AntiGroupClick(Sender: TObject);
+var
+  i : integer;
+  bChkState : Boolean;
+  stMessage : string;
+begin
+  inherited;
+  stMessage := stringReplace(dmFormMessage.GetMessage('SELECTERROR'),'$WORK',btn_AntiGroup.Caption,[rfReplaceAll]);
+  if L_nCheckCount = 0 then
+  begin
+    Application.MessageBox(PChar(stMessage),'Information',MB_OK);
+    Exit;
+  end;
+  sg_List.Enabled := True;
+  pan_AntiGroup.Visible := True;
+  LoadAntiGroupCode(AntiGroupCodeList,TComboBox(cmb_AntiGroup),True,'사용안함');
+  if cmb_AntiGroup.Items.Count > 1 then cmb_AntiGroup.ItemIndex := 1;
+
+end;
+
+procedure TfmAntiPassGroup.btn_AntiGroupSelectClick(Sender: TObject);
+var
+  i : integer;
+  bChkState : Boolean;
+  stAntiGroupCode : string;
+  stDoorNo : string;
+  nIndex : integer;
+  nWinSocket : integer;
+  stAntiNo : string;
+begin
+  inherited;
+  stAntiGroupCode := '';
+  if cmb_AntiGroup.ItemIndex > -1 then
+    stAntiGroupCode := AntiGroupCodeList.Strings[cmb_AntiGroup.ItemIndex];
+
+  if stAntiGroupCode = '' then stAntiGroupCode := '0';
+
+  stAntiNo := GetAntiNo(stAntiGroupCode);
+
+  With sg_List do
+  begin
+    for i := 1 to RowCount - 1 do
+    begin
+      GetCheckBoxState(0,i, bChkState);
+      if bChkState then
+      begin
+        dmDBUpdate.UpdateTB_DOOR_Field_IntValue(cells[3,i],cells[4,i],cells[5,i],cells[6,i],'AG_CODE',stAntiGroupCode);
+        if isDigit(cells[6,i]) then stDoorNo := inttostr(strtoint(cells[6,i]))
+        else stDoorNo := '0';
+
+        nIndex := NodeList.IndexOf(FillZeroStrNum(cells[3,i],G_nNodeCodeLength));
+        if nIndex > -1 then
+        begin
+          TNode(NodeList.Objects[nIndex]).SetDeviceIDSubInformation(con_DeviceTypeDoor,con_DoorCmdAntiNo,cells[4,i],stDoorNo,stAntiNo);
+          TNode(NodeList.Objects[nIndex]).SetDeviceRcvIDSubInformation(con_DeviceTypeDoor,con_DoorCmdSettingInfo,cells[4,i],stDoorNo,'U');
+        end
+        else
+        begin
+          nIndex := ServerNodeList.IndexOf(FillZeroStrNum(cells[3,i],G_nNodeCodeLength));
+          if nIndex > -1 then
+          begin
+            nWinSocket := TServerNode(ServerNodeList.Objects[nIndex]).WinSocket;
+            dmNodeServer.DeviceNodeServer_SetDeviceIDSubInformation(nWinSocket,con_DeviceTypeDoor,con_DoorCmdAntiNo,cells[4,i],stDoorNo,stAntiNo);
+            dmNodeServer.DeviceNodeServer_SetDeviceRcvIDSubInformation(nWinSocket,con_DeviceTypeDoor,con_DoorCmdSettingInfo,cells[4,i],stDoorNo,'U');
+          end;
+        end;
+
+        if stAntiGroupCode = '0' then
+        else
+        L_bDoorChange := True;
+      end;
+    end;
+  end;
+  sg_List.Enabled := True;
+  pan_AntiGroup.Visible := False;
+  SearchList('');
+end;
+
+procedure TfmAntiPassGroup.btn_minimizeClick(Sender: TObject);
+begin
+  inherited;
+  windowState := wsNormal;
+end;
+
+procedure TfmAntiPassGroup.btn_SearchClick(Sender: TObject);
+begin
+  inherited;
+  SearchList('');
+end;
+
+procedure TfmAntiPassGroup.CommandArrayCommandsTFORMNAMEExecute(Command: TCommand;
+  Params: TStringList);
+begin
+  inherited;
+  Caption := Params.Values['CAPTION'];
+
+end;
+
+procedure TfmAntiPassGroup.CommandArrayCommandsTGRADEREFRESHExecute(
+  Command: TCommand; Params: TStringList);
+begin
+  inherited;
+(*  btn_Add.Enabled := IsInsertGrade;
+  pm_CodeAdd.Enabled := IsInsertGrade;
+  btn_Delete.Enabled := IsDeleteGrade;
+  pm_DeleteCode.Enabled := IsDeleteGrade;
+  btn_Update.Enabled
+*)
+end;
+
+procedure TfmAntiPassGroup.CommandArrayCommandsTMENUIDExecute(Command: TCommand;
+  Params: TStringList);
+begin
+  inherited;
+  L_stMenuID := Params.Values['ID'];
+end;
+
+procedure TfmAntiPassGroup.ed_NodeIpKeyPress(Sender: TObject; var Key: Char);
+begin
+  inherited;
+  if Key = Char(VK_RETURN) then
+      Perform(WM_NEXTDLGCTL,0,0);
+
+end;
+
+procedure TfmAntiPassGroup.ed_SearchNameChange(Sender: TObject);
+begin
+  inherited;
+  SearchList('');
+end;
+
+procedure TfmAntiPassGroup.FormChangeEvent(aFormName: integer);
+begin
+//  case aFormName of
+//  end;
+end;
+
+procedure TfmAntiPassGroup.FormClose(Sender: TObject; var Action: TCloseAction);
+begin
+  inherited;
+  if L_bDoorChange then
+  begin
+    self.FindSubForm('Main').FindCommand('CHANGE').Params.Values['NAME'] := inttostr(conFORMANTIGROUP);
+    self.FindSubForm('Main').FindCommand('CHANGE').Execute;
+  end;
+  self.FindSubForm('Main').FindCommand('FORMENABLE').Params.Values['NAME'] := inttostr(conFORMANTIGROUP);
+  self.FindSubForm('Main').FindCommand('FORMENABLE').Params.Values['VALUE'] := 'FALSE';
+  self.FindSubForm('Main').FindCommand('FORMENABLE').Execute;
+
+  AntiGroupCodeList.Free;
+  Action := caFree;
+end;
+
+procedure TfmAntiPassGroup.FormCreate(Sender: TObject);
+begin
+  inherited;
+  AntiGroupCodeList := TStringList.Create;
+  L_nPageListMaxCount := 17;
+end;
+
+function TfmAntiPassGroup.FormNameSetting: Boolean;
+begin
+
+  AdvOfficePage1.Caption := dmFormFunction.GetFormName('0','2','BUTTONMENU002');
+  lb_List.Caption := dmFormFunction.GetFormName('0','2','COMMONDOORLIST');//출입문리스트
+
+  sg_List.Cells[1,0] := dmFormFunction.GetFormName('0','2','COMMONDOORNAME');
+  sg_List.Cells[2,0] := dmFormFunction.GetFormName('0','2','COMMONANTIGROUP');
+
+  L_stNodeAddCaption := dmFormFunction.GetFormName('0','2','COMMONNODELIST02');
+  L_stNodeUpdateCaption := dmFormFunction.GetFormName('0','2','COMMONNODELIST03');
+  L_stButtonCloseCaption := dmFormFunction.GetFormName('0','2','BUTTONMENU001');
+  L_stButtonPreCaption := dmFormFunction.GetFormName('0','2','BUTTONMENU004');
+
+end;
+
+procedure TfmAntiPassGroup.FormResize(Sender: TObject);
+begin
+  inherited;
+  btn_Close.Left := AdvOfficePager1.Width - btn_Close.Width - 10;
+  btn_minimize.Left := btn_Close.Left - btn_minimize.Width - 2;
+
+  if Windowstate = wsMaximized then
+  begin
+    btn_minimize.Visible := True;
+    btn_Close.Visible := True;
+  end else
+  begin
+    btn_minimize.Visible := False;
+    btn_Close.Visible := False;
+  end;
+
+  sg_List.Left := 10;
+  sg_List.Width := BodyPanel.Width - (sg_List.Left * 2);
+  sg_List.Height := BodyPanel.Height - (sg_List.Top + 10);
+  sg_List.ColWidths[2] := sg_List.Width - (sg_List.ColWidths[0] + sg_List.ColWidths[1]);
+  btn_AntiGroup.Left := sg_List.Left + sg_List.Width - btn_AntiGroup.Width;
+
+
+  pan_AntiGroup.Left := (BodyPanel.Width div 2) - (pan_AntiGroup.Width div 2);
+  pan_AntiGroup.Top := (BodyPanel.Height div 2) - (pan_AntiGroup.Height div 2);
+
+end;
+
+procedure TfmAntiPassGroup.FormShow(Sender: TObject);
+begin
+  inherited;
+  WindowState := wsMaximized;
+
+  FormNameSetting;
+  self.FindSubForm('Main').FindCommand('FORMENABLE').Params.Values['NAME'] := inttostr(conFORMANTIGROUP);
+  self.FindSubForm('Main').FindCommand('FORMENABLE').Params.Values['VALUE'] := 'TRUE';
+  self.FindSubForm('Main').FindCommand('FORMENABLE').Execute;
+
+  SearchList('');
+end;
+
+function TfmAntiPassGroup.GetAntiNo(aAntiGroupCode: string): string;
+var
+  stSql : string;
+  TempAdoQuery : TADOQuery;
+begin
+  result := '0';
+  stSql := ' Select * from TB_ANTIGROUPCODE ';
+  stSql := stSql + ' Where AG_CODE = ' + aAntiGroupCode + ' ';
+  Try
+    CoInitialize(nil);
+    TempAdoQuery := TADOQuery.Create(nil);
+    TempAdoQuery.Connection := dmDataBase.ADOConnection;
+    TempAdoQuery.DisableControls;
+
+    with TempAdoQuery do
+    begin
+      Close;
+      sql.Text := stSql;
+      Try
+        Open;
+      Except
+        Exit;
+      End;
+      if recordcount < 1 then Exit;
+      if Not FindField('AG_ANTINO').isNull then
+         result := FindField('AG_ANTINO').AsString;
+    end;
+  Finally
+    TempAdoQuery.EnableControls;
+    TempAdoQuery.Free;
+    CoUninitialize;
+  End;
+end;
+
+function TfmAntiPassGroup.SearchList(aCurrentCode:string;aTopRow:integer = 0): Boolean;
+var
+  stSql : string;
+  TempAdoQuery : TADOQuery;
+  nRow : integer;
+begin
+  GridInit(sg_List,3,2,true);
+  stSql := dmDBSelect.SelectTB_DOOR_AntiPass;
+  L_nCheckCount := 0;
+
+  Try
+    CoInitialize(nil);
+    TempAdoQuery := TADOQuery.Create(nil);
+    TempAdoQuery.Connection := dmDataBase.ADOConnection;
+    TempAdoQuery.DisableControls;
+
+    with TempAdoQuery do
+    begin
+      Close;
+      sql.Text := stSql;
+      Try
+        Open;
+      Except
+        Exit;
+      End;
+      if recordcount < 1 then Exit;
+      with sg_List do
+      begin
+        nRow := 1;
+        RowCount := RecordCount + 1;
+        while Not Eof do
+        begin
+          AddCheckBox(0,nRow,False,False);
+          cells[1,nRow] := FindField('DO_DOORNAME').AsString;
+          cells[2,nRow] := FindField('AG_NAME').AsString;
+          cells[3,nRow] := FindField('ND_NODENO').AsString;
+          cells[4,nRow] := FindField('DE_ECUID').AsString;
+          cells[5,nRow] := FindField('DE_EXTENDID').AsString;
+          cells[6,nRow] := FindField('DO_DOORNO').AsString;
+          cells[7,nRow] := FindField('AG_CODE').AsString;
+          if (cells[3,nRow] + cells[4,nRow] + cells[6,nRow]) = aCurrentCode then
+          begin
+            SelectRows(nRow,1);
+          end;
+
+          nRow := nRow + 1;
+          Next;
+        end;
+        if aTopRow = 0 then
+        begin
+          if Row > (L_nPageListMaxCount - 1) then TopRow := Row - L_nPageListMaxCount;
+        end else
+        begin
+          TopRow := aTopRow;
+        end;
+      end;
+
+    end;
+  Finally
+    TempAdoQuery.EnableControls;
+    TempAdoQuery.Free;
+    CoUninitialize;
+  End;
+end;
+
+
+procedure TfmAntiPassGroup.sg_ListCheckBoxClick(Sender: TObject; ACol,
+  ARow: Integer; State: Boolean);
+begin
+  inherited;
+  if ARow = 0 then //전체선택 또는 해제
+  begin
+    if State then L_nCheckCount := (Sender as TAdvStringGrid).RowCount - 1
+    else L_nCheckCount := 0;
+    AdvStrinGridSetAllCheck(Sender,State);
+  end else
+  begin
+    if State then L_nCheckCount := L_nCheckCount + 1
+    else L_nCheckCount := L_nCheckCount - 1 ;
+  end;
+end;
+
+
+initialization
+  RegisterClass(TfmAntiPassGroup);
+Finalization
+  UnRegisterClass(TfmAntiPassGroup);
+
+end.

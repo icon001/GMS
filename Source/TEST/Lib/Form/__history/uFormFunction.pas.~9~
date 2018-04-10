@@ -1,0 +1,229 @@
+unit uFormFunction;
+
+interface
+
+uses
+  System.SysUtils, System.Classes,AdvGrid,Vcl.StdCtrls,Vcl.ExtCtrls;
+
+type
+  TdmFormFunction = class(TDataModule)
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+    procedure AccessEventCellHide(aList:TAdvStringGrid);
+    procedure AccessEventHeaderNameCreate;
+    procedure AccessEventHeaderNameSetting(aList:TAdvStringGrid);
+    procedure AlarmEventCellHide(aList:TAdvStringGrid);
+    procedure AlarmEventHeaderNameCreate;
+    procedure AlarmEventHeaderNameSetting(aList:TAdvStringGrid);
+    //*************************
+    //Group Box 내에서 컴포넌트 찾는 함수
+    //*************************
+    Function TravelGroupCheckBoxItem(GroupBox:TGroupBox;stName:string; no:Integer):TCheckBox;
+    Function TravelGroupEditItem(GroupBox:TGroupBox;stName:string; no:Integer):TEdit;
+    Function TravelGroupLabelItem(GroupBox:TGroupBox;stName:string; no:Integer):TLabel;
+    //*************************
+    //Panel 내에서 컴포넌트 찾는 함수
+    //*************************
+    Function TravelPanelEditItem(Panel:TPanel;stName:string; no:Integer):TEdit;
+    Function TravelPanelLabelItem(Panel:TPanel;stName:string; no:Integer):TLabel;
+  end;
+
+var
+  dmFormFunction: TdmFormFunction;
+
+implementation
+uses
+  uFormVariable;
+
+{%CLASSGROUP 'System.Classes.TPersistent'}
+
+{$R *.dfm}
+
+{ TdmFormFunction }
+
+procedure TdmFormFunction.AccessEventCellHide(aList: TAdvStringGrid);
+var
+  i : integer;
+begin
+  for i := 0 to aList.ColCount - 1 do
+  begin
+    if G_arrAccessEventShowTable[i] = 0 then
+    begin
+      aList.ColWidths[G_arrDoorIndexArray[i]] := 0;
+    end else
+    begin
+      aList.ColWidths[G_arrDoorIndexArray[i]] := G_arrAccessEventSizeTable[G_arrDoorIndexArray[i]];
+    end;
+  end;
+
+end;
+
+procedure TdmFormFunction.AccessEventHeaderNameCreate;
+begin
+  AccessHeaderNameList.Clear;
+  AccessHeaderNameList.Add('발생일자');
+  AccessHeaderNameList.Add('위치');
+  AccessHeaderNameList.Add('출입문');
+  AccessHeaderNameList.Add('승인코드');
+  AccessHeaderNameList.Add('승인상태');
+  AccessHeaderNameList.Add(G_stFormName111);
+  AccessHeaderNameList.Add('출입자명');
+  AccessHeaderNameList.Add(G_stFormName002);
+  AccessHeaderNameList.Add(G_stFormName012);
+  AccessHeaderNameList.Add(G_stFormName022);
+  AccessHeaderNameList.Add(G_stFormName101);
+  AccessHeaderNameList.Add('출입문ID');
+
+end;
+
+procedure TdmFormFunction.AccessEventHeaderNameSetting(aList: TAdvStringGrid);
+var
+  i : integer;
+begin
+  aList.ColCount := AccessHeaderNameList.Count;
+  for i := LOW(G_arrDoorIndexArray) to HIGH(G_arrDoorIndexArray) do
+  begin
+    if (aList.ColCount - 1) < i then Exit;
+    if (AccessHeaderNameList.Count - 1) < i then Exit;
+
+    aList.cells[G_arrDoorIndexArray[i],0] := AccessHeaderNameList[i];
+  end;
+
+end;
+
+procedure TdmFormFunction.AlarmEventCellHide(aList: TAdvStringGrid);
+var
+  i : integer;
+begin
+  for i := 0 to aList.ColCount - 1 do
+  begin
+    if G_arrAlarmEventShowTable[i] = 0 then
+    begin
+      aList.ColWidths[G_arrAlarmIndexArray[i]] := 0;
+    end else
+    begin
+      aList.ColWidths[G_arrAlarmIndexArray[i]] := G_arrAlarmEventSizeTable[G_arrAlarmIndexArray[i]];
+    end;
+  end;
+
+end;
+
+procedure TdmFormFunction.AlarmEventHeaderNameCreate;
+begin
+  AlarmHeaderNameList.clear;
+  AlarmHeaderNameList.Add('발생일자');
+  AlarmHeaderNameList.Add('위치');
+  AlarmHeaderNameList.Add('방범구역');
+  AlarmHeaderNameList.Add('기기번호');
+  AlarmHeaderNameList.Add('기기타입');
+  AlarmHeaderNameList.Add('발생코드');
+  AlarmHeaderNameList.Add('이벤트내용');
+  AlarmHeaderNameList.Add('알람코드');
+
+end;
+
+procedure TdmFormFunction.AlarmEventHeaderNameSetting(aList: TAdvStringGrid);
+var
+  i : integer;
+begin
+  aList.ColCount := AlarmHeaderNameList.Count;
+  for i := LOW(G_arrAlarmIndexArray) to HIGH(G_arrAlarmIndexArray) do
+  begin
+    if (aList.ColCount - 1) < i then Exit;
+    if (AlarmHeaderNameList.Count - 1) < i then Exit;
+
+    aList.cells[G_arrAlarmIndexArray[i],0] := AlarmHeaderNameList[i];
+  end;
+
+end;
+
+function TdmFormFunction.TravelGroupCheckBoxItem(GroupBox: TGroupBox;
+  stName: string; no: Integer): TCheckBox;
+var
+Loop:integer;
+begin
+  Result:= Nil;
+
+  For Loop:=0 to GroupBox.ControlCount-1 do
+  Begin
+    If LowerCase(GroupBox.Controls[Loop].name) = LowerCase(stName) + inttostr(no) then
+    Begin
+      Result:=TCheckBox(GroupBox.Controls[Loop]);
+      exit;
+    End;
+  End;
+end;
+
+function TdmFormFunction.TravelGroupEditItem(GroupBox: TGroupBox;
+  stName: string; no: Integer): TEdit;
+var
+Loop:integer;
+begin
+  Result:= Nil;
+
+  For Loop:=0 to GroupBox.ControlCount-1 do
+  Begin
+    If LowerCase(GroupBox.Controls[Loop].name) = LowerCase(stName) + inttostr(no) then
+    Begin
+      Result:=TEdit(GroupBox.Controls[Loop]);
+      exit;
+    End;
+  End;
+end;
+
+function TdmFormFunction.TravelGroupLabelItem(GroupBox: TGroupBox;
+  stName: string; no: Integer): TLabel;
+var
+Loop:integer;
+begin
+  Result:= Nil;
+
+  For Loop:=0 to GroupBox.ControlCount-1 do
+  Begin
+    If LowerCase(GroupBox.Controls[Loop].name) = LowerCase(stName) + inttostr(no) then
+    Begin
+      Result:=TLabel(GroupBox.Controls[Loop]);
+      exit;
+    End;
+  End;
+end;
+
+function TdmFormFunction.TravelPanelEditItem(Panel: TPanel; stName: string;
+  no: Integer): TEdit;
+var
+Loop:integer;
+begin
+  Result:= Nil;
+
+  For Loop:=0 to Panel.ControlCount-1 do
+  Begin
+    If LowerCase(Panel.Controls[Loop].name) = LowerCase(stName) + inttostr(no) then
+    Begin
+      Result:=TEdit(Panel.Controls[Loop]);
+      exit;
+    End;
+  End;
+
+end;
+
+function TdmFormFunction.TravelPanelLabelItem(Panel: TPanel; stName: string;
+  no: Integer): TLabel;
+var
+Loop:integer;
+begin
+  Result:= Nil;
+
+  For Loop:=0 to Panel.ControlCount-1 do
+  Begin
+    If LowerCase(Panel.Controls[Loop].name) = LowerCase(stName) + inttostr(no) then
+    Begin
+      Result:=TLabel(Panel.Controls[Loop]);
+      exit;
+    End;
+  End;
+
+end;
+
+end.

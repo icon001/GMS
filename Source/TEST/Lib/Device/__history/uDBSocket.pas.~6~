@@ -1,0 +1,40 @@
+unit uDBSocket;
+
+interface
+
+uses
+  System.SysUtils, System.Classes,Vcl.ExtCtrls;
+
+type
+  TdmDBSocket = class(TDataModule)
+    procedure DataModuleCreate(Sender: TObject);
+    procedure DataModuleDestroy(Sender: TObject);
+  private
+    DBSocketReceiveTimer : TTimer;
+    L_nOldDBSocketSeq : integer; //최종 가져온 DBSocketSequence
+    { Private declarations }
+  public
+    { Public declarations }
+  end;
+
+var
+  dmDBSocket: TdmDBSocket;
+
+implementation
+
+{%CLASSGROUP 'System.Classes.TPersistent'}
+
+{$R *.dfm}
+
+procedure TdmDBSocket.DataModuleCreate(Sender: TObject);
+begin
+  L_nOldDBSocketSeq := 0;
+  DBSocketReceiveTimer := TTimer.Create(nil);
+end;
+
+procedure TdmDBSocket.DataModuleDestroy(Sender: TObject);
+begin
+//
+end;
+
+end.

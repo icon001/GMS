@@ -1,0 +1,1658 @@
+unit uComboCodeLoad;
+
+interface
+uses ADODB,StdCtrls,Classes,SysUtils,ActiveX;
+
+procedure LoadAlarmAreaCode_Building(aBuildingCode,aFloorCode,aAreaCode:string;aStringList:TStringList;cmb_Box:TComboBox;aAll:Boolean=True;aAllName:string='전체');
+procedure LoadAlarmCheckCode(aStringList:TStringList;cmb_Box:TComboBox;aAll:Boolean=True;aAllName:string='전체');
+procedure LoadAlarmDeviceType(aStringList:TStringList;cmb_Box:TComboBox;aAll:Boolean=True;aAllName:string='전체');
+procedure LoadAlarmGroupCode(cmb_Box:TComboBox;aAll:Boolean=True;aAllName:string='전체');
+procedure LoadAlarmTypeCode(aAlarmGroup:string;aStringList:TStringList;cmb_Box:TComboBox;aAll:Boolean=True;aAllName:string='전체');
+procedure LoadAreaCode(aBuildingCode,aFloorCode:string;aStringList:TStringList;cmb_Box:TComboBox;aAll:Boolean=True;aAllName:string='전체');
+procedure LoadBuildingCode(aStringList:TStringList;cmb_Box:TComboBox;aAll:Boolean=True;aAllName:string='전체');
+procedure LoadCardGubun(aStringList:TStringList;cmb_Box:TComboBox;aAll:Boolean=True;aAllName:string='전체');
+procedure LoadCompanyCode(aStringList:TStringList;cmb_Box:TComboBox;aAll:Boolean=True;aAllName:string='전체');
+procedure LoadDepartCode(aCompanyCode,aJijumCode:string;aStringList:TStringList;cmb_Box:TComboBox;aAll:Boolean=True;aAllName:string='전체');
+procedure LoadDeviceCardGroupCode(aSelectGroupCode:string;aStringList:TStringList;cmb_Box:TComboBox;aAll:Boolean=True;aAllName:string='전체');
+procedure LoadDeviceID(aNodeNo:string;aStringList:TStringList;cmb_Box:TComboBox;aAll:Boolean=True;aAllName:string='전체');
+procedure LoadDeviceIDNotAlarmID(aNodeNo:string;aStringList:TStringList;cmb_Box:TComboBox;aAll:Boolean=True;aAllName:string='전체');
+procedure LoadDoorCode_Building(aBuildingCode,aFloorCode,aAreaCode:string;aStringList:TStringList;cmb_Box:TComboBox;aAll:Boolean=True;aAllName:string='전체');
+procedure LoadEmployeeTypeCode(aStringList:TStringList;cmb_Box:TComboBox;aAll:Boolean=True;aAllName:string='전체');
+procedure LoadFloorCode(aBuildingCode:string;aStringList:TStringList;cmb_Box:TComboBox;aAll:Boolean=True;aAllName:string='전체');
+procedure LoadJijumCode(aCompanyCode:string;aStringList:TStringList;cmb_Box:TComboBox;aAll:Boolean=True;aAllName:string='전체');
+procedure LoadMenuGroupCode(aProgramGroupCode:string;aStringList:TStringList;cmb_Box:TComboBox;aAll:Boolean=True;aAllName:string='전체');
+procedure LoadNodeIP(aStringList:TStringList;cmb_Box:TComboBox;aAll:Boolean=True;aAllName:string='전체');
+procedure LoadPosiCode(aCompanyCode:string;aStringList:TStringList;cmb_Box:TComboBox;aAll:Boolean=True;aAllName:string='전체');
+procedure LoadProgramGroupCode(aStringList:TStringList;cmb_Box:TComboBox;aAll:Boolean=True;aAllName:string='전체');
+procedure LoadSearchETC(cmb_Box:TComboBox);
+procedure LoadTimeHH(cmb_Box:TComboBox);
+procedure LoadTimeMM(cmb_Box:TComboBox);
+
+implementation
+uses
+  uCommonFunction,
+  uCommonVariable,
+  uDataBase,
+  uDBVariable,
+  uFormVariable;
+
+
+procedure LoadAlarmAreaCode_Building(aBuildingCode,aFloorCode,aAreaCode:string;aStringList:TStringList;cmb_Box:TComboBox;aAll:Boolean=True;aAllName:string='전체');
+var
+  stSql :string;
+  TempAdoQuery : TADOQuery;
+  nIndex : integer;
+  stTemp : string;
+begin
+  cmb_Box.Clear;
+  aStringList.Clear;
+
+  if aAll then
+  begin
+    cmb_Box.Items.Add(aAllName);
+    aStringList.Add('');
+    cmb_Box.ItemIndex := 0;
+  end;
+
+  stSql := ' select * from TB_ALARMDEVICE ';
+  stSql := stSql + ' Where GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  if aBuildingCode <> '' then
+  begin
+    stSql := stSql + ' AND LO_DONGCODE = ''' + aBuildingCode + ''' ';
+    if aFloorCode <> '' then stSql := stSql + ' AND LO_FLOORCODE = ''' + aFloorCode + ''' ';
+    if aAreaCode <> '' then stSql := stSql + ' AND LO_AREACODE = ''' + aAreaCode + ''' ';
+  end;
+  stSql := stSql + ' order by AL_VIEWSEQ,AL_ZONENAME ';
+
+
+  Try
+    CoInitialize(nil);
+    TempAdoQuery := TADOQuery.Create(nil);
+    TempAdoQuery.Connection := dmDataBase.ADOConnection;
+    TempAdoQuery.DisableControls;
+
+    with TempAdoQuery do
+    begin
+      Close;
+      Sql.Clear;
+      Sql.Text := stSql;
+
+      Try
+        Open;
+      Except
+        Exit;
+      End;
+
+      if RecordCount < 1 then
+      begin
+        Exit;
+      end;
+      First;
+
+      While Not Eof do
+      begin
+        cmb_Box.Items.Add(FindField('AL_ZONENAME').AsString);
+        aStringList.Add(FillZeroNumber(FindField('AC_NODENO').AsInteger,G_nNodeCodeLength) + FindField('AC_ECUID').AsString + FindField('AL_ZONENUM').AsString);
+        Next;
+      end;
+      if RecordCount = 1 then
+      begin
+        if aAll then cmb_Box.ItemIndex := 1
+        else cmb_Box.ItemIndex := 0;
+      end else
+      begin
+        if cmb_Box.Items.Count > 0 then
+           cmb_Box.ItemIndex := 0;
+      end;
+    end;
+  Finally
+    TempAdoQuery.EnableControls;
+    TempAdoQuery.Free;
+    CoUninitialize;
+  End;
+end;
+
+procedure LoadAlarmCheckCode(aStringList:TStringList;cmb_Box:TComboBox;aAll:Boolean=True;aAllName:string='전체');
+var
+  stSql :string;
+  TempAdoQuery : TADOQuery;
+  nIndex : integer;
+  stTemp : string;
+begin
+  cmb_Box.Clear;
+  aStringList.Clear;
+
+  if aAll then
+  begin
+    cmb_Box.Items.Add(aAllName);
+    aStringList.Add('');
+    cmb_Box.ItemIndex := 0;
+  end;
+
+  stSql := ' Select * from TB_ALARMCHECKCODE ';
+  stSql := stSql + ' Order by AL_ALARMCHECKCODENAME ';
+
+
+  Try
+    CoInitialize(nil);
+    TempAdoQuery := TADOQuery.Create(nil);
+    TempAdoQuery.Connection := dmDataBase.ADOConnection;
+    TempAdoQuery.DisableControls;
+
+    with TempAdoQuery do
+    begin
+      Close;
+      Sql.Clear;
+      Sql.Text := stSql;
+
+      Try
+        Open;
+      Except
+        Exit;
+      End;
+
+      if RecordCount < 1 then
+      begin
+        Exit;
+      end;
+      First;
+
+      While Not Eof do
+      begin
+        cmb_Box.Items.Add(FindField('AL_ALARMCHECKCODENAME').AsString);
+        aStringList.Add(FindField('AL_ALARMCHECKCODE').AsString);
+        Next;
+      end;
+      if RecordCount = 1 then
+      begin
+        if aAll then cmb_Box.ItemIndex := 1
+        else cmb_Box.ItemIndex := 0;
+      end else
+      begin
+        if cmb_Box.Items.Count > 0 then
+           cmb_Box.ItemIndex := 0;
+      end;
+    end;
+  Finally
+    TempAdoQuery.EnableControls;
+    TempAdoQuery.Free;
+    CoUninitialize;
+  End;
+end;
+
+procedure LoadAlarmDeviceType(aStringList:TStringList;cmb_Box:TComboBox;aAll:Boolean=True;aAllName:string='전체');
+var
+  stSql :string;
+  TempAdoQuery : TADOQuery;
+  nIndex : integer;
+  stTemp : string;
+begin
+  cmb_Box.Clear;
+  aStringList.Clear;
+
+  if aAll then
+  begin
+    cmb_Box.Items.Add(aAllName);
+    aStringList.Add('');
+    cmb_Box.ItemIndex := 0;
+  end;
+
+
+  stSql := ' select * from TB_ALARMDEVICETYPECODE ';
+  stSql := stSql + ' Where GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  stSql := stSql + ' Order by AL_ALARMDEVICETYPENAME ';
+
+
+  Try
+    CoInitialize(nil);
+    TempAdoQuery := TADOQuery.Create(nil);
+    TempAdoQuery.Connection := dmDataBase.ADOConnection;
+    TempAdoQuery.DisableControls;
+
+    with TempAdoQuery do
+    begin
+      Close;
+      Sql.Clear;
+      Sql.Text := stSql;
+
+      Try
+        Open;
+      Except
+        Exit;
+      End;
+
+      if RecordCount < 1 then
+      begin
+        Exit;
+      end;
+      First;
+
+      While Not Eof do
+      begin
+        cmb_Box.Items.Add(FindField('AL_ALARMDEVICETYPENAME').AsString);
+        aStringList.Add(FindField('AL_ALARMDEVICETYPECODE').AsString);
+        Next;
+      end;
+      if RecordCount = 1 then
+      begin
+        if aAll then cmb_Box.ItemIndex := 1
+        else cmb_Box.ItemIndex := 0;
+      end else
+      begin
+        if cmb_Box.Items.Count > 0 then
+           cmb_Box.ItemIndex := 0;
+      end;
+    end;
+  Finally
+    TempAdoQuery.EnableControls;
+    TempAdoQuery.Free;
+    CoUninitialize;
+  End;
+end;
+
+procedure LoadAlarmGroupCode(cmb_Box:TComboBox;aAll:Boolean=True;aAllName:string='전체');
+var
+  stSql :string;
+  TempAdoQuery : TADOQuery;
+  nIndex : integer;
+  stTemp : string;
+begin
+  cmb_Box.Clear;
+
+  if aAll then
+  begin
+    cmb_Box.Items.Add(aAllName);
+    cmb_Box.ItemIndex := 0;
+  end;
+
+  stSql := ' Select AG_CODE from TB_ALARMCODEGROUP ';
+  stSql := stSql + ' Group by AG_CODE ';
+  stSql := stSql + ' Order by AG_CODE ';
+
+
+  Try
+    CoInitialize(nil);
+    TempAdoQuery := TADOQuery.Create(nil);
+    TempAdoQuery.Connection := dmDataBase.ADOConnection;
+    TempAdoQuery.DisableControls;
+
+    with TempAdoQuery do
+    begin
+      Close;
+      Sql.Clear;
+      Sql.Text := stSql;
+
+      Try
+        Open;
+      Except
+        Exit;
+      End;
+
+      if RecordCount < 1 then
+      begin
+        Exit;
+      end;
+      First;
+
+      While Not Eof do
+      begin
+        cmb_Box.Items.Add(FindField('AG_CODE').AsString);
+        Next;
+      end;
+      if RecordCount = 1 then
+      begin
+        if aAll then cmb_Box.ItemIndex := 1
+        else cmb_Box.ItemIndex := 0;
+      end else
+      begin
+        if cmb_Box.Items.Count > 0 then
+           cmb_Box.ItemIndex := 0;
+      end;
+    end;
+  Finally
+    TempAdoQuery.EnableControls;
+    TempAdoQuery.Free;
+    CoUninitialize;
+  End;
+end;
+
+procedure LoadAlarmTypeCode(aAlarmGroup:string;aStringList:TStringList;cmb_Box:TComboBox;aAll:Boolean=True;aAllName:string='전체');
+var
+  stSql :string;
+  TempAdoQuery : TADOQuery;
+  nIndex : integer;
+  stTemp : string;
+begin
+  cmb_Box.Clear;
+  aStringList.Clear;
+
+  if aAll then
+  begin
+    cmb_Box.Items.Add(aAllName);
+    aStringList.Add('');
+    cmb_Box.ItemIndex := 0;
+  end;
+
+  stSql := ' Select a.GROUP_CODE,a.AL_ALARMSTATUSCODE,a.AL_ALARMNAME,';
+  stSql := stSql + ' a.AL_ALARMVIEW,a.AL_ALARMGRADE,a.AL_ALARMSOUND ';
+  stSql := stSql + ' from TB_ALARMSTATUSCODE a';
+  if Trim(aAlarmGroup) <> '' then
+  begin
+    stSql := stSql + ' INNER Join TB_ALARMCODEGROUP b ';
+    stSql := stSql + ' ON ( a.GROUP_CODE = b.GROUP_CODE ';
+    stSql := stSql + ' AND a.AL_ALARMSTATUSCODE = b.AL_ALARMSTATUSCODE ';
+    stSql := stSql + ' AND b.AG_CODE = ''' + aAlarmGroup + ''') ';
+  end;
+  stSql := stSql + ' Where a.GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  stSql := stSql + ' order by a.AL_ALARMNAME ';
+
+
+  Try
+    CoInitialize(nil);
+    TempAdoQuery := TADOQuery.Create(nil);
+    TempAdoQuery.Connection := dmDataBase.ADOConnection;
+    TempAdoQuery.DisableControls;
+
+    with TempAdoQuery do
+    begin
+      Close;
+      Sql.Clear;
+      Sql.Text := stSql;
+
+      Try
+        Open;
+      Except
+        Exit;
+      End;
+
+      if RecordCount < 1 then
+      begin
+        Exit;
+      end;
+      First;
+
+      While Not Eof do
+      begin
+        cmb_Box.Items.Add(FindField('AL_ALARMNAME').AsString);
+        aStringList.Add(FindField('AL_ALARMSTATUSCODE').AsString);
+        Next;
+      end;
+      if RecordCount = 1 then
+      begin
+        if aAll then cmb_Box.ItemIndex := 1
+        else cmb_Box.ItemIndex := 0;
+      end else
+      begin
+        if cmb_Box.Items.Count > 0 then
+           cmb_Box.ItemIndex := 0;
+      end;
+    end;
+  Finally
+    TempAdoQuery.EnableControls;
+    TempAdoQuery.Free;
+    CoUninitialize;
+  End;
+end;
+
+procedure LoadAreaCode(aBuildingCode,aFloorCode:string;aStringList:TStringList;cmb_Box:TComboBox;aAll:Boolean=True;aAllName:string='전체');
+var
+  stSql :string;
+  TempAdoQuery : TADOQuery;
+  i : integer;
+  nIndex : integer;
+begin
+  cmb_Box.Clear;
+  aStringList.Clear;
+  if aAll then
+  begin
+    cmb_Box.Items.Add(aAllName);
+    aStringList.Add('');
+    cmb_Box.ItemIndex := 0;
+  end;
+
+  stSql := ' select a.LO_NAME,a.LO_DONGCODE,a.LO_FLOORCODE,a.LO_AREACODE from TB_LOCATION a ';
+  if G_nAdminBuildingGrade = 3 then
+  begin
+    stSql := stSql + ' Inner JOIN ( select * from TB_ADMIN where AD_USERID = ''' + G_stAdminUserID + ''') b ';
+    stSql := stSql + ' ON (a.GROUP_CODE = b.GROUP_CODE ';
+    stSql := stSql + ' AND a.LO_DONGCODE = b.LO_DONGCODE  ';
+    stSql := stSql + ' AND a.LO_FLOORCODE = b.LO_FLOORCODE  ';
+    stSql := stSql + ' AND a.LO_AREACODE = b.LO_AREACODE )  ';
+  end;
+  stSql := stSql + ' Where a.GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  stSql := stSql + ' AND a.LO_GUBUN = ''2''';
+  if G_bIsMaster or ( G_nAdminBuildingGrade < 3) then
+  begin
+    if (aBuildingCode = '') then Exit;
+    if (aFloorCode = '') then Exit;
+  end;
+  if (aBuildingCode <> '') then
+     stSql := stSql + ' AND a.LO_DONGCODE = ''' + aBuildingCode + ''' ';
+  if (aFloorCode <> '') then
+     stSql := stSql + ' AND a.LO_FLOORCODE = ''' + aFloorCode + ''' ';
+  stSql := stSql + ' Order by a.LO_NAME ';
+
+  Try
+    CoInitialize(nil);
+    TempAdoQuery := TADOQuery.Create(nil);
+    TempAdoQuery.Connection := dmDataBase.ADOConnection;
+    TempAdoQuery.DisableControls;
+
+    with TempAdoQuery do
+    begin
+      Close;
+      Sql.Clear;
+      Sql.Text := stSql;
+
+      Try
+        Open;
+      Except
+        Exit;
+      End;
+
+      if RecordCount < 1 then
+      begin
+        Exit;
+      end;
+
+      First;
+
+      While Not Eof do
+      begin
+        cmb_Box.Items.Add(FindField('LO_NAME').AsString);
+        aStringList.Add(FindField('LO_DONGCODE').AsString + FindField('LO_FLOORCODE').AsString + FindField('LO_AREACODE').AsString);
+        Next;
+      end;
+
+
+      if RecordCount = 1 then
+      begin
+        if aAll then cmb_Box.ItemIndex := 1
+        else cmb_Box.ItemIndex := 0;
+      end else
+      begin
+        if G_nAdminBuildingGrade > 3 then
+        begin
+          nIndex := aStringList.IndexOf(G_stAdminBuildingCode + G_stAdminFloorCode + G_stAdminAreaCode);
+          if nIndex > 0 then cmb_Box.ItemIndex := nIndex;
+          cmb_Box.Enabled := False;
+        end else
+        if cmb_Box.Items.Count > 0 then
+           cmb_Box.ItemIndex := 0;
+      end;
+    end;
+  Finally
+    TempAdoQuery.EnableControls;
+    TempAdoQuery.Free;
+    CoUninitialize;
+  End;
+end;
+
+procedure LoadBuildingCode(aStringList:TStringList;cmb_Box:TComboBox;aAll:Boolean=True;aAllName:string='전체');
+var
+  stSql :string;
+  TempAdoQuery : TADOQuery;
+  nIndex : integer;
+  stTemp : string;
+begin
+  cmb_Box.Clear;
+  aStringList.Clear;
+
+  if aAll then
+  begin
+    cmb_Box.Items.Add(aAllName);
+    aStringList.Add('');
+    cmb_Box.ItemIndex := 0;
+  end;
+
+  stSql := ' select a.LO_NAME,a.LO_DONGCODE from TB_LOCATION a ';
+  if G_nAdminBuildingGrade = 1 then
+  begin
+    stSql := stSql + ' Inner JOIN ( select * from TB_ADMIN where AD_USERID = ''' + G_stAdminUserID + ''') b ';
+    stSql := stSql + ' ON (a.GROUP_CODE = b.GROUP_CODE ';
+    stSql := stSql + ' AND a.LO_DONGCODE = b.LO_DONGCODE ) ';
+  end;
+  stSql := stSql + ' Where a.GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  stSql := stSql + ' AND a.LO_GUBUN = ''0''';
+  stSql := stSql + ' Group by a.LO_NAME, a.LO_DONGCODE';
+  stSql := stSql + ' Order by a.LO_NAME ';
+
+
+  Try
+    CoInitialize(nil);
+    TempAdoQuery := TADOQuery.Create(nil);
+    TempAdoQuery.Connection := dmDataBase.ADOConnection;
+    TempAdoQuery.DisableControls;
+
+    with TempAdoQuery do
+    begin
+      Close;
+      Sql.Clear;
+      Sql.Text := stSql;
+
+      Try
+        Open;
+      Except
+        Exit;
+      End;
+
+      if RecordCount < 1 then
+      begin
+        Exit;
+      end;
+      First;
+
+      While Not Eof do
+      begin
+        stTemp := FindField('LO_DONGCODE').AsString + FindField('LO_NAME').AsString;
+        cmb_Box.Items.Add(FindField('LO_NAME').AsString);
+        aStringList.Add(FindField('LO_DONGCODE').AsString);
+        Next;
+      end;
+      if RecordCount = 1 then
+      begin
+        if aAll then cmb_Box.ItemIndex := 1
+        else cmb_Box.ItemIndex := 0;
+      end else
+      begin
+        if G_nAdminBuildingGrade > 1 then
+        begin
+          nIndex := aStringList.IndexOf(G_stAdminBuildingCode);
+          if nIndex > 0 then cmb_Box.ItemIndex := nIndex;
+          cmb_Box.Enabled := False;
+        end else
+        if cmb_Box.Items.Count > 0 then
+           cmb_Box.ItemIndex := 0;
+      end;
+    end;
+  Finally
+    TempAdoQuery.EnableControls;
+    TempAdoQuery.Free;
+    CoUninitialize;
+  End;
+end;
+
+procedure LoadCardGubun(aStringList:TStringList;cmb_Box:TComboBox;aAll:Boolean=True;aAllName:string='전체');
+var
+  stSql :string;
+  TempAdoQuery : TADOQuery;
+  nIndex : integer;
+  stTemp : string;
+begin
+  cmb_Box.Clear;
+  aStringList.Clear;
+
+  if aAll then   //잘못하면 CompanyCodeList 의 인덱스와 맞지 않을 수 있다
+  begin
+    cmb_Box.Items.Add(aAllName);
+    aStringList.Add('');
+    cmb_Box.ItemIndex := 0;
+  end;
+
+  stSql := ' select * from TB_CARDTYPE ';
+  stSql := stSql + ' Order by CT_CODE ';
+
+
+  Try
+    CoInitialize(nil);
+    TempAdoQuery := TADOQuery.Create(nil);
+    TempAdoQuery.Connection := dmDataBase.ADOConnection;
+    TempAdoQuery.DisableControls;
+
+    with TempAdoQuery do
+    begin
+      Close;
+      Sql.Clear;
+      Sql.Text := stSql;
+
+      Try
+        Open;
+      Except
+        Exit;
+      End;
+
+      if RecordCount < 1 then
+      begin
+        Exit;
+      end;
+      First;
+
+      While Not Eof do
+      begin
+        cmb_Box.Items.Add(FindField('CT_NAME').AsString);
+        aStringList.Add(FindField('CT_CODE').AsString);
+        Next;
+      end;
+      if RecordCount = 1 then
+      begin
+        if aAll then cmb_Box.ItemIndex := 1
+        else cmb_Box.ItemIndex := 0;
+      end else
+      begin
+        if cmb_Box.Items.Count > 0 then
+           cmb_Box.ItemIndex := 0;
+      end;
+    end;
+  Finally
+    TempAdoQuery.EnableControls;
+    TempAdoQuery.Free;
+    CoUninitialize;
+  End;
+end;
+
+procedure LoadCompanyCode(aStringList:TStringList;cmb_Box:TComboBox;aAll:Boolean=True;aAllName:string='전체');
+var
+  stSql :string;
+  TempAdoQuery : TADOQuery;
+  nIndex : integer;
+  stTemp : string;
+begin
+  cmb_Box.Clear;
+  aStringList.Clear;
+
+  if aAll then   //잘못하면 CompanyCodeList 의 인덱스와 맞지 않을 수 있다
+  begin
+    cmb_Box.Items.Add(aAllName);
+    aStringList.Add('');
+    cmb_Box.ItemIndex := 0;
+  end;
+
+  stSql := ' select a.CO_NAME,a.CO_COMPANYCODE from TB_COMPANY a ';
+  if G_nAdminCompanyGrade = 1 then
+  begin
+    stSql := stSql + ' Inner JOIN TB_ADMINCOMPANY b ';
+    stSql := stSql + ' ON (a.GROUP_CODE = b.GROUP_CODE ';
+    stSql := stSql + ' AND a.CO_COMPANYCODE = b.CO_COMPANYCODE ';
+    stSql := stSql + ' AND a.CO_GUBUN = b.CO_GUBUN ) ';
+  end;
+  stSql := stSql + ' Where a.GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  stSql := stSql + ' AND a.CO_GUBUN = ''1''';
+  stSql := stSql + ' Group by a.CO_NAME, a.CO_COMPANYCODE';
+  stSql := stSql + ' Order by a.CO_NAME ';
+
+
+  Try
+    CoInitialize(nil);
+    TempAdoQuery := TADOQuery.Create(nil);
+    TempAdoQuery.Connection := dmDataBase.ADOConnection;
+    TempAdoQuery.DisableControls;
+
+    with TempAdoQuery do
+    begin
+      Close;
+      Sql.Clear;
+      Sql.Text := stSql;
+
+      Try
+        Open;
+      Except
+        Exit;
+      End;
+
+      if RecordCount < 1 then
+      begin
+        Exit;
+      end;
+      First;
+
+      While Not Eof do
+      begin
+        stTemp := FindField('CO_COMPANYCODE').AsString + FindField('CO_NAME').AsString;
+        cmb_Box.Items.Add(FindField('CO_NAME').AsString);
+        aStringList.Add(FindField('CO_COMPANYCODE').AsString);
+        Next;
+      end;
+      if RecordCount = 1 then
+      begin
+        if aAll then cmb_Box.ItemIndex := 1
+        else cmb_Box.ItemIndex := 0;
+      end else
+      begin
+        if G_nAdminCompanyGrade > 1 then
+        begin
+          nIndex := aStringList.IndexOf(G_stAdminCompanyCode);
+          if nIndex > 0 then cmb_Box.ItemIndex := nIndex;
+          cmb_Box.Enabled := False;
+        end else
+        if cmb_Box.Items.Count > 0 then
+           cmb_Box.ItemIndex := 0;
+      end;
+    end;
+  Finally
+    TempAdoQuery.EnableControls;
+    TempAdoQuery.Free;
+    CoUninitialize;
+  End;
+end;
+
+procedure LoadDepartCode(aCompanyCode,aJijumCode:string;aStringList:TStringList;cmb_Box:TComboBox;aAll:Boolean=True;aAllName:string='전체');
+var
+  stSql :string;
+  TempAdoQuery : TADOQuery;
+  i : integer;
+  nIndex : integer;
+begin
+  cmb_Box.Clear;
+  aStringList.Clear;
+  if aAll then
+  begin
+    cmb_Box.Items.Add(aAllName);
+    aStringList.Add('');
+    cmb_Box.ItemIndex := 0;
+  end;
+
+  if G_nAdminCompanyGrade = 3 then
+  begin
+    stSql := ' select a.CO_NAME,a.CO_COMPANYCODE,a.CO_JIJUMCODE,a.CO_DEPARTCODE from TB_COMPANY a ';
+    stSql := stSql + ' Inner JOIN TB_ADMINCOMPANY b ';
+    stSql := stSql + ' ON (a.GROUP_CODE = b.GROUP_CODE ';
+    stSql := stSql + ' AND a.CO_COMPANYCODE = b.CO_COMPANYCODE ';
+    stSql := stSql + ' AND a.CO_JIJUMCODE = b.CO_JIJUMCODE ';
+    stSql := stSql + ' AND a.CO_DEPARTCODE = b.CO_DEPARTCODE ';
+    stSql := stSql + ' AND a.CO_GUBUN = b.CO_GUBUN ) ';
+    stSql := stSql + ' Where a.GROUP_CODE = ''' + G_stGroupCode + ''' ';
+    stSql := stSql + ' AND a.CO_GUBUN = ''3''';
+    stSql := stSql + ' AND b.AD_USERID = ''' + G_stAdminUserID + '''';
+  end else
+  begin
+    stSql := ' select a.CO_NAME,a.CO_COMPANYCODE,a.CO_JIJUMCODE,a.CO_DEPARTCODE from TB_COMPANY a ';
+    stSql := stSql + ' Where a.GROUP_CODE = ''' + G_stGroupCode + ''' ';
+    stSql := stSql + ' AND a.CO_GUBUN = ''3''';
+    if G_bIsMaster or ( G_nAdminCompanyGrade < 3) then
+    begin
+      if (aCompanyCode = '') then Exit;
+    end;
+    if (aCompanyCode <> '') then
+        stSql := stSql + ' AND a.CO_COMPANYCODE = ''' + aCompanyCode + ''' ';
+  end;
+
+  stSql := stSql + ' Order by a.CO_NAME ';
+
+  Try
+    CoInitialize(nil);
+    TempAdoQuery := TADOQuery.Create(nil);
+    TempAdoQuery.Connection := dmDataBase.ADOConnection;
+    TempAdoQuery.DisableControls;
+
+    with TempAdoQuery do
+    begin
+      Close;
+      Sql.Clear;
+      Sql.Text := stSql;
+
+      Try
+        Open;
+      Except
+        Exit;
+      End;
+
+      if RecordCount < 1 then
+      begin
+        Exit;
+      end;
+
+      First;
+
+      While Not Eof do
+      begin
+        cmb_Box.Items.Add(FindField('CO_NAME').AsString);
+        aStringList.Add(FindField('CO_COMPANYCODE').AsString + FindField('CO_JIJUMCODE').AsString + FindField('CO_DEPARTCODE').AsString);
+        Next;
+      end;
+
+      if RecordCount = 1 then
+      begin
+        if aAll then cmb_Box.ItemIndex := 1
+        else cmb_Box.ItemIndex := 0;
+      end else
+      begin
+        if G_nAdminCompanyGrade > 3 then
+        begin
+          nIndex := aStringList.IndexOf(G_stAdminCompanyCode + G_stAdminJijumCode + G_stAdminDepartCode);
+          if nIndex > 0 then cmb_Box.ItemIndex := nIndex;
+          cmb_Box.Enabled := False;
+        end else
+        if cmb_Box.Items.Count > 0 then
+           cmb_Box.ItemIndex := 0;
+      end;
+    end;
+  Finally
+    TempAdoQuery.EnableControls;
+    TempAdoQuery.Free;
+    CoUninitialize;
+  End;
+end;
+
+procedure LoadDeviceCardGroupCode(aSelectGroupCode:string;aStringList:TStringList;cmb_Box:TComboBox;aAll:Boolean=True;aAllName:string='전체');
+var
+  stSql :string;
+  TempAdoQuery : TADOQuery;
+  nIndex : integer;
+  stTemp : string;
+begin
+  cmb_Box.Clear;
+  aStringList.Clear;
+
+  if aAll then
+  begin
+    cmb_Box.Items.Add(aAllName);
+    aStringList.Add('');
+    cmb_Box.ItemIndex := 0;
+  end;
+
+
+  stSql := ' select DG_CODE,DG_NAME from TB_DEVICECARDGROUPCODE ';
+  stSql := stSql + ' Where GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  stSql := stSql + ' AND DG_USE = ''Y'' ';
+  stSql := stSql + ' Order by DG_NAME ';
+
+
+  Try
+    CoInitialize(nil);
+    TempAdoQuery := TADOQuery.Create(nil);
+    TempAdoQuery.Connection := dmDataBase.ADOConnection;
+    TempAdoQuery.DisableControls;
+
+    with TempAdoQuery do
+    begin
+      Close;
+      Sql.Clear;
+      Sql.Text := stSql;
+
+      Try
+        Open;
+      Except
+        Exit;
+      End;
+
+      if RecordCount < 1 then
+      begin
+        Exit;
+      end;
+      First;
+
+      While Not Eof do
+      begin
+        cmb_Box.Items.Add(FindField('DG_NAME').AsString);
+        aStringList.Add(FindField('DG_CODE').AsString);
+        Next;
+      end;
+      nIndex := aStringList.IndexOf(aSelectGroupCode);
+      if aAllName <> '' then cmb_Box.ItemIndex := nIndex;
+      if cmb_Box.ItemIndex < 0 then
+      begin
+        cmb_Box.ItemIndex := 0;
+      end;
+    end;
+  Finally
+    TempAdoQuery.EnableControls;
+    TempAdoQuery.Free;
+    CoUninitialize;
+  End;
+end;
+
+
+procedure LoadDeviceID(aNodeNo:string;aStringList:TStringList;cmb_Box:TComboBox;aAll:Boolean=True;aAllName:string='전체');
+var
+  stSql :string;
+  TempAdoQuery : TADOQuery;
+  nIndex : integer;
+  stTemp : string;
+begin
+  cmb_Box.Clear;
+  aStringList.Clear;
+
+  if aAll then
+  begin
+    cmb_Box.Items.Add(aAllName);
+    aStringList.Add('');
+    cmb_Box.ItemIndex := 0;
+  end;
+
+  if aNodeNo = '' then Exit;
+
+
+  stSql := ' select AC_NODENO,AC_ECUID from TB_ACCESSDEVICE ';
+  stSql := stSql + ' Where GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  stSql := stSql + ' AND AC_NODENO = ' + aNodeNo + ' ';
+  stSql := stSql + ' Group by AC_NODENO, AC_ECUID';
+  stSql := stSql + ' Order by AC_NODENO, AC_ECUID ';
+
+
+  Try
+    CoInitialize(nil);
+    TempAdoQuery := TADOQuery.Create(nil);
+    TempAdoQuery.Connection := dmDataBase.ADOConnection;
+    TempAdoQuery.DisableControls;
+
+    with TempAdoQuery do
+    begin
+      Close;
+      Sql.Clear;
+      Sql.Text := stSql;
+
+      Try
+        Open;
+      Except
+        Exit;
+      End;
+
+      if RecordCount < 1 then
+      begin
+        Exit;
+      end;
+      First;
+
+      While Not Eof do
+      begin
+        cmb_Box.Items.Add(FindField('AC_ECUID').AsString);
+        aStringList.Add(FillZeroNumber(FindField('AC_NODENO').AsInteger,G_nNodeCodeLength) + FindField('AC_ECUID').AsString);
+        Next;
+      end;
+      if RecordCount = 1 then
+      begin
+        if aAll then cmb_Box.ItemIndex := 1
+        else cmb_Box.ItemIndex := 0;
+      end else
+      begin
+        if cmb_Box.Items.Count > 0 then
+           cmb_Box.ItemIndex := 0;
+      end;
+    end;
+  Finally
+    TempAdoQuery.EnableControls;
+    TempAdoQuery.Free;
+    CoUninitialize;
+  End;
+end;
+
+procedure LoadDeviceIDNotAlarmID(aNodeNo:string;aStringList:TStringList;cmb_Box:TComboBox;aAll:Boolean=True;aAllName:string='전체');
+var
+  stSql :string;
+  TempAdoQuery : TADOQuery;
+  nIndex : integer;
+  stTemp : string;
+begin
+  cmb_Box.Clear;
+  aStringList.Clear;
+
+  if aAll then
+  begin
+    cmb_Box.Items.Add(aAllName);
+    aStringList.Add('');
+    cmb_Box.ItemIndex := 0;
+  end;
+
+  if aNodeNo = '' then Exit;
+
+
+  stSql := ' select AC_NODENO,AC_ECUID from TB_ACCESSDEVICE ';
+  stSql := stSql + ' Where GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  stSql := stSql + ' AND AC_NODENO = ' + aNodeNo + ' ';
+  if G_nDBType = MSSQL then
+  begin
+    stSql := stSql + ' AND AC_NODENO + AC_ECUID NOT IN( ';
+    stSql := stSql + ' Select AC_NODENO + AC_ECUID from TB_ALARMDEVICE ';
+    stSql := stSql + ' Where GROUP_CODE = ''' + G_stGroupCode + ''' ';
+    stSql := stSql + ' AND AC_NODENO = ' + aNodeNo + ' )';
+  end else
+  begin
+    stSql := stSql + ' AND AC_NODENO || AC_ECUID NOT IN( ';
+    stSql := stSql + ' Select AC_NODENO || AC_ECUID from TB_ALARMDEVICE ';
+    stSql := stSql + ' Where GROUP_CODE = ''' + G_stGroupCode + ''' ';
+    stSql := stSql + ' AND AC_NODENO = ' + aNodeNo + ' )';
+  end;
+  stSql := stSql + ' Group by AC_NODENO, AC_ECUID';
+  stSql := stSql + ' Order by AC_NODENO, AC_ECUID ';
+
+
+  Try
+    CoInitialize(nil);
+    TempAdoQuery := TADOQuery.Create(nil);
+    TempAdoQuery.Connection := dmDataBase.ADOConnection;
+    TempAdoQuery.DisableControls;
+
+    with TempAdoQuery do
+    begin
+      Close;
+      Sql.Clear;
+      Sql.Text := stSql;
+
+      Try
+        Open;
+      Except
+        Exit;
+      End;
+
+      if RecordCount < 1 then
+      begin
+        Exit;
+      end;
+      First;
+
+      While Not Eof do
+      begin
+        cmb_Box.Items.Add(FindField('AC_ECUID').AsString);
+        aStringList.Add(FillZeroNumber(FindField('AC_NODENO').AsInteger,G_nNodeCodeLength) + FindField('AC_ECUID').AsString);
+        Next;
+      end;
+      if RecordCount = 1 then
+      begin
+        if aAll then cmb_Box.ItemIndex := 1
+        else cmb_Box.ItemIndex := 0;
+      end else
+      begin
+        if cmb_Box.Items.Count > 0 then
+           cmb_Box.ItemIndex := 0;
+      end;
+    end;
+  Finally
+    TempAdoQuery.EnableControls;
+    TempAdoQuery.Free;
+    CoUninitialize;
+  End;
+end;
+
+procedure LoadDoorCode_Building(aBuildingCode,aFloorCode,aAreaCode:string;aStringList:TStringList;cmb_Box:TComboBox;aAll:Boolean=True;aAllName:string='전체');
+var
+  stSql :string;
+  TempAdoQuery : TADOQuery;
+  nIndex : integer;
+  stTemp : string;
+begin
+  cmb_Box.Clear;
+  aStringList.Clear;
+
+  if aAll then
+  begin
+    cmb_Box.Items.Add(aAllName);
+    aStringList.Add('');
+    cmb_Box.ItemIndex := 0;
+  end;
+
+  stSql := ' select * from TB_DOOR ';
+  stSql := stSql + ' Where GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  if aBuildingCode <> '' then
+  begin
+    stSql := stSql + ' AND LO_DONGCODE = ''' + aBuildingCode + ''' ';
+    if aFloorCode <> '' then stSql := stSql + ' AND LO_FLOORCODE = ''' + aFloorCode + ''' ';
+    if aAreaCode <> '' then stSql := stSql + ' AND LO_AREACODE = ''' + aAreaCode + ''' ';
+  end;
+  stSql := stSql + ' order by DO_VIEWSEQ,DO_DOORNONAME ';
+
+
+  Try
+    CoInitialize(nil);
+    TempAdoQuery := TADOQuery.Create(nil);
+    TempAdoQuery.Connection := dmDataBase.ADOConnection;
+    TempAdoQuery.DisableControls;
+
+    with TempAdoQuery do
+    begin
+      Close;
+      Sql.Clear;
+      Sql.Text := stSql;
+
+      Try
+        Open;
+      Except
+        Exit;
+      End;
+
+      if RecordCount < 1 then
+      begin
+        Exit;
+      end;
+      First;
+
+      While Not Eof do
+      begin
+        cmb_Box.Items.Add(FindField('DO_DOORNONAME').AsString);
+        aStringList.Add(FillZeroNumber(FindField('AC_NODENO').AsInteger,G_nNodeCodeLength) + FindField('AC_ECUID').AsString + FindField('DO_DOORNO').AsString);
+        Next;
+      end;
+      if RecordCount = 1 then
+      begin
+        if aAll then cmb_Box.ItemIndex := 1
+        else cmb_Box.ItemIndex := 0;
+      end else
+      begin
+        if cmb_Box.Items.Count > 0 then
+           cmb_Box.ItemIndex := 0;
+      end;
+    end;
+  Finally
+    TempAdoQuery.EnableControls;
+    TempAdoQuery.Free;
+    CoUninitialize;
+  End;
+end;
+
+procedure LoadEmployeeTypeCode(aStringList:TStringList;cmb_Box:TComboBox;aAll:Boolean=True;aAllName:string='전체');
+var
+  stSql :string;
+  TempAdoQuery : TADOQuery;
+  i : integer;
+  nIndex : integer;
+begin
+  cmb_Box.Clear;
+  aStringList.Clear;
+  if aAll then
+  begin
+    cmb_Box.Items.Add(aAllName);
+    aStringList.Add('');
+    cmb_Box.ItemIndex := 0;
+  end;
+
+  stSql := ' select * from TB_RELAYGUBUN ';
+  stSql := stSql + ' Where GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  stSql := stSql + ' Order by RG_CODE ';
+
+  Try
+    CoInitialize(nil);
+    TempAdoQuery := TADOQuery.Create(nil);
+    TempAdoQuery.Connection := dmDataBase.ADOConnection;
+    TempAdoQuery.DisableControls;
+
+    with TempAdoQuery do
+    begin
+      Close;
+      Sql.Clear;
+      Sql.Text := stSql;
+
+      Try
+        Open;
+      Except
+        Exit;
+      End;
+
+      if RecordCount < 1 then
+      begin
+        Exit;
+      end;
+
+      First;
+
+      While Not Eof do
+      begin
+        cmb_Box.Items.Add(FindField('RG_NAME').AsString);
+        aStringList.Add(FindField('RG_CODE').AsString);
+        Next;
+      end;
+
+      if RecordCount = 1 then
+      begin
+        if aAll then cmb_Box.ItemIndex := 1
+        else cmb_Box.ItemIndex := 0;
+      end else
+      begin
+        if cmb_Box.Items.Count > 0 then
+           cmb_Box.ItemIndex := 0;
+      end;
+    end;
+  Finally
+    TempAdoQuery.EnableControls;
+    TempAdoQuery.Free;
+    CoUninitialize;
+  End;
+end;
+
+procedure LoadFloorCode(aBuildingCode:string;aStringList:TStringList;cmb_Box:TComboBox;aAll:Boolean=True;aAllName:string='전체');
+var
+  stSql :string;
+  TempAdoQuery : TADOQuery;
+  i : integer;
+  nIndex : integer;
+begin
+  cmb_Box.Clear;
+  aStringList.Clear;
+  if aAll then
+  begin
+    cmb_Box.Items.Add(aAllName);
+    aStringList.Add('');
+    cmb_Box.ItemIndex := 0;
+  end;
+
+  stSql := ' select a.LO_NAME,a.LO_DONGCODE,a.LO_FLOORCODE,a.LO_AREACODE from TB_LOCATION a ';
+  if G_nAdminBuildingGrade = 2 then
+  begin
+    stSql := stSql + ' Inner JOIN ( select * from TB_ADMIN where AD_USERID = ''' + G_stAdminUserID + ''') b ';
+    stSql := stSql + ' ON (a.GROUP_CODE = b.GROUP_CODE ';
+    stSql := stSql + ' AND a.LO_DONGCODE = b.LO_DONGCODE  ';
+    stSql := stSql + ' AND a.LO_FLOORCODE = b.LO_FLOORCODE )  ';
+  end;
+  stSql := stSql + ' Where a.GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  stSql := stSql + ' AND a.LO_GUBUN = ''1''';
+  if G_bIsMaster or ( G_nAdminBuildingGrade < 2) then
+  begin
+    if (aBuildingCode = '') then Exit;
+  end;
+  if (aBuildingCode <> '') then
+     stSql := stSql + ' AND a.LO_DONGCODE = ''' + aBuildingCode + ''' ';
+  stSql := stSql + ' Order by a.LO_NAME ';
+
+  Try
+    CoInitialize(nil);
+    TempAdoQuery := TADOQuery.Create(nil);
+    TempAdoQuery.Connection := dmDataBase.ADOConnection;
+    TempAdoQuery.DisableControls;
+
+    with TempAdoQuery do
+    begin
+      Close;
+      Sql.Clear;
+      Sql.Text := stSql;
+
+      Try
+        Open;
+      Except
+        Exit;
+      End;
+
+      if RecordCount < 1 then
+      begin
+        Exit;
+      end;
+
+      First;
+
+      While Not Eof do
+      begin
+        cmb_Box.Items.Add(FindField('LO_NAME').AsString);
+        aStringList.Add(FindField('LO_DONGCODE').AsString + FindField('LO_FLOORCODE').AsString);
+        Next;
+      end;
+
+      if RecordCount = 1 then
+      begin
+        if aAll then cmb_Box.ItemIndex := 1
+        else cmb_Box.ItemIndex := 0;
+      end else
+      begin
+        if G_nAdminBuildingGrade > 2 then
+        begin
+          nIndex := aStringList.IndexOf(G_stAdminBuildingCode + G_stAdminFloorCode);
+          if nIndex > 0 then cmb_Box.ItemIndex := nIndex;
+          cmb_Box.Enabled := False;
+        end else
+        if cmb_Box.Items.Count > 0 then
+           cmb_Box.ItemIndex := 0;
+      end;
+    end;
+  Finally
+    TempAdoQuery.EnableControls;
+    TempAdoQuery.Free;
+    CoUninitialize;
+  End;
+end;
+
+procedure LoadJijumCode(aCompanyCode:string;aStringList:TStringList;cmb_Box:TComboBox;aAll:Boolean=True;aAllName:string='전체');
+var
+  stSql :string;
+  TempAdoQuery : TADOQuery;
+  i : integer;
+  nIndex : integer;
+begin
+  cmb_Box.Clear;
+  aStringList.Clear;
+  if aAll then
+  begin
+    cmb_Box.Items.Add(aAllName);
+    aStringList.Add('');
+    cmb_Box.ItemIndex := 0;
+  end;
+
+  if G_nAdminCompanyGrade = 2 then
+  begin
+    stSql := ' select a.CO_NAME,a.CO_COMPANYCODE,a.CO_JIJUMCODE,a.CO_DEPARTCODE from TB_COMPANY a ';
+    stSql := stSql + ' Inner JOIN TB_ADMINCOMPANY b ';
+    stSql := stSql + ' ON (a.GROUP_CODE = b.GROUP_CODE ';
+    stSql := stSql + ' AND a.CO_COMPANYCODE = b.CO_COMPANYCODE ';
+    stSql := stSql + ' AND a.CO_JIJUMCODE = b.CO_JIJUMCODE ';
+    stSql := stSql + ' AND a.CO_GUBUN = b.CO_GUBUN ) ';
+    stSql := stSql + ' Where a.GROUP_CODE = ''' + G_stGroupCode + ''' ';
+    stSql := stSql + ' AND a.CO_GUBUN = ''2''';
+    stSql := stSql + ' AND b.AD_USERID = ''' + G_stAdminUserID + '''';
+  end else
+  begin
+    stSql := ' select a.CO_NAME,a.CO_COMPANYCODE,a.CO_JIJUMCODE,a.CO_DEPARTCODE from TB_COMPANY a ';
+    stSql := stSql + ' Where a.GROUP_CODE = ''' + G_stGroupCode + ''' ';
+    stSql := stSql + ' AND a.CO_GUBUN = ''2''';
+    if G_bIsMaster or ( G_nAdminCompanyGrade < 2) then
+    begin
+      if (aCompanyCode = '') then Exit;
+    end;
+    if (aCompanyCode <> '') then
+        stSql := stSql + ' AND a.CO_COMPANYCODE = ''' + aCompanyCode + ''' ';
+  end;
+
+  stSql := stSql + ' Order by a.CO_NAME ';
+
+  Try
+    CoInitialize(nil);
+    TempAdoQuery := TADOQuery.Create(nil);
+    TempAdoQuery.Connection := dmDataBase.ADOConnection;
+    TempAdoQuery.DisableControls;
+
+    with TempAdoQuery do
+    begin
+      Close;
+      Sql.Clear;
+      Sql.Text := stSql;
+
+      Try
+        Open;
+      Except
+        Exit;
+      End;
+
+      if RecordCount < 1 then
+      begin
+        Exit;
+      end;
+
+      First;
+
+      While Not Eof do
+      begin
+        cmb_Box.Items.Add(FindField('CO_NAME').AsString);
+        aStringList.Add(FindField('CO_COMPANYCODE').AsString + FindField('CO_JIJUMCODE').AsString);
+        Next;
+      end;
+
+      if RecordCount = 1 then
+      begin
+        if aAll then cmb_Box.ItemIndex := 1
+        else cmb_Box.ItemIndex := 0;
+      end else
+      begin
+        if G_nAdminCompanyGrade > 2 then
+        begin
+          nIndex := aStringList.IndexOf(G_stAdminCompanyCode + G_stAdminJijumCode);
+          if nIndex > 0 then cmb_Box.ItemIndex := nIndex;
+          cmb_Box.Enabled := False;
+        end else
+        if cmb_Box.Items.Count > 0 then
+           cmb_Box.ItemIndex := 0;
+      end;
+    end;
+  Finally
+    TempAdoQuery.EnableControls;
+    TempAdoQuery.Free;
+    CoUninitialize;
+  End;
+end;
+
+procedure LoadMenuGroupCode(aProgramGroupCode:string;aStringList:TStringList;cmb_Box:TComboBox;aAll:Boolean=True;aAllName:string='전체');
+var
+  stSql :string;
+  TempAdoQuery : TADOQuery;
+  nIndex : integer;
+  stTemp : string;
+begin
+  cmb_Box.Clear;
+  aStringList.Clear;
+
+  if aAll then
+  begin
+    cmb_Box.Items.Add(aAllName);
+    aStringList.Add('');
+    cmb_Box.ItemIndex := 0;
+  end;
+
+  stSql := ' select AC_NODENO,AC_MCUIP from TB_ACCESSDEVICE ';
+  stSql := stSql + ' Where GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  stSql := stSql + ' AND AC_GUBUN = ''0''';
+  stSql := stSql + ' Group by AC_NODENO, AC_MCUIP';
+  stSql := stSql + ' Order by AC_MCUIP ';
+
+
+  Try
+    CoInitialize(nil);
+    TempAdoQuery := TADOQuery.Create(nil);
+    TempAdoQuery.Connection := dmDataBase.ADOConnection;
+    TempAdoQuery.DisableControls;
+
+    with TempAdoQuery do
+    begin
+      Close;
+      Sql.Clear;
+      Sql.Text := stSql;
+
+      Try
+        Open;
+      Except
+        Exit;
+      End;
+
+      if RecordCount < 1 then
+      begin
+        Exit;
+      end;
+      First;
+
+      While Not Eof do
+      begin
+        cmb_Box.Items.Add(FindField('AC_MCUIP').AsString);
+        aStringList.Add(FillZeroNumber(FindField('AC_NODENO').AsInteger,G_nNodeCodeLength));
+        Next;
+      end;
+      if RecordCount = 1 then
+      begin
+        if aAll then cmb_Box.ItemIndex := 1
+        else cmb_Box.ItemIndex := 0;
+      end else
+      begin
+        if cmb_Box.Items.Count > 0 then
+           cmb_Box.ItemIndex := 0;
+      end;
+    end;
+  Finally
+    TempAdoQuery.EnableControls;
+    TempAdoQuery.Free;
+    CoUninitialize;
+  End;
+end;
+
+procedure LoadNodeIP(aStringList:TStringList;cmb_Box:TComboBox;aAll:Boolean=True;aAllName:string='전체');
+var
+  stSql :string;
+  TempAdoQuery : TADOQuery;
+  nIndex : integer;
+  stTemp : string;
+begin
+  cmb_Box.Clear;
+  aStringList.Clear;
+
+  if aAll then
+  begin
+    cmb_Box.Items.Add(aAllName);
+    aStringList.Add('');
+    cmb_Box.ItemIndex := 0;
+  end;
+
+  stSql := ' select AC_NODENO,AC_MCUIP from TB_ACCESSDEVICE ';
+  stSql := stSql + ' Where GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  stSql := stSql + ' AND AC_GUBUN = ''0''';
+  stSql := stSql + ' Group by AC_NODENO, AC_MCUIP';
+  stSql := stSql + ' Order by AC_MCUIP ';
+
+
+  Try
+    CoInitialize(nil);
+    TempAdoQuery := TADOQuery.Create(nil);
+    TempAdoQuery.Connection := dmDataBase.ADOConnection;
+    TempAdoQuery.DisableControls;
+
+    with TempAdoQuery do
+    begin
+      Close;
+      Sql.Clear;
+      Sql.Text := stSql;
+
+      Try
+        Open;
+      Except
+        Exit;
+      End;
+
+      if RecordCount < 1 then
+      begin
+        Exit;
+      end;
+      First;
+
+      While Not Eof do
+      begin
+        cmb_Box.Items.Add(FindField('AC_MCUIP').AsString);
+        aStringList.Add(FillZeroNumber(FindField('AC_NODENO').AsInteger,G_nNodeCodeLength));
+        Next;
+      end;
+      if RecordCount = 1 then
+      begin
+        if aAll then cmb_Box.ItemIndex := 1
+        else cmb_Box.ItemIndex := 0;
+      end else
+      begin
+        if cmb_Box.Items.Count > 0 then
+           cmb_Box.ItemIndex := 0;
+      end;
+    end;
+  Finally
+    TempAdoQuery.EnableControls;
+    TempAdoQuery.Free;
+    CoUninitialize;
+  End;
+end;
+procedure LoadPosiCode(aCompanyCode:string;aStringList:TStringList;cmb_Box:TComboBox;aAll:Boolean=True;aAllName:string='전체');
+var
+  stSql :string;
+  TempAdoQuery : TADOQuery;
+  i : integer;
+  nIndex : integer;
+begin
+  cmb_Box.Clear;
+  aStringList.Clear;
+  if aAll then
+  begin
+    cmb_Box.Items.Add(aAllName);
+    aStringList.Add('');
+    cmb_Box.ItemIndex := 0;
+  end;
+
+  stSql := ' select PO_NAME,CO_COMPANYCODE,PO_POSICODE from TB_POSI ';
+  stSql := stSql + ' Where GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  if (aCompanyCode = '') then Exit;
+  if (aCompanyCode <> '') then
+      stSql := stSql + ' AND CO_COMPANYCODE = ''' + aCompanyCode + ''' ';
+  stSql := stSql + ' Order by PO_NAME ';
+
+  Try
+    CoInitialize(nil);
+    TempAdoQuery := TADOQuery.Create(nil);
+    TempAdoQuery.Connection := dmDataBase.ADOConnection;
+    TempAdoQuery.DisableControls;
+
+    with TempAdoQuery do
+    begin
+      Close;
+      Sql.Clear;
+      Sql.Text := stSql;
+
+      Try
+        Open;
+      Except
+        Exit;
+      End;
+
+      if RecordCount < 1 then
+      begin
+        Exit;
+      end;
+
+      First;
+
+      While Not Eof do
+      begin
+        cmb_Box.Items.Add(FindField('PO_NAME').AsString);
+        aStringList.Add(FindField('CO_COMPANYCODE').AsString + FindField('PO_POSICODE').AsString);
+        Next;
+      end;
+
+      if RecordCount = 1 then
+      begin
+        if aAll then cmb_Box.ItemIndex := 1
+        else cmb_Box.ItemIndex := 0;
+      end else
+      begin
+        if cmb_Box.Items.Count > 0 then
+           cmb_Box.ItemIndex := 0;
+      end;
+    end;
+  Finally
+    TempAdoQuery.EnableControls;
+    TempAdoQuery.Free;
+    CoUninitialize;
+  End;
+end;
+
+procedure LoadProgramGroupCode(aStringList:TStringList;cmb_Box:TComboBox;aAll:Boolean=True;aAllName:string='전체');
+var
+  stSql :string;
+begin
+  cmb_Box.Clear;
+  aStringList.Clear;
+  if aAll then
+  begin
+    cmb_Box.Items.Add(aAllName);
+    aStringList.Add('');
+    cmb_Box.ItemIndex := 0;
+  end;
+  cmb_Box.Items.Add('출입통제관제시스템');
+  aStringList.Add('MONITORING');
+  cmb_Box.Items.Add('근태시스템');
+  aStringList.Add('ATTEND');
+  cmb_Box.Items.Add('식수시스템');
+  aStringList.Add('FOOD');
+
+end;
+
+procedure LoadSearchETC(cmb_Box:TComboBox);
+begin
+  cmb_Box.Clear;
+  cmb_Box.Items.Add(G_stFormName102); //이름
+  cmb_Box.Items.Add(G_stFormName101); //사번
+  cmb_Box.Items.Add(G_stFormName103); //사내전화번호
+  cmb_Box.Items.Add(G_stFormName109); //집전화번호
+  cmb_Box.Items.Add(G_stFormName110); //휴대전화번호
+  cmb_Box.Items.Add(G_stFormName111); //카드번호
+  cmb_Box.Items.Add(G_stFormName112); //주소1
+  cmb_Box.Items.Add(G_stFormName113); //주소2
+
+  cmb_Box.ItemIndex := 0;
+end;
+
+procedure LoadTimeHH(cmb_Box:TComboBox);
+var
+  i : integer;
+begin
+  cmb_Box.Clear;
+  for i := 0 to 24 do
+  begin
+    cmb_Box.Items.Add(FillZeroNumber(i,2));
+  end;
+  cmb_Box.ItemIndex := 0;
+end;
+procedure LoadTimeMM(cmb_Box:TComboBox);
+var
+  i : integer;
+begin
+  cmb_Box.Clear;
+  for i := 0 to 6 do
+  begin
+    cmb_Box.Items.Add(FillZeroNumber(i * 10,2));
+  end;
+  cmb_Box.ItemIndex := 0;
+end;
+
+end.

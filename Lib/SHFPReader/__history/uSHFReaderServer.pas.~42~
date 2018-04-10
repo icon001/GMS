@@ -1,0 +1,874 @@
+unit uSHFReaderServer;
+
+interface
+
+uses
+  System.SysUtils, System.Classes, Web.Win.Sockets,ActiveX,ADODB,WinSock,
+  Winapi.Messages,Vcl.ExtCtrls,Vcl.Forms,uFingerVariable,
+  u_c_byte_buffer;
+
+const
+  wm_asynch_select= wm_User;
+  MAXSOCKCOUNT = 100;
+
+const k_buffer_max= 4096;
+      k_tcp_ip_chunk= 1500;
+
+type
+  TClientSocket = class(TComponent)
+  private
+    ClientSendPacketList : TStringList;
+    RcvPacketList:TStringList;
+    SendClientTimer: TTimer;
+    ServerAliveTimer : TTimer;
+    RcvPacketProcessTimer : TTimer;
+    StateSendTimer : TTimer;     //접속후 1초 후 부터 노드의 네트웍 상태,컨트롤러의 접속상태,출입문 상태,방범구역상태 등을 전송하자...
+    L_bClientSocketDestroy : Boolean;
+    L_bClientSending : Boolean;
+    L_ClientBuffer : string;
+    l_c_reception_buffer : c_byte_buffer;
+    L_nStateSendNodeSeq : integer;
+    FLastReceiveTime: TDateTime;
+    FClientPCIP: string;
+    procedure SocketError(Sender: TObject; SocketError: Integer);
+    procedure SocketReceive(Sender: TObject; Buf: PAnsiChar;var DataLen: Integer);
+    procedure SendClientTimerTimer(Sender: TObject);
+    procedure RcvPacketProcessTimerTimer(Sender: TObject);
+    procedure SocketPacketProcess;
+  private
+    FConnected: Boolean;
+    FOnServerEvent: TServerEvent;
+    procedure SetConnected(const Value: Boolean);
+    function SHFPacketFormatCheck(aData: String;var aLeavePacketData,aPacketData: String): integer;
+    function ClientDataPacketProcess(aPacketData:string):Boolean;
+  public
+    constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
+  public
+    m_socket_handle: tSocket;
+  public
+    procedure SocketRead;
+    procedure SocketClose;
+    procedure SendPacket(aCMD,aDeviceType,aSubCmd,aNodeNo,aEcuID,aData:string);
+  published
+    property ClientPCIP : string read FClientPCIP write FClientPCIP;
+    property LastReceiveTime : TDateTime read FLastReceiveTime write FLastReceiveTime;
+    property Connected : Boolean read FConnected write SetConnected;
+  published
+    property OnServerEvent : TServerEvent read FOnServerEvent write FOnServerEvent;
+  end;
+
+  TdmSHFReaderServer = class(TDataModule)
+    TcpServer1: TTcpServer;
+    procedure DataModuleCreate(Sender: TObject);
+    procedure DataModuleDestroy(Sender: TObject);
+  private
+    ClientSocketConnectCheckTimer : TTimer;
+    L_wsa_data: twsaData;
+    L_server_socket_handle:tSocket;
+    L_c_server_client_socket_list: TStringList;
+    procedure ClientSocketConnectCheckTimerTimer(Sender: TObject);
+    procedure SocketClose(Sender: TObject;aSocketNo:integer);
+    procedure SocketConnected(Sender: TObject;aSocketNo:integer);
+    procedure ServerEvent(Sender: TObject;  aClientIP,aCmd,aData1,aData2:string);
+  private
+    //Handle 생성 부분
+    FHandle : THandle;
+
+    FServerPort: integer;
+    FServerStart: Boolean;
+    FOnServerEvent: TServerEvent;
+    procedure SetServerStart(const Value: Boolean);
+    function GetHandle: THandle;
+    function HandleAllocated : Boolean;
+    procedure HandleNeeded;
+  protected
+    procedure WndProc ( var Message : TMessage ); virtual;
+    procedure handle_wm_async_select(var Msg: TMessage); message wm_asynch_select;
+    { Private declarations }
+  public
+    { Public declarations }
+    procedure DBSocketClear(aSeq:integer);
+    procedure DBSocketInitialize;
+
+    function  GetLastDBSocketSerial:integer;
+  published
+    property Handle : THandle read GetHandle;
+    property ServerPort : integer read FServerPort write FServerPort;
+    property ServerStart : Boolean read FServerStart write SetServerStart;
+  published
+    property OnServerEvent : TServerEvent read FOnServerEvent write FOnServerEvent;
+  end;
+
+var
+  dmSHFReaderServer: TdmSHFReaderServer;
+
+implementation
+
+uses
+  uCommonVariable,
+  uCommonFunction,
+  uDataBase,
+  uDeviceVariable;
+
+{%CLASSGROUP 'System.Classes.TPersistent'}
+
+{$R *.dfm}
+
+{ TdmMonitoringServer }
+
+procedure TdmSHFReaderServer.ClientSocketConnectCheckTimerTimer(
+  Sender: TObject);
+var
+  i : integer;
+  dtPollingTime: TDatetime;
+  dtTimeOut: TDatetime;
+begin
+  Try
+    if L_c_server_client_socket_list.Count < 1 then Exit;
+    for i := L_c_server_client_socket_list.Count - 1 downto 0 do
+    begin
+      dtPollingTime := TClientSocket(L_c_server_client_socket_list.Objects[i]).LastReceiveTime;
+      dtTimeOut:= IncTime(dtPollingTime,0,6,0,0);   //6분 동안 데이터가 수신된게 없으면 클라이언트 소켓을 끊어 버리자...
+      if Now > dtTimeOut then
+      begin
+        TClientSocket(L_c_server_client_socket_list.Objects[i]).SocketClose;
+        //TClientSocket(L_c_server_client_socket_list.Objects[i]).Free;
+        //L_c_server_client_socket_list.Delete(i);
+      end;
+    end;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','dmMonitoringServer.ClientSocketConnectCheckTimerTimer');
+  End;
+end;
+
+procedure TdmSHFReaderServer.DataModuleCreate(Sender: TObject);
+begin
+  Try
+    L_server_socket_handle:= Invalid_socket;
+    L_c_server_client_socket_list := TStringList.Create;
+    ClientSocketConnectCheckTimer := TTimer.Create(nil);
+    ClientSocketConnectCheckTimer.Interval := 10000;
+    ClientSocketConnectCheckTimer.OnTimer := ClientSocketConnectCheckTimerTimer;
+    ClientSocketConnectCheckTimer.Enabled := True;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','dmMonitoringServer.DataModuleCreate');
+  End;
+end;
+
+procedure TdmSHFReaderServer.DataModuleDestroy(Sender: TObject);
+var
+  i : integer;
+begin
+  Try
+    if L_c_server_client_socket_list.Count > 0 then
+    begin
+      for i := L_c_server_client_socket_list.Count - 1 downto 0 do
+      begin
+        TClientSocket(L_c_server_client_socket_list.Objects[i]).SocketClose;
+      end;
+    end;
+    L_c_server_client_socket_list.Clear;
+    L_c_server_client_socket_list.Free;
+    ClientSocketConnectCheckTimer.Enabled := False;
+    ClientSocketConnectCheckTimer.Free;
+
+    if HandleAllocated
+     then DeAllocateHWND ( FHandle );
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','dmMonitoringServer.DataModuleDestroy');
+  End;
+end;
+
+procedure TdmSHFReaderServer.DBSocketClear(aSeq: integer);
+var
+  stSql : string;
+begin
+  Try
+    stSql := ' Delete From TB_CLIENTSOCKET where SEQ < ' + inttostr(aSeq + 1) + ' ' ;
+    dmDataBase.ProcessExecSQL(stSql);
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','dmMonitoringServer.DBSocketClear');
+  End;
+end;
+
+procedure TdmSHFReaderServer.DBSocketInitialize;
+var
+  stSql : string;
+begin
+  Try
+    stSql := 'Delete from TB_CLIENTSOCKET ';
+    dmDataBase.ProcessExecSQL(stSql);
+    if G_nDBType = MSSQL then
+    begin
+      stSql := ' DBCC CHECKIDENT(''TB_CLIENTSOCKET'',RESEED,0) ';
+    end else if G_nDBType = POSTGRESQL then
+    begin
+      stSql := 'select setval(''TB_CLIENTSOCKET_SEQ_SEQ'',1,''f'') ';
+    end;
+    dmDataBase.ProcessExecSQL(stSql);
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','dmMonitoringServer.DBSocketInitialize');
+  End;
+end;
+
+function TdmSHFReaderServer.GetHandle: THandle;
+begin
+  Try
+    HandleNeeded;
+    Result := FHandle;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','dmMonitoringServer.GetHandle');
+  End;
+end;
+
+function TdmSHFReaderServer.GetLastDBSocketSerial: integer;
+var
+  stSql : string;
+  TempAdoQuery : TADOQuery;
+begin
+  Try
+    result := 0;
+    if G_nDBTYPE = MSSQL then stSql := 'Select top 1 SEQ from TB_CLIENTSOCKET '
+    else if G_nDBTYPE = FireBird then stSql := 'Select FIRST 1 SEQ from TB_CLIENTSOCKET '
+    else stSql := 'Select SEQ from TB_CLIENTSOCKET ';
+    stSql := stSql + ' Order by SEQ DESC ';
+    if G_nDBType = POSTGRESQL then stSql := stSql + ' LIMIT 1 OFFSET 0 ';
+
+
+    Try
+      CoInitialize(nil);
+      TempAdoQuery := TADOQuery.Create(nil);
+      TempAdoQuery.Connection := dmDataBase.ADOConnection;
+      TempAdoQuery.DisableControls;
+      With TempAdoQuery do
+      begin
+        Close;
+        Sql.text := stSql;
+        Try
+          Open;
+        Except
+          Exit;
+        End;
+        if recordCount < 1 then Exit;
+        result := FindField('SEQ').asinteger;
+      end;
+    Finally
+      TempAdoQuery.EnableControls;
+      TempAdoQuery.Free;
+      CoUninitialize;
+    End;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','dmMonitoringServer.GetLastDBSocketSerial');
+  End;
+end;
+
+function TdmSHFReaderServer.HandleAllocated: Boolean;
+begin
+  Try
+    Result := ( FHandle <> 0 );
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','dmMonitoringServer.HandleAllocated');
+  End;
+end;
+
+procedure TdmSHFReaderServer.HandleNeeded;
+begin
+  Try
+    if not HandleAllocated
+     then FHandle := AllocateHWND ( WndProc );
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','dmMonitoringServer.HandleNeeded');
+  End;
+end;
+
+procedure TdmSHFReaderServer.handle_wm_async_select(var Msg: TMessage);
+  procedure handle_fd_accept_notification(p_socket: tSocket);
+  var l_address_socket_in: tSockAddrIn;
+      l_address_size: Integer;
+      l_server_client_socket: tSocket;
+      nIndex : integer;
+      oClientSocket : TClientSocket;
+      l_address_in: tSockAddrIn;
+      l_size: Integer;
+      nResult : integer;
+  begin
+    Try
+      l_address_size:= sizeof(l_address_socket_in);
+      l_server_client_socket:= Accept(p_socket, @l_address_socket_in, @l_address_size);
+      nIndex := L_c_server_client_socket_list.IndexOf(inttostr(l_server_client_socket));
+      if nIndex < 0 then
+      begin
+        oClientSocket := TClientSocket.Create(nil);
+        oClientSocket.OnServerEvent := ServerEvent;
+        oClientSocket.m_socket_handle := l_server_client_socket;
+        l_size := sizeof(tSockAddr);
+       (* nResult:= GetSockName(l_server_client_socket, tSockAddr(l_address_in), l_size);
+        if nResult = 0 then
+          oClientSocket.ClientPCIP :=  inet_ntoa(l_address_in.sin_addr);  //어느것을 사용해도 문제 없음 *)
+         GetPeerName(l_server_client_socket, tSockAddr(l_address_in), l_size);
+          oClientSocket.ClientPCIP :=  inet_ntoa(l_address_in.sin_addr);
+        oClientSocket.Connected := True;
+        L_c_server_client_socket_list.AddObject(inttostr(l_server_client_socket),oClientSocket);
+      end;
+    Except
+      LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','dmMonitoringServer.handle_fd_accept_notification');
+    End;
+  end;
+  procedure handle_fd_write_notification(p_socket: Integer);
+  var nIndex : integer;
+      l_remaining: Integer;
+      l_pt_start_reception: Pointer;
+  begin
+    Try
+      if p_socket <> L_server_socket_handle then
+      begin
+        nIndex := L_c_server_client_socket_list.IndexOf(inttostr(p_socket));
+        if nIndex > -1 then
+        begin
+          with TClientSocket(L_c_server_client_socket_list.Objects[nIndex]) do
+          begin
+
+          end;
+        end;
+      end;
+    Except
+      LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','dmMonitoringServer.handle_fd_write_notification');
+    End;
+  end;
+  procedure handle_fd_read_notification(p_socket: tSocket);
+  var nIndex : integer;
+  begin
+    Try
+      if p_socket= L_server_socket_handle then
+      begin
+        //server should not receive much
+      end else
+      begin
+        nIndex := L_c_server_client_socket_list.IndexOf(inttostr(p_socket));
+        if nIndex > -1 then
+        begin
+          TClientSocket(L_c_server_client_socket_list.Objects[nIndex]).SocketRead;
+        end;
+      end;
+    Except
+      LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','dmMonitoringServer.handle_fd_read_notification');
+    End;
+  end;
+  procedure handle_fd_close_notification(p_socket: Integer);
+  var l_status: Integer;
+      l_linger: TLinger;
+      l_absolute_linger: array[0..3] of char absolute l_linger;
+
+      nIndex : Integer;
+  begin
+    Try
+      if p_socket <> L_server_socket_handle then
+      begin
+        nIndex:= L_c_server_client_socket_list.IndexOf(inttostr(p_socket));
+      end;
+      if WSAIsBlocking then WSACancelBlockingCall;
+      ShutDown(p_socket, 2);
+      Try
+        SetSockOpt(p_socket, Sol_Socket, So_Linger,
+                  pAnsichar(AnsiString(l_absolute_linger)), sizeof(l_linger));  // l_absolute_linger[0] ->  AnsiString(l_absolute_linger) 으로 변경
+      Except
+      End;
+      //l_status:= CloseSocket(p_socket);
+      if nIndex > -1 then
+      begin
+        TClientSocket(L_c_server_client_socket_list.Objects[nIndex]).SocketClose; //이벤트 발생 처리
+        //L_c_server_client_socket_list.Delete(nIndex);
+      end;
+    Except
+      LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','dmMonitoringServer.handle_fd_close_notification');
+    End;
+  end;
+var l_param: Integer;
+    l_error, l_notification: Integer;
+    l_socket_handle: Integer;
+begin
+  Try
+    l_param:= Msg.lParam;
+    l_socket_handle:= Msg.wParam;
+    l_error:= wsaGetSelectError(l_param);
+    l_notification:= wsaGetSelectEvent(l_param);
+
+    if l_error<= wsaBaseErr then
+    begin
+      case l_notification of
+        FD_ACCEPT: handle_fd_accept_notification(l_socket_handle);
+        FD_CONNECT: begin end; //display('no server fd_connect');
+        FD_WRITE: handle_fd_write_notification(l_socket_handle);
+        FD_READ: handle_fd_read_notification(l_socket_handle);
+        FD_CLOSE: handle_fd_close_notification(l_socket_handle);
+      end // case
+    end else begin
+      if l_notification= FD_CLOSE then handle_fd_close_notification(l_socket_handle);
+    end;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','dmMonitoringServer.handle_wm_async_select');
+  End;
+end;
+
+procedure TdmSHFReaderServer.ServerEvent(Sender: TObject; aClientIP, aCmd,
+  aData1, aData2: string);
+begin
+  if Assigned(FOnServerEvent) then
+  begin
+    OnServerEvent(Self,aClientIP,aCmd,aData1,aData2);
+  end;
+end;
+
+procedure TdmSHFReaderServer.SetServerStart(const Value: Boolean);
+var
+  l_result : integer;
+  l_address_socket_in: tSockAddrIn;
+  i : integer;
+begin
+  Try
+    if FServerStart = Value then Exit;
+    FServerStart := Value;
+
+    if Value then
+    begin
+      l_result := wsaStartup($0101, l_wsa_data);
+      if l_result <> 0 then
+      begin
+        ServerStart := False;
+        Exit;  //소켓생성 실패 시에 Open False
+      end;
+      L_server_socket_handle:= Socket(PF_INET, SOCK_STREAM, IPPROTO_IP);
+      if L_server_socket_handle= INVALID_SOCKET then
+      begin
+        ServerStart := False;
+        Exit;  //소켓생성 실패 시에 Open False
+      end;
+      l_result:= wsaAsyncSelect(L_server_socket_handle, Handle,wm_asynch_select,FD_ACCEPT+ FD_READ+ FD_WRITE+ FD_CLOSE);
+      if l_result<> 0 then
+      begin
+        ServerStart := False;
+        Exit;  //소켓생성 실패 시에 Open False
+      end;
+      FillChar(l_address_socket_in, sizeof(l_address_socket_in), 0);
+      with l_address_socket_in do
+      begin
+        sin_family:= af_Inet;
+        sin_port:= hToNs(ServerPort);
+        sin_addr.s_addr:= InAddr_Any; // $00000000
+      end;
+      l_result:= Bind(L_server_socket_handle, l_address_socket_in,
+          sizeof(l_address_socket_in));
+      if l_result <> 0 then
+      begin
+        ServerStart := False;
+        Exit;  //소켓생성 실패 시에 Open False
+      end;
+      l_result:= Listen(L_server_socket_handle, MAXSOCKCOUNT);
+      if l_result <> 0 then
+      begin
+        ServerStart := False;
+        Exit;  //소켓생성 실패 시에 Open False
+      end;
+    end else
+    begin
+      for i := L_c_server_client_socket_list.Count - 1 downto 0 do
+      begin
+        TClientSocket(L_c_server_client_socket_list.Objects[i]).SocketClose;   //이벤트 발생 하여 삭제 처리 함
+        //TClientSocket(L_c_server_client_socket_list.Objects[i]).Free;
+      end;
+      if L_server_socket_handle <> INVALID_SOCKET then
+      begin
+        shutdown(L_server_socket_handle,SD_BOTH);
+        l_result:= CloseSocket(L_server_socket_handle);
+        if l_result = 0 then L_server_socket_handle:= INVALID_SOCKET;
+      end;
+    end;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','dmMonitoringServer.SetServerStart');
+  End;
+end;
+
+
+procedure TdmSHFReaderServer.SocketClose(Sender: TObject; aSocketNo: integer);
+var
+  nIndex : integer;
+begin
+  nIndex:= L_c_server_client_socket_list.IndexOf(inttostr(aSocketNo));
+  if nIndex > -1 then
+  begin
+    TClientSocket(L_c_server_client_socket_list.Objects[nIndex]).Free;
+    L_c_server_client_socket_list.Delete(nIndex);
+  end;
+end;
+
+procedure TdmSHFReaderServer.SocketConnected(Sender: TObject;
+  aSocketNo: integer);
+begin
+
+end;
+
+procedure TdmSHFReaderServer.WndProc(var Message: TMessage);
+begin
+  Dispatch ( Message );
+end;
+
+{ TClientSocket }
+
+
+function TClientSocket.ClientDataPacketProcess(aPacketData: string): Boolean;
+var
+  stTemp : string;
+  nAddr : integer;
+  stData : string;
+  nPos : integer;
+  nEventCount : integer;
+  nDataLen : integer;
+  i : integer;
+  stUserID : string;
+begin
+  if Assigned(FOnServerEvent) then
+  begin
+    OnServerEvent(Self,ClientPCIP,'RX',aPacketData,'');
+  end;
+
+  stTemp := copy(aPacketData,9,2) + copy(aPacketData,7,2);
+  nAddr := Hex2Dec(stTemp);
+  stData := aPacketData;
+  Delete(stData,1,12);
+  stData := Hex2Ascii(stData);
+  nPos := Pos('HIST_CNT=',stData);
+  if nPos = 0 then Exit;
+  Delete(stData,1,nPos + Length('HIST_CNT'));
+  nPos := Pos(#$0A,stData);
+  stTemp := copy(stData,1,nPos-1);
+  if Not isDigit(stTemp) then Exit;
+  nEventCount := strtoint(stTemp);
+  nPos := Pos('DATA_LEN=',stData);
+  if nPos = 0 then Exit;
+  Delete(stData,1,nPos + Length('DATA_LEN'));
+  nPos := Pos(#$0A,stData);
+  stTemp := copy(stData,1,nPos-1);
+  if Not isDigit(stTemp) then Exit;
+  nDataLen := strtoint(stTemp);
+  for i :=1 to nEventCount do
+  begin
+    Delete(stData,1,nPos);
+    stTemp := copy(stData,3,nDataLen-1);
+    if(stTemp[2] <> '1') then continue;
+    if(stTemp[3] <> 'a') then continue; //지문등록이 아니면
+    nPos := Pos(#$0A,stTemp);
+    stUserID := copy(stTemp,5+14+1,nPos-20);
+    if Assigned(FOnServerEvent) then
+    begin
+      OnServerEvent(Self,ClientPCIP,'RE',stUserID,inttostr(nAddr + 1));
+    end;
+  end;
+end;
+
+constructor TClientSocket.Create(AOwner: TComponent);
+begin
+  inherited;
+  Try
+    L_bClientSocketDestroy := False;
+    ClientSendPacketList := TStringList.Create;
+    l_c_reception_buffer:= c_byte_buffer.create_byte_buffer('reception_buffer', k_buffer_max);
+    L_nStateSendNodeSeq := 0;
+    RcvPacketList := TStringList.Create;
+
+    SendClientTimer:= TTimer.Create(nil);
+    SendClientTimer.Interval := 10;
+    SendClientTimer.OnTimer := SendClientTimerTimer;
+    SendClientTimer.Enabled := True;
+    LastReceiveTime := Now;         //연결 되면 바로 최종 수신 시간을 설정하자... 그래야 서버가 안 끊으니까...
+
+    RcvPacketProcessTimer := TTimer.Create(nil);
+    RcvPacketProcessTimer.Interval := 10;
+    RcvPacketProcessTimer.OnTimer := RcvPacketProcessTimerTimer;
+    RcvPacketProcessTimer.Enabled := True;
+
+
+    //SendPacket('e',SCECU,'*','0000','00','환영합니다.');
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','ClientSocket.Create');
+  End;
+end;
+
+destructor TClientSocket.Destroy;
+begin
+  Try
+    L_bClientSocketDestroy := True;
+
+    SendClientTimer.Enabled := False;
+    ServerAliveTimer.Enabled := False;
+    RcvPacketProcessTimer.Enabled := False;
+    StateSendTimer.Enabled := False;
+
+    while L_bClientSending do    //혹시 전송중이면 타이머 종료 될때까지 기다리자
+    begin
+      sleep(1);
+      Application.ProcessMessages;
+    end;
+    SendClientTimer.Free;
+    ServerAliveTimer.Free;
+    RcvPacketProcessTimer.Free;
+    StateSendTimer.Free;
+
+    if m_socket_handle <> INVALID_SOCKET then m_socket_handle := INVALID_SOCKET;
+    l_c_reception_buffer.Free;
+    l_c_reception_buffer := nil;
+
+    ClientSendPacketList.Clear;
+    ClientSendPacketList.Free;
+
+    RcvPacketList.Clear;
+    RcvPacketList.Free;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','ClientSocket.Destroy');
+  End;
+  inherited;
+end;
+
+
+procedure TClientSocket.RcvPacketProcessTimerTimer(Sender: TObject);
+var
+  stPacketData : string;
+begin
+  Try
+    if RcvPacketList.Count < 1 then Exit;
+    RcvPacketProcessTimer.Enabled := False;
+    Try
+      stPacketData := RcvPacketList.Strings[0];
+      RcvPacketList.Delete(0);
+//      ClientDataPacketProcess(stPacketData);
+    Finally
+      RcvPacketProcessTimer.Enabled := Not L_bClientSocketDestroy;
+    End;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','ClientSocket.RcvPacketProcessTimerTimer');
+    SocketClose;
+  End;
+end;
+
+procedure TClientSocket.SendClientTimerTimer(Sender: TObject);
+var
+  stSendData : string;
+  l_result: Integer;
+  buf: TBytes;
+  stTemp : RawByteString ;
+  //stTemp : Widestring;
+begin
+  Try
+    Try
+      if L_bClientSocketDestroy then Exit;
+
+      SendClientTimer.Enabled := False;
+      L_bClientSending := True;
+      if ClientSendPacketList.Count < 1 then Exit;
+      stSendData := ClientSendPacketList.Strings[0];
+      ClientSendPacketList.Delete(0);
+  //    Ascii2Bytes(stSendData,Length(stSendData),buf);
+  //    l_result:= Send(m_socket_handle,buf[0], Length(stSendData), 0);
+       stTemp := UTF8Encode(stSendData);
+  //     stTemp := Widestring(stSendData);
+       l_result:= Send(m_socket_handle,stTemp[1], Length(stTemp), 0);
+    Finally
+      SendClientTimer.Enabled := Not L_bClientSocketDestroy;
+      L_bClientSending := False;
+    End;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','ClientSocket.SendClientTimerTimer');
+  End;
+end;
+
+procedure TClientSocket.SendPacket(aCMD, aDeviceType, aSubCmd, aNodeNo, aEcuID,
+  aData: string);
+begin
+end;
+
+procedure TClientSocket.SetConnected(const Value: Boolean);
+begin
+  FConnected := Value;
+end;
+
+function TClientSocket.SHFPacketFormatCheck(aData: String; var aLeavePacketData,
+  aPacketData: String): integer;
+var
+  stLen: String;
+  nDefinedDataLength: Integer;
+  stBuff: String;
+  aKey: Byte;
+  stData : string;
+  stTemp : string;
+begin
+  result := -1; //비정상 전문
+  if copy(aData,1,2) <> Ascii2Hex(STX) then
+  begin
+    aLeavePacketData:= aData;
+    Exit;
+  end;
+
+  if copy(aData,3,2) = '26' then
+  begin
+    stTemp := 'TEST';
+  end;
+
+  aPacketData:= '';
+  if Length(aData) < 4 then
+  begin
+    result := -2; //자릿수가 작게 들어온 경우
+    aLeavePacketData:= aData;
+    Exit;
+  end;
+  stLen:= Copy(aData,3,2);
+  nDefinedDataLength:= Hex2Dec(stLen);
+  //데이터 길이 위치 데이터가 숫자가 아니면...
+(*  if not isDigit(stLen) then
+  begin
+    aLeavePacketData:= aData;           //리턴 후 한자리 삭제
+    Exit;
+  end;
+*)
+  //패킷에 정의된 길이
+//  nDefinedDataLength:= StrtoInt(stLen);
+  //패킷에 정의된 길이보다 실제 데이터가 작으면
+  if Length(aData) < nDefinedDataLength * 2 then
+  begin
+    result := -2; //자릿수가 작게 들어온 경우
+    aLeavePacketData:= aData;
+    Exit;
+  end;
+  result := 1;
+  aPacketData:= aData;
+  Exit;
+  // 정의된 길이 마지막 데이터가 ETX가 맞는가?
+  stTemp := copy(aData,(nDefinedDataLength - 3) * 2 + 1,2);
+  if stTemp = Ascii2Hex(ETX) then
+  begin
+    stBuff:= Copy(aData,1,(nDefinedDataLength + 1) * 2);
+    result := 1;                             //STX 포맷이 맞다
+    Delete(aData, 1, (nDefinedDataLength + 1) * 2);
+    aLeavePacketData:= aData;
+    aPacketData:= stBuff ;//copy(stBuff,1,4) + Hex2UTF8String(copy(stBuff,5,nDefinedDataLength)) + SCETX;
+  end else
+  begin
+    aLeavePacketData:= aData;
+  end;
+end;
+
+procedure TClientSocket.SocketClose;
+var
+  l_result : integer;
+  nTempWinSocket : integer;
+begin
+  Try
+    if m_socket_handle <> INVALID_SOCKET then
+    begin
+      nTempWinSocket := m_socket_handle;
+      shutdown(m_socket_handle,SD_BOTH);
+      l_result:= CloseSocket(m_socket_handle);
+      if l_result = 0 then
+      begin
+        m_socket_handle := INVALID_SOCKET;
+      end else
+      begin
+        m_socket_handle := INVALID_SOCKET;
+        //LogSave('ClientErr' + FormatDateTime('yyyymmdd',now) + '.log',ClientPCIP + ':PCServerCloseError');
+      end;
+    end;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','ClientSocket.SocketClose');
+  End;
+end;
+
+procedure TClientSocket.SocketError(Sender: TObject; SocketError: Integer);
+begin
+
+end;
+
+procedure TClientSocket.SocketPacketProcess;
+var
+  bLoop : Boolean;
+  nFormat : integer;
+  stLeavePacketData,stPacketData : String;
+begin
+
+  Try
+    //Client 에서 송신한 데이터가 여기로 온다.
+    bLoop := False;
+    repeat
+      if Trim(L_ClientBuffer) = '' then Exit;
+      nFormat := SHFPacketFormatCheck(L_ClientBuffer,stLeavePacketData,stPacketData);
+      L_ClientBuffer:= stLeavePacketData;
+
+      if nFormat < 0 then
+      begin
+        if L_ClientBuffer = '' then break;
+        if nFormat = -1 then  //비정상 전문 인경우
+        begin
+          Delete(L_ClientBuffer,1,2);
+          continue;
+        end else break;   //포맷 길이가 작게 들어온 경우
+      end;
+      if stPacketData <> '' then
+      begin
+        ClientDataPacketProcess(stPacketData);
+      end;
+
+      if pos(Ascii2Hex(ETX),L_ClientBuffer) = 0 then bLoop := True
+      else bLoop := False;
+    until bLoop;   //False 이면 계속 루프
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','ClientSocket.SocketPacketProcess');
+  End;
+
+end;
+
+procedure TClientSocket.SocketRead;
+var l_remaining: Integer;
+    l_pt_start_reception: Pointer;
+    l_packet_bytes: Integer;
+
+    l_eol_position: Integer;
+    l_file_name: String;
+begin
+  Try
+    if l_c_reception_buffer = nil then Exit;
+    with l_c_reception_buffer do
+    begin
+      l_remaining:= m_buffer_size- m_write_index;
+      // -- if not at least a tcp-ip chunk, increase the room
+      if l_remaining < k_tcp_ip_chunk then
+      begin
+        // -- reallocate
+        double_the_capacity;
+        l_remaining:= m_buffer_size- m_write_index;
+      end;
+      l_pt_start_reception:= @ m_oa_byte_buffer[m_write_index];
+      l_packet_bytes:= Recv(m_socket_handle, l_pt_start_reception^, l_remaining, 0);
+      if l_packet_bytes < 0 then SocketError(self,WSAGetLastError)
+      else
+      begin
+        m_write_index:= m_write_index + l_packet_bytes;
+        SocketReceive(self, l_pt_start_reception, l_packet_bytes);
+      end;
+    end;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','ClientSocket.SocketRead');
+  End;
+end;
+
+procedure TClientSocket.SocketReceive(Sender: TObject; Buf: PAnsiChar;
+  var DataLen: Integer);
+begin
+  Try
+    LastReceiveTime := Now;
+    L_ClientBuffer := L_ClientBuffer + AsciiLen2Hex(Buf,DataLen);
+    SocketPacketProcess;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','ClientSocket.SocketReceive');
+  End;
+end;
+
+
+end.

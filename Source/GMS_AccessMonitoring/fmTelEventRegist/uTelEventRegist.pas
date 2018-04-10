@@ -1,0 +1,124 @@
+unit uTelEventRegist;
+
+interface
+
+uses
+  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
+  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.Buttons, Vcl.StdCtrls,ADODB,ActiveX,DB;
+
+type
+  TfmTelEventRegist = class(TForm)
+    Label1: TLabel;
+    ed_AccessName: TEdit;
+    Label2: TLabel;
+    ed_AccessTel: TEdit;
+    Label3: TLabel;
+    ed_CompanyName: TEdit;
+    Label4: TLabel;
+    mem_AcessMemo: TMemo;
+    btn_Save: TSpeedButton;
+    btn_Cancel: TSpeedButton;
+    Label6: TLabel;
+    ed_InputName: TEdit;
+    procedure btn_CancelClick(Sender: TObject);
+    procedure btn_SaveClick(Sender: TObject);
+    procedure FormShow(Sender: TObject);
+  private
+    FSelectAccessEventTime: string;
+    FSelectEcuID: string;
+    FSelectNodeNo: string;
+    FSelectDoorNO: string;
+    { Private declarations }
+    procedure ShowTelEvent;
+  public
+    { Public declarations }
+    property SelectAccessEventTime : string read FSelectAccessEventTime write FSelectAccessEventTime;
+    property SelectNodeNo : string read FSelectNodeNo write FSelectNodeNo;
+    property SelectEcuID : string read FSelectEcuID write FSelectEcuID;
+    property SelectDoorNO : string read FSelectDoorNO write FSelectDoorNO;
+  end;
+
+var
+  fmTelEventRegist: TfmTelEventRegist;
+
+implementation
+
+uses
+  uCommonVariable,
+  uDataBase,
+  uDBUpdate;
+
+{$R *.dfm}
+
+procedure TfmTelEventRegist.btn_CancelClick(Sender: TObject);
+begin
+  Close;
+end;
+
+procedure TfmTelEventRegist.btn_SaveClick(Sender: TObject);
+begin
+  dmDBUpdate.UpdateTB_DOORTELEVENT_Field_StringValue(copy(SelectAccessEventTime,1,8), copy(SelectAccessEventTime,9,6), SelectNodeNo, SelectEcuID,'0', SelectDoorNO,'DE_ACCESSNAME',ed_AccessName.Text);
+  dmDBUpdate.UpdateTB_DOORTELEVENT_Field_StringValue(copy(SelectAccessEventTime,1,8), copy(SelectAccessEventTime,9,6), SelectNodeNo, SelectEcuID,'0', SelectDoorNO,'DE_ACCESSTEL',ed_AccessTel.Text);
+  dmDBUpdate.UpdateTB_DOORTELEVENT_Field_StringValue(copy(SelectAccessEventTime,1,8), copy(SelectAccessEventTime,9,6), SelectNodeNo, SelectEcuID,'0', SelectDoorNO,'DE_ACCESSCOMPANY',ed_CompanyName.Text);
+  dmDBUpdate.UpdateTB_DOORTELEVENT_Field_StringValue(copy(SelectAccessEventTime,1,8), copy(SelectAccessEventTime,9,6), SelectNodeNo, SelectEcuID,'0', SelectDoorNO,'DE_ACCESSMEMO',mem_AcessMemo.Text);
+  dmDBUpdate.UpdateTB_DOORTELEVENT_Field_StringValue(copy(SelectAccessEventTime,1,8), copy(SelectAccessEventTime,9,6), SelectNodeNo, SelectEcuID,'0', SelectDoorNO,'DE_INSERTUSERID',mem_AcessMemo.Text);
+  dmDBUpdate.UpdateTB_DOORTELEVENT_Field_StringValue(copy(SelectAccessEventTime,1,8), copy(SelectAccessEventTime,9,6), SelectNodeNo, SelectEcuID,'0', SelectDoorNO,'DE_INSERTUSERNAME',ed_InputName.Text);
+
+  Close;
+
+end;
+
+procedure TfmTelEventRegist.FormShow(Sender: TObject);
+begin
+  ShowTelEvent;
+end;
+
+procedure TfmTelEventRegist.ShowTelEvent;
+var
+  TempAdoQuery : TADOQuery;
+  stSql : string;
+begin
+  stSql := 'select * from TB_DOORTELEVENT ';
+  stSql := stSql + ' Where GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  stSql := stSql + ' AND DE_DATE = ''' + copy(SelectAccessEventTime,1,8) + ''' ';
+  stSql := stSql + ' AND DE_TIME = ''' + copy(SelectAccessEventTime,9,6) + ''' ';
+  stSql := stSql + ' AND ND_NODENO = ' + SelectNodeNo + ' ';
+  stSql := stSql + ' AND DE_ECUID = ''' + SelectECUID + ''' ';
+  stSql := stSql + ' AND DO_DOORNO = ' + SelectDOORNO + ' ';
+  Try
+    CoInitialize(nil);
+    TempAdoQuery := TADOQuery.Create(nil);
+    TempAdoQuery.Connection := dmDataBase.ADOConnection;
+    TempAdoQuery.DisableControls;
+
+    with TempAdoQuery do
+    begin
+      Close;
+      Sql.Text := stSql;
+
+      Try
+        Open;
+      Except
+        Exit;
+      End;
+
+      if RecordCount < 1 then Exit;
+
+      while Not Eof do
+      begin
+        ed_AccessName.Text := FindField('DE_ACCESSNAME').AsString;
+        ed_AccessTel.Text := FindField('DE_ACCESSTEL').AsString;
+        ed_CompanyName.Text := FindField('DE_ACCESSCOMPANY').AsString;
+        mem_AcessMemo.Text := FindField('DE_ACCESSMEMO').AsString;
+        ed_InputName.Text := FindField('DE_INSERTUSERNAME').AsString;
+        Next;
+      end;
+    end;
+  Finally
+    TempAdoQuery.EnableControls;
+    TempAdoQuery.Free;
+    CoUninitialize;
+  End;
+end;
+
+end.

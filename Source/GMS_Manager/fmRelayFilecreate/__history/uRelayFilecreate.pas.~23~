@@ -1,0 +1,264 @@
+unit uRelayFilecreate;
+
+interface
+
+uses
+  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
+  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.Buttons, Vcl.Samples.Gauges,
+  Vcl.ComCtrls, Vcl.StdCtrls,ActiveX,ADODB,System.DateUtils;
+
+type
+  TAttendType = class(TComponent)
+  private
+    FFieldName: String;
+    FLen: integer;
+    FFILLCHAR: char;
+    FDATEFORMATE: string;
+    FFRONTREAR: integer;
+    FWORKOUTTYPE: string;
+    FWORKINTYPE: string;
+    FBUSINESSOUTTYPE: string;
+    FBUSINESSINTYPE: string;
+    FFormatGubun: integer;
+  public
+    property FieldName : String read FFieldName write FFieldName;
+    property Len : integer read FLen write FLen;
+    property FILLCHAR : char read FFILLCHAR write FFILLCHAR;
+    property DATEFORMATE : string read FDATEFORMATE write FDATEFORMATE;
+    property FRONTREAR : integer read FFRONTREAR write FFRONTREAR;
+    property WORKINTYPE : string read FWORKINTYPE write FWORKINTYPE;
+    property WORKOUTTYPE : string read FWORKOUTTYPE write FWORKOUTTYPE;
+    property BUSINESSOUTTYPE : string read FBUSINESSOUTTYPE write FBUSINESSOUTTYPE;
+    property BUSINESSINTYPE : string read FBUSINESSINTYPE write FBUSINESSINTYPE;
+    property FormatGubun : integer read FFormatGubun write FFormatGubun;
+
+  end;
+
+  TfmRelayFilecreate = class(TForm)
+    StaticText1: TStaticText;
+    dt_Fromdate: TDateTimePicker;
+    Gauge1: TGauge;
+    btn_AtFileSave: TSpeedButton;
+    btn_Close: TSpeedButton;
+    SaveDialog1: TSaveDialog;
+    procedure btn_CloseClick(Sender: TObject);
+    procedure FormActivate(Sender: TObject);
+    procedure btn_AtFileSaveClick(Sender: TObject);
+    procedure FormCreate(Sender: TObject);
+    procedure FormClose(Sender: TObject; var Action: TCloseAction);
+  private
+    { Private declarations }
+    ATFileFormatList : TStringList;
+    procedure LoadATFileFormat;
+  public
+    { Public declarations }
+  end;
+
+var
+  fmRelayFilecreate: TfmRelayFilecreate;
+
+implementation
+
+uses
+  uCommonFunction,
+  uDataBase;
+{$R *.dfm}
+
+procedure TfmRelayFilecreate.btn_AtFileSaveClick(Sender: TObject);
+var
+  ATList : TStringList;
+  stSql : string;
+  stSaveFileName : string;
+  TempAdoQuery : TADOQuery;
+  stATData : string;
+  stFormatGubun : string;
+  i : integer;
+  stTemp : string;
+  dtTemp : TDate;
+begin
+  stSaveFileName := '';
+  SaveDialog1.FileName := FormatDateTime('yyyymmdd',dt_Fromdate.DateTime)+'.txt';
+  if SaveDialog1.Execute then
+  begin
+    stSaveFileName := SaveDialog1.FileName;
+  end else Exit;
+
+  if stSaveFileName = '' then Exit;
+  Try
+    ATList := TStringList.Create;
+    ATList.Clear;
+
+    stSql := 'Select a.* from TB_ATTENDEVENTLIST a';
+    stSql := stSql + ' Where a.AT_DATE = ''' + FormatDateTime('yyyymmdd',dt_Fromdate.DateTime) + ''' ';
+    stSql := stSql + ' Order by AE_INTIME ';
+    Try
+      CoInitialize(nil);
+      TempAdoQuery := TADOQuery.Create(nil);
+      TempAdoQuery.Connection := dmDataBase.ADOConnection;
+      TempAdoQuery.DisableControls;
+      with TempAdoQuery do
+      begin
+        Close;
+        //Sql.Clear;
+        Sql.Text := stSql;
+        Try
+          Open;
+        Except
+          showmessage('데이터 조회 오류.');
+          Exit;
+        End;
+        if recordCount < 1 then
+        begin
+          showmessage('해당 일자의 근태 테이터가 없습니다.');
+          Exit;
+        end;
+        Gauge1.Visible := True;
+        Gauge1.Progress := 0;
+        Gauge1.MaxValue := recordCount + 1;
+        First;
+        while Not Eof do
+        begin
+          stATData := '';
+          //여기에서 파일에 해당하는 포맷을 만들자.
+          for i := 0 to ATFileFormatList.Count - 1 do
+          begin
+            stTemp := FindField(TAttendType(ATFileFormatList.Objects[i]).FieldName).AsString;
+            if (TAttendType(ATFileFormatList.Objects[i]).FieldName = 'AT_DATE') and (TAttendType(ATFileFormatList.Objects[i]).DATEFORMATE <> '') then
+            begin
+              Try
+                dtTemp := strtodate(copy(stTemp,1,4) + '-' + copy(stTemp,5,2) + '-' + copy(stTemp,7,2));
+                stTemp := FormatDateTime(TAttendType(ATFileFormatList.Objects[i]).DATEFORMATE,dtTemp);
+              Except
+                //
+              End;
+            end else if (TAttendType(ATFileFormatList.Objects[i]).FieldName = 'AE_INTIME') and (TAttendType(ATFileFormatList.Objects[i]).DATEFORMATE <> '') then
+            begin
+              Try
+                dtTemp := EncodeDatetime(StrtoInt(Copy(stTemp,1,4)),StrtoInt(Copy(stTemp,5,2)),StrtoInt(Copy(stTemp,7,2)),StrtoInt(Copy(stTemp,9,2)),StrtoInt(Copy(stTemp,11,2)),StrtoInt(Copy(stTemp,13,2)),00 );
+                stTemp := FormatDateTime(TAttendType(ATFileFormatList.Objects[i]).DATEFORMATE,dtTemp);
+              Except
+                //
+              End;
+            end else if (TAttendType(ATFileFormatList.Objects[i]).FieldName = 'AC_INOUTTYPE') then
+            begin
+              if stTemp = '1' then stTemp := TAttendType(ATFileFormatList.Objects[i]).WORKINTYPE
+              else if stTemp = '2' then stTemp := TAttendType(ATFileFormatList.Objects[i]).WORKOUTTYPE
+              else if stTemp = '3' then stTemp := TAttendType(ATFileFormatList.Objects[i]).BUSINESSOUTTYPE
+              else if stTemp = '4' then stTemp := TAttendType(ATFileFormatList.Objects[i]).BUSINESSINTYPE;
+            end;
+            if TAttendType(ATFileFormatList.Objects[i]).FRONTREAR = 0 then
+              stTemp := FillCharString(stTemp,TAttendType(ATFileFormatList.Objects[i]).FILLCHAR,TAttendType(ATFileFormatList.Objects[i]).Len,True)
+            else stTemp := FillCharString(stTemp,TAttendType(ATFileFormatList.Objects[i]).FILLCHAR,TAttendType(ATFileFormatList.Objects[i]).Len,False);
+
+            stFormatGubun := '';
+            if TAttendType(ATFileFormatList.Objects[i]).FormatGubun = 1 then stFormatGubun := #9;   //TAB
+
+            stATData := stATData + stTemp + stFormatGubun;
+          end;
+          ATList.Add(stATData);
+          Gauge1.Progress := Gauge1.Progress + 1;
+          Next;
+        end;
+        ATList.SaveToFile(stSaveFileName);
+        showmessage('파일생성 완료.');
+      end;
+    Finally
+      TempAdoQuery.EnableControls;
+      TempAdoQuery.Free;
+      CoUninitialize;
+    End;
+  Finally
+    Gauge1.Visible := False;
+    ATList.Free;
+  End;
+end;
+
+procedure TfmRelayFilecreate.btn_CloseClick(Sender: TObject);
+begin
+  Close;
+end;
+
+procedure TfmRelayFilecreate.FormActivate(Sender: TObject);
+begin
+  dt_Fromdate.DateTime := Now - 1;
+end;
+
+procedure TfmRelayFilecreate.FormClose(Sender: TObject;
+  var Action: TCloseAction);
+var
+  i : integer;
+begin
+  if ATFileFormatList.Count > 0 then
+  begin
+    for i := ATFileFormatList.Count - 1 downto 0 do TAttendType(ATFileFormatList.Objects[i]).Free;
+    ATFileFormatList.Clear;
+  end;
+  ATFileFormatList.Free;
+end;
+
+procedure TfmRelayFilecreate.FormCreate(Sender: TObject);
+begin
+  ATFileFormatList := TStringList.Create;
+  LoadATFileFormat;
+end;
+
+procedure TfmRelayFilecreate.LoadATFileFormat;
+var
+  stSql : string;
+  TempAdoQuery : TADOQuery;
+  i : integer;
+  oAttendType : TAttendType;
+  nFormatGubun : integer;
+begin
+  if ATFileFormatList.Count > 0 then
+  begin
+    for i := ATFileFormatList.Count - 1 downto 0 do TAttendType(ATFileFormatList.Objects[i]).Free;
+  end;
+  ATFileFormatList.Clear;
+
+  stSql := ' Select * from TB_ATTENDFILEFORMAT where AF_USE = 1 order by AF_SEQ ';
+  Try
+    CoInitialize(nil);
+    TempAdoQuery := TADOQuery.Create(nil);
+    TempAdoQuery.Connection := dmDataBase.ADOConnection;
+
+    with TempAdoQuery do
+    begin
+      Close;
+      sql.Text := stSql;
+      Try
+        Open;
+      Except
+        dmDataBase.DBConnected := False;
+        Exit;
+      End;
+      if recordcount < 1 then Exit;
+
+      while Not Eof do
+      begin
+        oAttendType := TAttendType.Create(nil);
+        oAttendType.FieldName := FindField('AF_FIELDNAME').AsString;
+        oAttendType.Len := FindField('AF_LENGTH').AsInteger;
+        if (FindField('AF_FILLCHAR').AsString = '') then oAttendType.FILLCHAR := ' '
+        else oAttendType.FILLCHAR := FindField('AF_FILLCHAR').AsString[1];
+        oAttendType.DATEFORMATE := FindField('AF_DATEFORMATE').AsString;
+        oAttendType.FRONTREAR := FindField('AF_FRONTREAR').AsInteger;
+        oAttendType.WORKINTYPE := Trim(FindField('AF_WORKINTYPE').AsString);
+        oAttendType.WORKOUTTYPE := Trim(FindField('AF_WORKOUTTYPE').AsString);
+        oAttendType.BUSINESSOUTTYPE := Trim(FindField('AF_BUSINESSOUTTYPE').AsString);
+        oAttendType.BUSINESSINTYPE := Trim(FindField('AF_BUSINESSINTYPE').AsString);
+        if (FindField('AF_GUBUN').AsString = '') then nFormatGubun := 0
+        else nFormatGubun := FindField('AF_GUBUN').AsInteger;
+        oAttendType.FormatGubun := nFormatGubun;
+        ATFileFormatList.AddObject(FindField('AF_SEQ').AsString,oAttendType);
+        Next;
+      end;
+
+    end;
+  Finally
+    TempAdoQuery.Free;
+    CoUninitialize;
+  End;
+end;
+
+end.

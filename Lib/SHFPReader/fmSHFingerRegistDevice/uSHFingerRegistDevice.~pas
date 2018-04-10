@@ -1,0 +1,238 @@
+unit uSHFingerRegistDevice;
+
+interface
+
+uses
+  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
+  Dialogs, StdCtrls, ExtCtrls, Buttons, DB, ADODB;
+
+type
+  TfmSHFingerRegistDevice = class(TForm)
+    Panel1: TPanel;
+    lb_Message: TLabel;
+    Panel2: TPanel;
+    btn_GetFPData: TSpeedButton;
+    btn_Save: TSpeedButton;
+    btn_Cancel: TSpeedButton;
+    TempADOQuery: TADOQuery;
+    procedure FormCreate(Sender: TObject);
+    procedure FormActivate(Sender: TObject);
+    procedure btn_SaveClick(Sender: TObject);
+    procedure btn_CancelClick(Sender: TObject);
+    procedure btn_GetFPDataClick(Sender: TObject);
+    procedure FormCloseQuery(Sender: TObject; var CanClose: Boolean);
+  private
+    L_stDeviceMessage : string;
+    L_stFingerData : string;
+    FSave: Boolean;
+    FFingerCardNo: string;
+    FFingerUserID: string;
+    { Private declarations }
+    function GetFdmsCardNo : string;
+    function GetLastFdmsCardNo : int64;
+    Function DupCheckCardNo(aCardNo:string):Boolean;
+  public
+    { Public declarations }
+    property FingerUserID : string read FFingerUserID write FFingerUserID;
+    property FingerCardNo : string read FFingerCardNo write FFingerCardNo;
+    property Save : Boolean read FSave write FSave;
+  end;
+
+var
+  fmSHFingerRegistDevice: TfmSHFingerRegistDevice;
+
+implementation
+uses
+  uDataModule1,
+  uSHComModule,
+  udmAdoQuery,
+  uLomosUtil,
+  uZTBMSFunction;
+  
+{$R *.dfm}
+
+procedure TfmSHFingerRegistDevice.FormCreate(Sender: TObject);
+begin
+  L_stDeviceMessage := '$DeviceIP 에서 $UserID 번지에 지문 등록후 가져오기 버튼을 클릭 하여 주세요.';
+end;
+
+procedure TfmSHFingerRegistDevice.FormActivate(Sender: TObject);
+var
+  stMessage : string;
+begin
+  stMessage := StringReplace(L_stDeviceMessage,'$DeviceIP',G_stFingerReaderIP,[rfReplaceAll]);
+  stMessage := StringReplace(stMessage,'$UserID',FillZeroStrNum(FingerUserID,G_nFPUserIDLength),[rfReplaceAll]);
+  lb_Message.Caption := stMessage;
+  
+end;
+
+procedure TfmSHFingerRegistDevice.btn_SaveClick(Sender: TObject);
+begin
+  Save := True;
+  if FingerCardNo = '' then FingerCardNo := GetFdmsCardNo;
+
+  if DataModule1.DupCheckTB_CARDFINGER(FingerUserID) then
+  begin
+    dmAdoQuery.UpdateTB_CARDFINGER(FingerUserID,FingerCARDNO,L_stFingerData,'1','Y');
+  end else
+  begin
+    dmAdoQuery.InsertIntoTB_CARDFINGER(FingerUserID,FingerCARDNO,L_stFingerData,'1','Y');
+  end;
+  Close;
+end;
+
+procedure TfmSHFingerRegistDevice.btn_CancelClick(Sender: TObject);
+begin
+  Save := False;
+  Close;
+end;
+
+procedure TfmSHFingerRegistDevice.btn_GetFPDataClick(Sender: TObject);
+var
+  oFPNode : TFPNode;
+  Tick: DWORD;
+  NowTick: DWORD;
+begin
+  Try
+    btn_GetFPData.Enabled := False;
+    btn_Save.Enabled := False;
+    oFPNode := TFPNode.Create(nil);
+    oFPNode.ReaderType := 0; //등록기 타입으로 동작하자.
+    oFPNode.FPNodeNo := 1;
+    oFPNode.FPNodeIP := G_stFingerReaderIP;
+    oFPNode.FPNodePort := 7005;
+    oFPNode.FPNodeName := '등록기';
+    
+    if oFPNode.Open then oFPNode.Open := False;
+    oFPNode.Open := True;
+
+    Tick := GetTickCount + DWORD(3000);    //3초 동안 접속 하지 못하면 접속 실패이다.
+
+    While oFPNode.SocketConnected <> Connected do
+    begin
+      NowTick := GetTickCount;
+      if Tick < NowTick then break;
+      Application.ProcessMessages;
+    end;
+
+    if oFPNode.SocketConnected <> Connected then
+    begin
+      showmessage('지문리더 접속에 실패 하였습니다.');
+      Exit;
+    end;
+
+    L_stFingerData := oFPNode.GetFPData(FingerUserID);
+    if L_stFingerData = '' then
+    begin
+      showmessage('해당 번지의 지문을 가져오지 못했습니다..');
+      Exit;
+    end;
+    btn_Save.Enabled := True;
+
+  Finally
+    oFPNode.Destroy;
+    btn_GetFPData.Enabled := True;
+  End;
+end;
+
+function TfmSHFingerRegistDevice.GetFdmsCardNo: string;
+var
+  stSql : string;
+  nFdms_CardNo : int64;
+  nLastCardNo : int64;
+  stCardNo : string;
+  i : integer;
+  bResult : Boolean;
+begin
+  //result := FillZeroNumber2(31,10);
+  result := '';
+
+  for i := 0 to 100000 do
+  begin
+    nLastCardNo := GetLastFdmsCardNo;
+    stCardNo := FillCharString(inttostr(nLastCardNo),'2',10,True);
+    if CARDLENGTHTYPE = 0 then  //고정길이 타입이면
+    begin
+      if Not IsNumericCardNo then  //숫자변환이 아니면 숫자 타입을 HEX타입으로 변환하자.
+      begin
+        stCardNo := Dec2Hex64(StrtoInt64(stCardNo),8);
+      end
+    end else if CARDLENGTHTYPE = 1 then
+    begin
+      if Not IsNumericCardNo then  //숫자변환이면
+      begin
+        stCardNo := Dec2Hex64(StrtoInt64(stCardNo),8);
+      end
+    end else Exit; //KT사옥용이면 그냥 빠져 나가자.
+    stCardNo := GetFixedCardNoCheck(stCardNo,G_bCardFixedUse,G_stCardFixedFillChar,G_nCardFixedPosition,G_nCardFixedLength);
+
+    bResult := DupCheckCardNo(stCardNo);
+    if Not bResult  then break;
+  end;
+  if bResult then Exit; //카드번호를 찾지 못한 경우
+  result := stCardNo;
+
+
+end;
+
+function TfmSHFingerRegistDevice.GetLastFdmsCardNo: int64;
+var
+  stSql : string;
+begin
+  result := 31;
+  stSql := 'select * from TB_CURRENTDAEMON ';
+  stSql := stSql + ' Where CU_STATECODE = ''FDMSCARD'' ';
+
+  with TempADOQuery do
+  begin
+    Close;
+    Sql.Text := stSql;
+    Try
+      Open;
+    Except
+      Exit;
+    End;
+    if recordcount < 1 then Exit;
+    if Not isDigit(FindField('CU_STATEVALUE').AsString) then Exit;
+    result := strtoint(FindField('CU_STATEVALUE').AsString) + 1;
+    stSql := ' Update TB_CURRENTDAEMON set CU_STATEVALUE = ''' + inttostr(result) + ''' ';
+    stSql := stSql + ' Where CU_STATECODE = ''FDMSCARD'' ';
+    DataModule1.ProcessExecSQL(stSql);
+  end;
+end;
+
+function TfmSHFingerRegistDevice.DupCheckCardNo(aCardNo: string): Boolean;
+var
+  stSql : string;
+begin
+  result := False;
+  //지문 카드 중복유무
+  stSql := ' Select * from TB_CARD where CA_CARDNO = ''' + aCardNo + ''' ';
+  with TempADOQuery do
+  begin
+    close;
+    Sql.Text := stSql;
+    Try
+      Open;
+    Except
+      Exit;
+    End;
+    if recordcount < 1 then Exit;
+    result := True;
+  end;
+end;
+
+procedure TfmSHFingerRegistDevice.FormCloseQuery(Sender: TObject;
+  var CanClose: Boolean);
+begin
+  if (L_stFingerData <> '') and (Not Save) then
+  begin
+    if Application.MessageBox(PChar('지문데이터를 저장 하지 않았습니다.종료 하시겠습니까?'),'경고',MB_OKCANCEL) = ID_CANCEL  then
+    begin
+      CanClose := False;
+    end;
+  end;
+
+end;
+
+end.

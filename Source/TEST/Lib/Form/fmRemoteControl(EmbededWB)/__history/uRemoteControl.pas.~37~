@@ -1,0 +1,113 @@
+﻿unit uRemoteControl;
+
+interface
+
+uses
+  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
+  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, W7Classes, W7Panels, AdvOfficeTabSet,
+  AdvOfficeTabSetStylers, AdvSmoothPanel, Vcl.ExtCtrls, AdvSmoothLabel,
+  Vcl.StdCtrls, AdvEdit, Vcl.Buttons, Vcl.Grids, AdvObj, BaseGrid, AdvGrid,
+  AdvToolBtn,ADODB,ActiveX, uSubForm, CommandArray, AdvCombo, AdvGroupBox,
+  Vcl.Mask, AdvSpin, AdvOfficeButtons, AdvPanel, Vcl.ComCtrls, AdvListV,
+  Vcl.ImgList, Vcl.Menus, AdvMenus, AdvExplorerTreeview, paramtreeview,
+  JvExComCtrls, JvComCtrls,Vcl.Clipbrd, Vcl.OleCtrls, SHDocVw;
+
+const
+  con_DOORLOCKSTATE = 3;
+  con_DOOROPENSTATE = 4;
+  con_DOORNOTSTATE = 5;
+
+type
+  TfmRemoteControl = class(TfmASubForm)
+    AdvOfficeTabSetOfficeStyler1: TAdvOfficeTabSetOfficeStyler;
+    Image1: TImage;
+    BodyPanel: TW7Panel;
+    menuTab: TAdvOfficeTabSet;
+    WebBrowser1: TWebBrowser;
+    procedure menuTabChange(Sender: TObject);
+    procedure FormClose(Sender: TObject; var Action: TCloseAction);
+    procedure FormCreate(Sender: TObject);
+    procedure FormShow(Sender: TObject);
+    procedure FormActivate(Sender: TObject);
+    { Private declarations }
+  public
+    { Public declarations }
+    procedure FormChangeEvent(aFormName:integer);
+  end;
+
+var
+  fmRemoteControl: TfmRemoteControl;
+
+implementation
+uses
+  uFormVariable;
+
+{$R *.dfm}
+
+
+
+procedure TfmRemoteControl.FormActivate(Sender: TObject);
+begin
+  inherited;
+  WindowState := wsMaximized;
+end;
+
+procedure TfmRemoteControl.FormChangeEvent(aFormName: integer);
+begin
+
+end;
+
+procedure TfmRemoteControl.FormClose(Sender: TObject;
+  var Action: TCloseAction);
+begin
+
+  self.FindSubForm('Main').FindCommand('FORMENABLE').Params.Values['NAME'] := inttostr(conFORMREMOTECONTROL);
+  self.FindSubForm('Main').FindCommand('FORMENABLE').Params.Values['VALUE'] := 'FALSE';
+  self.FindSubForm('Main').FindCommand('FORMENABLE').Execute;
+
+
+  Action := caFree;
+end;
+
+procedure TfmRemoteControl.FormCreate(Sender: TObject);
+begin
+
+  menuTab.ActiveTabIndex := 1;
+  menuTabChange(self);
+  WebBrowser1.Navigate('http://zeron.co.kr/help');
+end;
+
+
+procedure TfmRemoteControl.FormShow(Sender: TObject);
+begin
+  self.FindSubForm('Main').FindCommand('FORMENABLE').Params.Values['NAME'] := inttostr(conFORMREMOTECONTROL);
+  self.FindSubForm('Main').FindCommand('FORMENABLE').Params.Values['VALUE'] := 'TRUE';
+  self.FindSubForm('Main').FindCommand('FORMENABLE').Execute;
+end;
+
+
+procedure TfmRemoteControl.menuTabChange(Sender: TObject);
+var
+  stBuildingCode : string;
+  stAreaCode : string;
+  nIndex : integer;
+begin
+  if menuTab.ActiveTabIndex = 0 then //Ȩ
+  begin
+    if menuTab.AdvOfficeTabs.Items[0].Caption = '닫기' then Close
+    else
+    begin
+      menuTab.ActiveTabIndex := 1;
+      menuTabChange(self);
+    end;
+  end;
+end;
+
+
+
+initialization
+  RegisterClass(TfmRemoteControl);
+Finalization
+  UnRegisterClass(TfmRemoteControl);
+
+end.

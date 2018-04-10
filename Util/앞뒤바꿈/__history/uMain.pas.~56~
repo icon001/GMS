@@ -1,0 +1,919 @@
+unit uMain;
+
+interface
+
+uses
+  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
+  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls, Data.DB, Data.Win.ADODB,ActiveX,
+  Vcl.ComCtrls, Vcl.Buttons;
+
+type
+  TForm1 = class(TForm)
+    btn_CardChange: TButton;
+    ADOConnection: TADOConnection;
+    ADOQuery: TADOQuery;
+    PageControl1: TPageControl;
+    TabSheet1: TTabSheet;
+    GroupBox1: TGroupBox;
+    Label1: TLabel;
+    ed_serverIP: TEdit;
+    Label2: TLabel;
+    ed_ServerPort: TEdit;
+    Label3: TLabel;
+    ed_userid: TEdit;
+    ed_UserPw: TEdit;
+    Label4: TLabel;
+    ed_DBName: TEdit;
+    Label5: TLabel;
+    GroupBox2: TGroupBox;
+    Label6: TLabel;
+    Label7: TLabel;
+    Label8: TLabel;
+    Label9: TLabel;
+    Label10: TLabel;
+    ed_SKserverIP: TEdit;
+    ed_SKServerPort: TEdit;
+    ed_SKuserid: TEdit;
+    ed_SKUserPw: TEdit;
+    ed_SKDBName: TEdit;
+    TabSheet2: TTabSheet;
+    btn_CardUpload: TButton;
+    Label11: TLabel;
+    ed_File: TEdit;
+    SpeedButton1: TSpeedButton;
+    ADOConnection1: TADOConnection;
+    ProgressBar1: TProgressBar;
+    Label12: TLabel;
+    Label13: TLabel;
+    Label14: TLabel;
+    ProgressBar2: TProgressBar;
+    TabSheet3: TTabSheet;
+    btn_CardDelete: TButton;
+    ADOQuery1: TADOQuery;
+    OpenDialog1: TOpenDialog;
+    procedure btn_CardChangeClick(Sender: TObject);
+    procedure btn_CardUploadClick(Sender: TObject);
+    procedure btn_CardDeleteClick(Sender: TObject);
+    procedure SpeedButton1Click(Sender: TObject);
+  private
+    function ACAMProcessExecSQL(aSql:string):Boolean;
+    function SKProcessExecSQL(aSql:string):Boolean;
+  private
+    { Private declarations }
+    function Table_0001_VersionMake:Boolean;
+    Function GetTableVersion:integer;
+    Function TableVersionCheck:Boolean;
+    function DBConnect:Boolean;
+    function SKDBConnect:Boolean;
+    function IF_IO_LABOR_Change : Boolean;
+    function IF_TAG_Change : Boolean;
+    function MEAL_TAKE_LOG_Change : Boolean;
+  public
+    procedure CardInfoSKChungcheongRelay(aEmCode,aEmName,aCardNo:string);
+    function CheckIF_TAG_EmCode(aEmCode:string):integer;
+    function InsertIntoIF_TAG_Value(aEmCode,aEmName,aCardNo:string):Boolean;
+    function UpdateIF_TAG_Field_StringValue(aEmCode,aFieldName,aValue:string):Boolean;
+  public
+    { Public declarations }
+    function ACAM_CheckTB_EMPLOYEE_Value(aEmCode:string; var aEmSeq,aEmName:string):Boolean;
+    function ACAM_CheckTB_CARD_Value(aCardNo:string):Boolean;
+    function ACAMTB_Card_Change:Boolean;
+    function GetNextTB_CARD_PositionNum : string;
+    function LineCardAdd(aLine:string):Boolean;
+    function NewAddCard(aEmCode,aCardNo:string):Boolean;
+    Function InsertIntoTB_CARD_Value(aCardNo,aCardState,aCardGubun,aPositionNum,aRelayID,aGradeUse,aEmSeq:string;aCardPrintNo:string=''):Boolean;
+    Function UpdateTB_CARD_Field_StringValue(aCardNo,aFieldName,aData:string):Boolean;
+    Function UpdateTB_CARDPERMITEMPLOYEECODE_EmSeqApply(aEmSeq,aApply:string;aNodeNo:string='';aEcuID:string='';aEmApprove:string=''):Boolean;
+    Function UpdateTB_CARDPERMITEMPLOYEECODE_EmSeqFingerApply(aEM_SEQ,aFingerApply:string):Boolean;
+  end;
+
+var
+  Form1: TForm1;
+
+implementation
+uses
+  uCommonFunction,
+  uCommonVariable;
+
+{$R *.dfm}
+
+function TForm1.ACAMProcessExecSQL(aSql: string): Boolean;
+var
+  ExecQuery :TADOQuery;
+  nResult : integer;
+begin
+  //원복시키자
+  Result:= False;
+  Try
+    CoInitialize(nil);
+    ExecQuery := TADOQuery.Create(nil);
+    ExecQuery.Connection := ADOConnection;
+    ExecQuery.DisableControls;
+    with ExecQuery do
+    begin
+      Close;
+      SQL.Text:= aSql;
+      try
+        //LogSave(G_stExeFolder + '\..\Log\DBSUCCESS' + FormatDateTime('yyyymmdd',Now) + '.log','Start' + aSql);
+        nResult := ExecSQL;
+        //LogSave(G_stExeFolder + '\..\Log\DBSUCCESS' + FormatDateTime('yyyymmdd',Now) + '.log','End' + aSql);
+      except
+      ON E: Exception do
+        begin
+          LogSave(G_stExeFolder + '\..\Log\DB' + FormatDateTime('yyyymmdd',Now) + '.log','DBError('+ E.Message + ')' + aSql);
+          Exit;
+        end
+      end;
+    end;
+  Finally
+    ExecQuery.EnableControls;
+    ExecQuery.Free;
+    CoUninitialize;
+  End;
+
+  Result:= True;
+end;
+
+function TForm1.ACAMTB_Card_Change: Boolean;
+var
+  stSql : string;
+  TempAdoQuery : TADOQuery;
+  stCardNo : string;
+  stPositionNum : string;
+begin
+  stSql := ' select a.*,b.EM_CODE,b.EM_NAME from TB_CARD a ';
+  stSql := stSql + ' Inner Join TB_EMPLOYEE b ';
+  stSql := stSql + ' ON(a.EM_SEQ = b.EM_SEQ) ';
+  stSql := stSql + ' where a.CA_SKCHANGE is Null or a.CA_SKCHANGE = ''N'' ';
+  Try
+    CoInitialize(nil);
+    TempAdoQuery := TADOQuery.Create(nil);
+    TempAdoQuery.Connection := ADOConnection;
+    TempAdoQuery.DisableControls;
+    with TempAdoQuery do
+    begin
+      Close;
+      SQL.Text:= stSql;
+
+      Try
+        Open;
+      except
+      ON E: Exception do
+        begin
+          LogSave(G_stExeFolder + '\..\Log\DB' + FormatDateTime('yyyymmdd',Now) + '.log','DBError('+ E.Message + ')' + stSql);
+          Exit;
+        end
+      end;
+
+      ProgressBar1.Max := recordcount;
+      ProgressBar1.Position := 0;
+      while Not Eof do
+      begin
+        stCardNo := FindField('CA_CARDNO').AsString;
+        stCardNo := copy(stCardNo,7,2) + copy(stCardNo,5,2) + copy(stCardNo,3,2) + copy(stCardNo,1,2) + '********';
+        stPositionNum := GetNextTB_CARD_PositionNum;
+        if InsertIntoTB_CARD_Value(stCardNo,FindField('CA_STATECODE').AsString,'2',
+                                   stPositionNum,stPositionNum,FindField('CA_GRADEUSE').AsString,
+                                   FindField('EM_SEQ').AsString,'') then
+        begin
+          UpdateTB_CARD_Field_StringValue(FindField('CA_CARDNO').AsString,'CA_SKCHANGE','Y');
+          CardInfoSKChungcheongRelay(FindField('EM_CODE').AsString,FindField('EM_NAME').AsString,stCardNo);
+          UpdateTB_CARDPERMITEMPLOYEECODE_EmSeqApply(FindField('EM_SEQ').AsString,'N'); //해당 사번의 권한 적용 부분을 재 작업 - 삭제된 카드가 있거나 추가된 카드가 있으므로
+          UpdateTB_CARDPERMITEMPLOYEECODE_EmSeqFingerApply(FindField('EM_SEQ').AsString,'N');
+        end;
+
+        ProgressBar1.Position := ProgressBar1.Position + 1;
+        Next;
+      end;
+
+    end;
+  Finally
+    TempAdoQuery.EnableControls;
+    TempAdoQuery.Free;
+    CoUninitialize;
+  End;
+
+end;
+
+function TForm1.ACAM_CheckTB_CARD_Value(aCardNo: string): Boolean;
+var
+  stSql : string;
+  TempAdoQuery : TADOQuery;
+begin
+  result := False;
+  stSql := ' select * From TB_CARD ';
+  stSql := stSql + ' where CA_CARDNO = ''' + aCardNo + ''' ';
+  Try
+    CoInitialize(nil);
+    TempAdoQuery := TADOQuery.Create(nil);
+    TempAdoQuery.Connection := ADOConnection;
+    TempAdoQuery.DisableControls;
+    with TempAdoQuery do
+    begin
+      Close;
+      SQL.Text:= stSql;
+
+      Try
+        Open;
+      except
+      ON E: Exception do
+        begin
+          LogSave(G_stExeFolder + '\..\Log\DB' + FormatDateTime('yyyymmdd',Now) + '.log','DBError('+ E.Message + ')' + stSql);
+          Exit;
+        end
+      end;
+      if recordcount < 1 then Exit;
+      result := True;
+    end;
+  Finally
+    TempAdoQuery.EnableControls;
+    TempAdoQuery.Free;
+    CoUninitialize;
+  End;
+end;
+
+function TForm1.ACAM_CheckTB_EMPLOYEE_Value(aEmCode: string;
+  var aEmSeq,aEmName: string): Boolean;
+var
+  stSql : string;
+  TempAdoQuery : TADOQuery;
+begin
+  result := False;
+  stSql := ' select * From TB_EMPLOYEE ';
+  stSql := stSql + ' where EM_CODE = ''' + aEmCode + ''' ';
+  Try
+    CoInitialize(nil);
+    TempAdoQuery := TADOQuery.Create(nil);
+    TempAdoQuery.Connection := ADOConnection;
+    TempAdoQuery.DisableControls;
+    with TempAdoQuery do
+    begin
+      Close;
+      SQL.Text:= stSql;
+
+      Try
+        Open;
+      except
+      ON E: Exception do
+        begin
+          LogSave(G_stExeFolder + '\..\Log\DB' + FormatDateTime('yyyymmdd',Now) + '.log','DBError('+ E.Message + ')' + stSql);
+          Exit;
+        end
+      end;
+
+      if recordcount < 1 then Exit;
+      aEmSeq := FindField('EM_SEQ').AsString;
+      aEmName := FindField('EM_NAME').AsString;
+      result := True;
+    end;
+  Finally
+    TempAdoQuery.EnableControls;
+    TempAdoQuery.Free;
+    CoUninitialize;
+  End;
+end;
+
+procedure TForm1.btn_CardChangeClick(Sender: TObject);
+begin
+  if Not DBConnect then Exit;
+  if Not SKDBConnect then Exit;
+  btn_CardChange.enabled := False;
+  ACAMTB_Card_Change;
+  btn_CardChange.enabled := True;
+end;
+
+procedure TForm1.btn_CardDeleteClick(Sender: TObject);
+begin
+  if Not DBConnect then Exit;
+  if Not SKDBConnect then Exit;
+
+end;
+
+procedure TForm1.btn_CardUploadClick(Sender: TObject);
+var
+  FileCardList : TStringList;
+  i : integer;
+begin
+  if Not DBConnect then Exit;
+  if Not SKDBConnect then Exit;
+  btn_CardUpload.enabled := False;
+
+  Try
+    FileCardList := TStringList.Create;
+    if Not FileExists(ed_File.Text) then
+    begin
+      showmessage('파일을 선택해 주세요.');
+      Exit;
+    end;
+    FileCardList.LoadFromFile(ed_File.Text);
+    ProgressBar2.Max := FileCardList.count;
+    ProgressBar2.position := 0;
+    for i := 0 to FileCardList.Count - 1 do
+    begin
+      ProgressBar2.position := ProgressBar2.position + 1;
+      LineCardAdd(FileCardList.Strings[i]);
+    end;
+
+  Finally
+    FileCardList.Free;
+  End;
+  btn_CardUpload.enabled := True;
+
+end;
+
+procedure TForm1.CardInfoSKChungcheongRelay(aEmCode, aEmName, aCardNo: string);
+var
+  nTemp : int64;
+begin
+  if Length(aCardNo) > 10 then
+  begin
+    if aCardNo[9] = '*' then
+    begin
+      aCardNo := copy(aCardNo,1,8);
+      nTemp := Hex2Dec64(aCardNO);
+      aCardNo := FillZeroNumber(nTemp,10);
+    end else
+    begin
+      aCardNo := copy(aCardNO,1,10);
+    end;
+  end;
+  if CheckIF_TAG_EmCode(aEmCode) = 1 then
+  begin
+    UpdateIF_TAG_Field_StringValue(aEmCode,'TAG',aCardNo);
+  end else
+  begin
+    InsertIntoIF_TAG_Value(aEmCode,aEmName,aCardNo);
+  end;
+end;
+
+function TForm1.CheckIF_TAG_EmCode(aEmCode: string): integer;
+var
+  stSql : string;
+  TempAdoQuery : TADOQuery;
+begin
+  result := -1;
+
+  stSql := ' Select * from IF_TAG where DOC_NO = ''' + aEmCode + ''' ';
+  Try
+    CoInitialize(nil);
+    TempAdoQuery := TADOQuery.Create(nil);
+    TempAdoQuery.Connection := ADOConnection1;
+    TempAdoQuery.DisableControls;
+
+    with TempAdoQuery do
+    begin
+      Close;
+      Sql.Clear;
+      Sql.Text := stSql;
+
+      Try
+        Open;
+      Except
+        Exit;
+      End;
+      if recordcount = 0 then result := 0
+      else
+      begin
+        result := 1;
+      end;
+    end;
+  Finally
+    TempAdoQuery.EnableControls;
+    TempAdoQuery.Free;
+    CoUninitialize;
+  End;
+end;
+
+function TForm1.DBConnect: Boolean;
+var
+  stConnectString : string;
+  stDBType : string;
+  nWindowMode : integer;
+begin
+  result := False;
+  G_stExeFolder  := ExtractFileDir(Application.ExeName);
+  if G_stEventDataDir = '' then
+    G_stEventDataDir := G_stExeFolder + '\LogDB';
+
+  if not DirectoryExists(G_stEventDataDir) then
+  begin
+   if Not CreateDir(G_stEventDataDir) then
+   begin
+      G_stEventDataDir := G_stExeFolder;
+   end;
+  end;
+
+  if not DirectoryExists(G_stExeFolder + '\Temp') then
+  begin
+    CreateDir(G_stExeFolder + '\Temp');
+  end;
+
+  G_stLogDirectory := G_stExeFolder + '\..\log';
+  if not DirectoryExists(G_stLogDirectory) then
+  begin
+   if Not CreateDir(G_stLogDirectory) then
+   begin
+      G_stLogDirectory := G_stExeFolder;
+   end;
+  end;
+
+  Try
+    stDBType := 'MSSQL';
+    G_stDBHost  := ed_serverIP.Text;
+    G_stDBPort := ed_ServerPort.Text;
+    nWindowMode := 0;
+    G_stDBUserID := ed_userid.Text;
+    G_stDBUserPw := ed_UserPw.Text;
+
+    G_stDBName := ed_DBName.Text;
+    G_stGroupCode := '1234567890';
+
+    if UpperCase(stDBType) = 'MSSQL' then G_nDBType := MSSQL
+    else if UpperCase(stDBType) = 'PG' then G_nDBType := POSTGRESQL
+    else if UpperCase(stDBType) = 'FB' then G_nDBType := FIREBIRD
+    else if UpperCase(stDBType) = 'MDB' then G_nDBType := MDB;
+
+    G_nMaxComPort := 40;
+    G_nCardRegisterPort := 0;
+
+    if G_nDBType = MSSQL then
+    begin
+      if nWindowMode = 1 then
+      begin
+        stConnectString := 'PROVIDER=SQLOLEDB.1;SERVER=localhost;DATABASE=' + G_stDBName + ';TRUSTED_CONNECTION=YES';
+      end else
+      begin
+        stConnectString := stConnectString + 'Provider=SQLOLEDB.1;';
+        stConnectString := stConnectString + 'Password=' + G_stDBUserPw + ';';
+        stConnectString := stConnectString + 'Persist Security Info=True;';
+        stConnectString := stConnectString + 'User ID=' + G_stDBUserID + ';';
+        stConnectString := stConnectString + 'Initial Catalog=' + G_stDBName + ';';
+        stConnectString := stConnectString + 'Data Source=' + G_stDBHost  + ',' + G_stDBPort;
+      end;
+    end else if G_nDBType = POSTGRESQL then
+    begin
+      stConnectString := 'Provider=PostgreSQL OLE DB Provider;';
+      stConnectString := stConnectString + 'Data Source=' + G_stDBHost + ';'   ;
+      stConnectString := stConnectString + 'location=' + G_stDBName + ';';
+      stConnectString := stConnectString + 'User Id='+ G_stDBUserID + ';';
+      stConnectString := stConnectString + 'password=' + G_stDBUserPw;
+    end else if G_nDBType = FIREBIRD then
+    begin
+      stConnectString := 'Provider=ZStyle IBOLE Provider;';
+      stConnectString := stConnectString + 'Data Source=' + G_stDBHost + ':' + G_stDBName + ';';
+      stConnectString := stConnectString + 'UID='+ G_stDBUserID + ';';
+      stConnectString := stConnectString + 'Password=' + G_stDBUserPw + ';';
+      stConnectString := stConnectString + 'DIALECT=3;';
+      //IBOLE.dll 파일을 등록 할것
+(*      stConnectString := 'Provider=LCPI.IBProvider;';
+      //stConnectString := 'Provider=Firebird/InterBase(r) driver;';
+      stConnectString := 'DRIVER=Firebird/InterBase(r) driver;';
+      //stConnectString := 'DRIVER=XTG Systems InterBase6 ODBC driver;';
+      stConnectString := stConnectString + 'DB=' + G_stDBHost + ':' + G_stDBName + ';';
+      stConnectString := stConnectString + 'UID='+ G_stDBUserID + ';';
+      stConnectString := stConnectString + 'Password=' + G_stDBUserPw + ';';
+      stConnectString := stConnectString + 'Auto Commit=true;';
+      stConnectString := stConnectString + 'DIALECT=3;';  *)
+//      stConnectString := 'DRIVER={XTG Systems InterBase6 ODBC driver};DB=127.0.0.1:BMOS;UID=SYSDBA;Password=masterkey';
+    end else //디폴트로 MDB로 인식하자
+    begin
+      if Not FileExists(G_stExeFolder + '\MIAMS.mdb') then
+      begin
+        ChDir(G_stExeFolder);
+      end;
+
+      stConnectString := 'Provider=Microsoft.Jet.OLEDB.4.0;';
+      stConnectString := stConnectString + 'Data Source=' + G_stExeFolder + '\BMS.mdb' + ';';
+      stConnectString := stConnectString + 'Persist Security Info=True;';
+      stConnectString := stConnectString + 'Jet OLEDB:Database ';
+    end;
+
+    with ADOConnection do
+    begin
+      Connected := False;
+      Try
+        ConnectionString := stConnectString;
+        LoginPrompt:= false ;
+        Connected := True;
+      Except
+        on E : EDatabaseError do
+          begin
+            // ERROR MESSAGE-BOX DISPLAY
+            ShowMessage(stConnectString + E.Message );
+            Exit;
+          end;
+        else
+          begin
+            ShowMessage('DB 연결 실패' );
+            Exit;
+          end;
+      End;
+      CursorLocation := clUseServer;
+    end;
+    if Not TableVersionCheck then Exit;
+    result := True;
+  Finally
+
+  End;
+
+end;
+
+function TForm1.GetNextTB_CARD_PositionNum: string;
+var
+  stSql : string;
+  TempAdoQuery :TADOQuery;
+begin
+  result := '1';
+  stSql := 'select MAX(CA_POSITIONNUM) as CA_POSITIONNUM from TB_CARD ';
+  stSql := stSql + ' Where  GROUP_CODE = ''' + G_stGroupCode + ''' ';
+
+  Try
+    CoInitialize(nil);
+    TempAdoQuery := TADOQuery.Create(nil);
+    TempAdoQuery.Connection := ADOConnection;
+    TempAdoQuery.DisableControls;
+
+    with TempAdoQuery do
+    begin
+      Close;
+      Sql.Clear;
+      Sql.Text := stSql;
+
+      Try
+        Open;
+      Except
+        Exit;
+      End;
+      if recordCount < 1 then Exit;
+      if FindField('CA_POSITIONNUM').IsNull then Exit;
+      result := inttostr(FindField('CA_POSITIONNUM').AsInteger + 1);
+    end;
+  Finally
+    TempAdoQuery.EnableControls;
+    TempAdoQuery.Free;
+    CoUninitialize;
+  End;
+end;
+
+function TForm1.GetTableVersion: integer;
+var
+  stSql : string;
+begin
+  result := 0;
+  stSql := 'select * from TB_CONFIG ';
+  stSql := stSql + ' where CO_CONFIGGROUP = ''SK'' ';
+  stSql := stSql + ' AND CO_CONFIGCODE = ''TABLE_VER'' ';
+  with ADOQuery do
+  begin
+    Close;
+    Sql.Clear;
+    Sql.Text := stSql;
+    Try
+      Open;
+    Except
+      Exit;
+    End;
+    if recordCount < 1 then Exit;
+    Try
+      result := strtoint(FindField('CO_CONFIGVALUE').AsString);
+    Except
+      Exit;
+    End;
+  end;
+end;
+
+function TForm1.IF_IO_LABOR_Change: Boolean;
+var
+  stsql : string;
+begin
+
+end;
+
+function TForm1.IF_TAG_Change: Boolean;
+var
+  stSql : string;
+  TempAdoQuery : TAdoQuery;
+begin
+  stSql := 'Select * from IF_TAG ';
+
+  Try
+    OleInitialize(nil);
+    TempAdoQuery := TADOQuery.Create(nil);
+    TempAdoQuery.Connection := ADOConnection;
+    with TempAdoQuery do
+    begin
+      Close;
+      //SQL.Clear;
+      SQL.Text:= stSql;
+      try
+        Open;
+      except
+        Exit;
+      end;
+
+    end;
+  Finally
+    TempAdoQuery.Free;
+    OleUninitialize;
+  End;
+end;
+
+function TForm1.InsertIntoIF_TAG_Value(aEmCode, aEmName,
+  aCardNo: string): Boolean;
+var
+  stSql : string;
+begin
+  stSql := 'Insert Into IF_TAG ( ';
+  stSql := stsql + ' DOC_NO,';
+  stSql := stsql + ' LBR_NAME,';
+  stSql := stsql + ' TAG,';
+  stSql := stsql + ' LS_GBN,';
+  stSql := stsql + ' DEL_YN,';
+  stSql := stsql + ' CHG_DATE,';
+  stSql := stsql + ' CHG_DESC,';
+  stSql := stsql + ' AREA_CD )';
+  stSql := stsql + ' VALUES(';
+  stSql := stsql + ' ''' + aEmCode + ''',';
+  stSql := stsql + ' ''' + aEmName + ''',';
+  stSql := stsql + ' ''' + aCardNo + ''',';
+  stSql := stsql + ' '''',';
+  stSql := stsql + ' '''',';
+  stSql := stsql + ' ''' + FormatDateTime('yyyymmddhhnnss',now) + ''',';
+  stSql := stsql + ' '''',';
+  stSql := stsql + ' ''' + G_stRelayCode2 + ''')';
+
+  result := SKProcessExecSQL(stSql);
+end;
+
+function TForm1.InsertIntoTB_CARD_Value(aCardNo, aCardState, aCardGubun,
+  aPositionNum, aRelayID, aGradeUse, aEmSeq, aCardPrintNo: string): Boolean;
+var
+  stSql : string;
+  stUpdateTime : string;
+begin
+  stUpdateTime := FormatDateTime('yyyymmddhhnnsszzz',now);
+  stSql := 'Insert Into TB_CARD (';
+  stSql := stSql + ' GROUP_CODE,';
+  stSql := stSql + ' CA_CARDNO,';
+  stSql := stSql + ' CA_STATECODE, ';
+  stSql := stSql + ' CA_CARDGUBUN, ';
+  stSql := stSql + ' CA_POSITIONNUM, ';
+  stSql := stSql + ' CA_RELAYID, ';
+  stSql := stSql + ' CA_GRADEUSE, ';
+  stSql := stSql + ' EM_SEQ, ';
+  if aCardPrintNo <> '' then stSql := stSql + ' CA_PRINTNO, ';
+  stSql := stSql + ' CA_LASTUSEDATE, ';
+  stSql := stSql + ' CA_UPDATETIME, ';
+  stSql := stSql + ' CA_SKCHANGE, ';
+  stSql := stSql + ' AD_USERID) ';
+  stSql := stSql + ' VALUES(';
+  stSql := stSql + '''' + G_stGroupCode + ''', ';
+  stSql := stSql + '''' + aCardNo + ''', ';
+  stSql := stSql + '''' + aCardState + ''', ';
+  stSql := stSql + '' + aCardGubun + ', ';
+  stSql := stSql + '' + aPositionNum + ', ';
+  stSql := stSql + '' + aRelayID + ', ';
+  stSql := stSql + '''' + aGradeUse + ''', ';
+  stSql := stSql + '' + aEmSeq + ', ';
+  if aCardPrintNo <> '' then stSql := stSql + '''' + aCardPrintNo + ''', ';
+  stSql := stSql + '''' + copy(stUpdateTime,1,8) + ''', ';
+  stSql := stSql + '''' + stUpdateTime + ''', ';
+  stSql := stSql + '''Y'', ';
+  stSql := stSql + '''' + G_stAdminUserID + ''') ';
+
+  result := ACAMProcessExecSQL(stSql);
+end;
+
+function TForm1.LineCardAdd(aLine: string): Boolean;
+var
+  LineList:TStringList;
+  stEmCode : string;
+  stCardNo : string;
+begin
+  Try
+    LineList := TStringList.Create;
+    LineList.Delimiter := ',';
+    LineList.DelimitedText := aLine;
+    stEmCode := LineList.Strings[0];
+    stCardNo := LineList.Strings[1];
+    NewAddCard(stEmCode,stCardNo);
+  Finally
+    LineList.Free;
+  End;
+end;
+
+function TForm1.MEAL_TAKE_LOG_Change: Boolean;
+var
+  stSql : string;
+begin
+  stSql := 'Select * from MEAL_TAKE_LOG ';
+
+end;
+
+function TForm1.NewAddCard(aEmCode, aCardNo: string): Boolean;
+var
+  stEmSeq,stEmName:string;
+  stCardNo : string;
+  stPositionNum : string;
+begin
+  stCardNo := FillCharString(aCardNo,'*',16);
+  if ACAM_CheckTB_EMPLOYEE_Value(aEmCode,stEmSeq,stEmName) then
+  begin
+    if Not ACAM_CheckTB_CARD_Value(stCardNo) then
+    begin
+      stPositionNum := GetNextTB_CARD_PositionNum;
+      if InsertIntoTB_CARD_Value(stCardNo, '1', '1',stPositionNum, stPositionNum, '0', stEmSeq, '') then
+      begin
+          UpdateTB_CARD_Field_StringValue(stCardNo,'CA_SKCHANGE','Y');
+          CardInfoSKChungcheongRelay(aEmCode,stEmName,stCardNo);
+          UpdateTB_CARDPERMITEMPLOYEECODE_EmSeqApply(stEmSeq,'N'); //해당 사번의 권한 적용 부분을 재 작업 - 삭제된 카드가 있거나 추가된 카드가 있으므로
+          UpdateTB_CARDPERMITEMPLOYEECODE_EmSeqFingerApply(stEmSeq,'N');
+      end;
+    end;
+  end;
+end;
+
+function TForm1.SKDBConnect: Boolean;
+var
+  stConnectString : string;
+  stDBType : string;
+  stDBHost : string;
+  nWindowMode : integer;
+begin
+  result := False;
+
+  Try
+    stConnectString := stConnectString + 'Provider=SQLOLEDB.1;';
+    stConnectString := stConnectString + 'Password=' + ed_SKUserPw.Text + ';';
+    stConnectString := stConnectString + 'Persist Security Info=True;';
+    stConnectString := stConnectString + 'User ID=' + ed_SKuserid.Text + ';';
+    stConnectString := stConnectString + 'Initial Catalog=' + ed_SKDBName.Text + ';';
+    stConnectString := stConnectString + 'Data Source=' + ed_SKserverIP.Text  + ',' + ed_SKServerPort.Text;
+
+
+    with ADOConnection1 do
+    begin
+      Connected := False;
+      Try
+        ConnectionString := stConnectString;
+        LoginPrompt:= false ;
+        Connected := True;
+      Except
+        on E : EDatabaseError do
+          begin
+            // ERROR MESSAGE-BOX DISPLAY
+            ShowMessage(stConnectString + E.Message );
+            Exit;
+          end;
+        else
+          begin
+            ShowMessage('SK DB 연결 실패' );
+            Exit;
+          end;
+      End;
+      CursorLocation := clUseServer;
+    end;
+    result := True;
+  Finally
+
+  End;
+
+end;
+
+function TForm1.SKProcessExecSQL(aSql: string): Boolean;
+var
+  ExecQuery :TADOQuery;
+  nResult : integer;
+begin
+  //원복시키자
+  Result:= False;
+  Try
+    CoInitialize(nil);
+    ExecQuery := TADOQuery.Create(nil);
+    ExecQuery.Connection := ADOConnection1;
+    ExecQuery.DisableControls;
+    with ExecQuery do
+    begin
+      Close;
+      SQL.Text:= aSql;
+      try
+        //LogSave(G_stExeFolder + '\..\Log\DBSUCCESS' + FormatDateTime('yyyymmdd',Now) + '.log','Start' + aSql);
+        nResult := ExecSQL;
+        //LogSave(G_stExeFolder + '\..\Log\DBSUCCESS' + FormatDateTime('yyyymmdd',Now) + '.log','End' + aSql);
+      except
+      ON E: Exception do
+        begin
+          LogSave(G_stExeFolder + '\..\Log\DB' + FormatDateTime('yyyymmdd',Now) + '.log','DBError('+ E.Message + ')' + aSql);
+          Exit;
+        end
+      end;
+    end;
+  Finally
+    ExecQuery.EnableControls;
+    ExecQuery.Free;
+    CoUninitialize;
+  End;
+
+  Result:= True;
+end;
+
+procedure TForm1.SpeedButton1Click(Sender: TObject);
+begin
+  OpenDialog1.Title:= '파일열기';
+  OpenDialog1.DefaultExt:= 'csv';
+  OpenDialog1.Filter := 'CSV files (*.csv)|*.csv';
+  if OpenDialog1.Execute then
+  begin
+    ed_File.Text :=  OpenDialog1.FileName;
+  end;
+
+end;
+
+function TForm1.TableVersionCheck: Boolean;
+var
+  nTableVersion : integer;
+begin
+  result := False;
+  nTableVersion := GetTableVersion;
+  if nTableVersion < 1 then Table_0001_VersionMake;
+  result := True;
+end;
+
+function TForm1.Table_0001_VersionMake: Boolean;
+var
+  stSql : string;
+begin
+  stSql := 'ALTER TABLE TB_CARD ADD CA_SKCHANGE char(1) ';
+  result := ACAMProcessExecSQL(stSql);
+  stSql := 'update TB_CARDGUBUN set CA_CARDGUBUNNAME = ''신사원증'' where CA_CARDGUBUN = 1 ';
+  result := ACAMProcessExecSQL(stSql);
+  stSql := 'Insert Into TB_CARDGUBUN (CA_CARDGUBUN,CA_CARDGUBUNNAME,CA_RELAYTYPE) Values(2,''구사원증'',0) ';
+  result := ACAMProcessExecSQL(stSql);
+  stSql := 'Insert Into TB_CONFIG (GROUP_CODE,CO_CONFIGGROUP,CO_CONFIGCODE,';
+  stSql := stSql + ' CO_CONFIGVALUE,CO_CONFIGDETAIL) ';
+  stSql := stSql + ' VALUES(';
+  stSql := stSql + '''1234567890'', ';
+  stSql := stSql + '''SK'', ';
+  stSql := stSql + '''TABLE_VER'', ';
+  stSql := stSql + '''1'',';
+  stSql := stSql + 'N''SK테이블버젼'') ';
+  result := ACAMProcessExecSQL(stSql);
+end;
+
+function TForm1.UpdateIF_TAG_Field_StringValue(aEmCode, aFieldName,
+  aValue: string): Boolean;
+var
+  stSql : string;
+begin
+  stSql := 'Update IF_TAG set ' + aFieldName + ' = ''' + aValue + ''', ';
+  stSql := stSql + ' CHG_DATE = ''' + FormatDateTime('yyyymmddhhnnss',now) + ''' ';
+  stSql := stSql + ' Where DOC_NO = ''' + aEmCode + ''' ';
+
+  result := SKProcessExecSQL(stSql);
+end;
+
+function TForm1.UpdateTB_CARDPERMITEMPLOYEECODE_EmSeqApply(aEmSeq, aApply,
+  aNodeNo, aEcuID, aEmApprove: string): Boolean;
+var
+  stSql : string;
+begin
+  stSql := 'Update TB_CARDPERMITEMPLOYEECODE set ';
+  stSql := stSql + ' CP_APPLY = ''' + aApply + ''' ';
+  if isDigit(aEmApprove) then stSql := stSql + ' ,EM_APPROVE = ' + aEmApprove + ' ';
+  stSql := stSql + ' Where GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  stSql := stSql + ' AND EM_SEQ = ' + aEmSeq + ' ';
+  if aEcuID <> '' then
+  begin
+    stSql := stSql + ' AND ND_NODENO = ' + aNodeNo + ' ';
+    stSql := stSql + ' AND DE_ECUID = ''' + aEcuID + ''' ';
+  end;
+
+  result := ACAMProcessExecSQL(stSql);
+end;
+
+function TForm1.UpdateTB_CARDPERMITEMPLOYEECODE_EmSeqFingerApply(aEM_SEQ,
+  aFingerApply: string): Boolean;
+var
+  stSql : string;
+begin
+  stSql := 'Update TB_CARDPERMITEMPLOYEECODE set ';
+  stSql := stSql + ' CP_FINGERAPPLY = ''' + aFingerApply + ''' ';
+  stSql := stSql + ' Where GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  stSql := stSql + ' AND EM_SEQ = ' + aEM_SEQ + ' ';
+
+  result := ACAMProcessExecSQL(stSql);
+end;
+
+function TForm1.UpdateTB_CARD_Field_StringValue(aCardNo, aFieldName,
+  aData: string): Boolean;
+var
+  stSql : string;
+begin
+  stSql := 'Update TB_CARD set ' + aFieldName + ' = ''' + aData + ''' ';
+  stSql := stSql + ' Where GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  stSql := stSql + ' AND CA_CARDNO = ''' + aCardNo + ''' ';
+
+  result := ACAMProcessExecSQL(stSql);
+end;
+
+end.

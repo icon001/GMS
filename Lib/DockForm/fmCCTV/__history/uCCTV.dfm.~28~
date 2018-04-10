@@ -1,0 +1,90 @@
+object fmCCTV: TfmCCTV
+  Left = 117
+  Top = 294
+  Anchors = [akLeft]
+  BorderIcons = [biSystemMenu]
+  BorderStyle = bsNone
+  Caption = 'fmCCTV'
+  ClientHeight = 223
+  ClientWidth = 233
+  Color = clBtnFace
+  DragMode = dmAutomatic
+  Font.Charset = DEFAULT_CHARSET
+  Font.Color = clWindowText
+  Font.Height = -10
+  Font.Name = 'MS Sans Serif'
+  Font.Style = []
+  OldCreateOrder = False
+  PopupMenu = PopupMenu1
+  OnActivate = FormActivate
+  OnClose = FormClose
+  OnCreate = FormCreate
+  OnDockOver = FormDockOver
+  OnShow = FormShow
+  OnStartDock = FormStartDock
+  PixelsPerInch = 96
+  TextHeight = 13
+  object Panel1: TPanel
+    Left = 0
+    Top = 0
+    Width = 233
+    Height = 3
+    Align = alTop
+    TabOrder = 0
+    ExplicitWidth = 504
+  end
+  object Panel2: TPanel
+    Left = 0
+    Top = 220
+    Width = 233
+    Height = 3
+    Align = alBottom
+    TabOrder = 1
+    ExplicitTop = 299
+    ExplicitWidth = 504
+  end
+  object Panel3: TPanel
+    Left = 0
+    Top = 3
+    Width = 233
+    Height = 19
+    Align = alTop
+    Alignment = taLeftJustify
+    Caption = 'TEST'
+    TabOrder = 2
+    OnDblClick = Panel3DblClick
+    OnMouseDown = Panel3MouseDown
+    OnMouseMove = Panel3MouseMove
+    OnMouseUp = Panel3MouseUp
+    object btn_Close: TButton
+      Left = 200
+      Top = 1
+      Width = 32
+      Height = 17
+      Align = alRight
+      Caption = 'X'
+      TabOrder = 0
+      OnClick = btn_CloseClick
+    end
+  end
+  object Media1: TMedia
+    Left = 0
+    Top = 22
+    Width = 233
+    Height = 198
+    Align = alClient
+    TabOrder = 3
+    ExplicitTop = 6
+    ExplicitHeight = 217
+    ControlData = {00090000550D0000DA0A0000}
+  end
+  object PopupMenu1: TPopupMenu
+    AutoHotkeys = maManual
+    Left = 440
+    Top = 208
+    object mn_Close: TMenuItem
+      Caption = #45803#44592
+      OnClick = mn_CloseClick
+    end
+  end
+end

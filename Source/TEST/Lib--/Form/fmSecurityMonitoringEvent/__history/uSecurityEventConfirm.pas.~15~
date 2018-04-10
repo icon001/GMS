@@ -1,0 +1,64 @@
+unit uSecurityEventConfirm;
+
+interface
+
+uses
+  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
+  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls, AdvGlassButton,
+  AdvSmoothPanel;
+
+type
+  TfmSecurityEventConfirm = class(TForm)
+    Pan_Workcode: TAdvSmoothPanel;
+    Label1: TLabel;
+    ed_ArmAreaName: TEdit;
+    ed_AlarmStateName: TEdit;
+    Label2: TLabel;
+    Label3: TLabel;
+    Memo1: TMemo;
+    btn_Save: TAdvGlassButton;
+    btn_Cancel: TAdvGlassButton;
+    procedure btn_CancelClick(Sender: TObject);
+    procedure btn_SaveClick(Sender: TObject);
+    procedure FormCreate(Sender: TObject);
+  private
+    FNodeNo: string;
+    FEcuID: string;
+    FMsgNo: string;
+    FAlarmTime: string;
+    FAlarmDate: string;
+    FExtendID: string;
+    { Private declarations }
+  public
+    { Public declarations }
+    property NodeNo : string read FNodeNo write FNodeNo;
+    property EcuID : string read FEcuID write FEcuID;
+    property ExtendID : string read FExtendID write FExtendID;
+    property MsgNo : string read FMsgNo write FMsgNo;
+    property AlarmDate : string read FAlarmDate write FAlarmDate;
+    property AlarmTime : string read FAlarmTime write FAlarmTime;
+  end;
+
+var
+  fmSecurityEventConfirm: TfmSecurityEventConfirm;
+
+implementation
+
+{$R *.dfm}
+
+procedure TfmSecurityEventConfirm.btn_CancelClick(Sender: TObject);
+begin
+  Close;
+end;
+
+procedure TfmSecurityEventConfirm.btn_SaveClick(Sender: TObject);
+begin
+  Close;
+end;
+
+procedure TfmSecurityEventConfirm.FormCreate(Sender: TObject);
+begin
+  Memo1.SetFocus;
+end;
+
+end.

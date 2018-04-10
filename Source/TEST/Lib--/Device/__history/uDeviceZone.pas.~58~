@@ -1,0 +1,427 @@
+unit uDeviceZone;
+
+interface
+
+uses
+  System.SysUtils, System.Classes,Winapi.Windows,Vcl.Forms,
+  uWinsockNode,uDevice,uDeviceVariable;
+
+const MAXZONERCVCOUNT = 100;
+
+type
+  TDeviceZone = Class(TComponent)
+  private
+    procedure ZoneInformationSend(aInformationType: integer);
+    procedure ZoneInformationCheck(aInformationType: integer);
+    function  ZoneResponseCheck(aIndex,aDelay:integer):Boolean;
+    function  ZoneSettingInformationCheck(aDelay:Boolean=True):Boolean;
+    function  ZoneSettingInformationSetting(aDelay:Boolean=True):Boolean;
+    procedure SendPacket(aCmd:Char;aMsgNo:char;aDeviceVer, aData: String;aPriority:integer=0);
+  private
+    L_cZoneRCVSTATE: Array [0..MAXZONERCVCOUNT] of char;     //수신상태
+    L_bZoneResponse: Array [0..MAXZONERCVCOUNT] of Boolean;              //기기 설정 정보 응답 여부
+    FZoneUse: Boolean;
+    FZoneNo: integer;
+    FDevice: TDevice;
+    FEXTENDID: integer;
+    FZONEDELAY: string;
+    FALARMEVENTTYPE: string;
+    FZoneName: string;
+    FZONESENSETIME: string;
+    FARMAREANO: string;
+    FZONERECOVERY: string;
+    FEVENTSTATECODE: string;
+    FZONETYPE: string;
+    FReciveStateChange: Boolean;
+    FOnReceiveTypeChage: TReceiveTypeChange;
+    FZONESETTINGRcv: string;
+    FOnZonePacketChange: TZonePacket;
+    FInfoInitialize: Boolean;
+    procedure SetALARMEVENTTYPE(const Value: string);
+    procedure SetARMAREANO(const Value: string);
+    procedure SetEVENTSTATECODE(const Value: string);
+    procedure SetZONEDELAY(const Value: string);
+    procedure SetZONERECOVERY(const Value: string);
+    procedure SetZONESENSETIME(const Value: string);
+    procedure SetZONETYPE(const Value: string);
+    procedure SetReciveStateChange(const Value: Boolean);
+    procedure SetZONESETTINGRcv(const Value: string);
+    { Private declarations }
+  published
+    property ReciveStateChange : Boolean read FReciveStateChange write SetReciveStateChange; //수신 상태 변경 여부
+  published
+    //설정부분
+    property InfoInitialize : Boolean Read FInfoInitialize write FInfoInitialize;
+    property Device : TDevice read FDevice write FDevice;
+    property EXTENDID : integer read FEXTENDID write FEXTENDID;
+    property ZoneNo : integer read FZoneNo write FZoneNo;
+    property ZoneUse : Boolean read FZoneUse write FZoneUse; //존사용유무
+    property ZoneName : string read FZoneName write FZoneName;
+    property ZONETYPE : string read FZONETYPE write SetZONETYPE;
+    property EVENTSTATECODE : string read FEVENTSTATECODE write SetEVENTSTATECODE;
+    property ZONEDELAY : string read FZONEDELAY write SetZONEDELAY;
+    property ZONESENSETIME : string read FZONESENSETIME write SetZONESENSETIME;      //0400 고정
+    property ZONERECOVERY : string read FZONERECOVERY write SetZONERECOVERY;         //존복구 전송 유무
+    property ALARMEVENTTYPE : string read FALARMEVENTTYPE write SetALARMEVENTTYPE;   //알람발생타입 -한번만발생,계속 발생
+    property ARMAREANO : string read FARMAREANO write SetARMAREANO;
+  published
+    //수신부분
+    property ZONESETTINGRcv : string read FZONESETTINGRcv write SetZONESETTINGRcv;
+  published
+    //이벤트 발생
+    property OnReceiveTypeChage : TReceiveTypeChange read FOnReceiveTypeChage write FOnReceiveTypeChage;
+    property OnZonePacketChange : TZonePacket read FOnZonePacketChange write FOnZonePacketChange;
+  public
+    { Public declarations }
+    constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
+    procedure ZoneReciveCheck;
+  public
+    procedure RcvZoneInformation(aECUID,aDeviceVer,aRealData:string);
+  end;
+  TdmDeviceZone = class(TDataModule)
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+  end;
+
+var
+  dmDeviceZone: TdmDeviceZone;
+
+implementation
+
+uses
+  uCommonFunction;
+
+{%CLASSGROUP 'System.Classes.TPersistent'}
+
+{$R *.dfm}
+
+{ TDeviceZone }
+
+constructor TDeviceZone.Create(AOwner: TComponent);
+var
+  i : integer;
+begin
+  inherited;
+  for i := 0 to HIGH(L_cZoneRCVSTATE) do
+  begin
+    L_cZoneRCVSTATE[i] := 'Y';
+  end;
+end;
+
+destructor TDeviceZone.Destroy;
+begin
+
+  inherited;
+end;
+
+procedure TDeviceZone.RcvZoneInformation(aECUID, aDeviceVer, aRealData: string);
+var
+  stTemp : string;
+begin
+  L_bZoneResponse[con_ZoneCmdSetting] := True;
+  if (ZONESETTINGRcv = 'R') or (ZONESETTINGRcv = 'S') then ZONESETTINGRcv := 'Y';
+  EVENTSTATECODE := Copy(aRealData, 5, 2);
+  ZONETYPE := Copy(aRealData, 7, 1);            //감시형태 0.방범
+  ALARMEVENTTYPE := Copy(aRealData, 8, 1);      //알람발생 방식
+  ZONERECOVERY := Copy(aRealData, 9, 1);        //복구신호 전송 유무
+  ZONEDELAY := Copy(aRealData, 10, 1);          //지연시간 사용유무
+  stTemp := copy(aRealData,31,2);
+  if isDigit(stTemp) then ARMAREANO := inttostr(strtoint(stTemp))
+  else ARMAREANO := '0';
+  ZONESENSETIME := Copy(aRealData, 49, 4);
+end;
+
+procedure TDeviceZone.SendPacket(aCmd, aMsgNo: char; aDeviceVer, aData: String;
+  aPriority: integer);
+begin
+  if Device.DeviceNode <> nil then
+     Device.DeviceNode.SendPacket(TDevice(Device).EcuID,aCmd,aMsgNo,aDeviceVer,aData,aPriority);
+end;
+
+procedure TDeviceZone.SetALARMEVENTTYPE(const Value: string);
+begin
+  if FALARMEVENTTYPE = Value then Exit;
+
+  FALARMEVENTTYPE := Value;
+
+  if InfoInitialize then Exit;
+
+  if Assigned(FOnZonePacketChange) then
+  begin
+    OnZonePacketChange(Self,con_ZoneCmdAlarmEventType,TNode(Device.DeviceNode).NO,TDevice(Device).EcuID,inttostr(EXTENDID),inttostr(ZoneNo),Value);
+  end;
+end;
+
+
+procedure TDeviceZone.SetARMAREANO(const Value: string);
+begin
+  if FARMAREANO = Value then Exit;
+
+  FARMAREANO := Value;
+
+  if InfoInitialize then Exit;
+
+  if Assigned(FOnZonePacketChange) then
+  begin
+    OnZonePacketChange(Self,con_ZoneCmdArmArea,TNode(Device.DeviceNode).NO,TDevice(Device).EcuID,inttostr(EXTENDID),inttostr(ZoneNo),Value);
+  end;
+end;
+
+procedure TDeviceZone.SetEVENTSTATECODE(const Value: string);
+begin
+  if FEVENTSTATECODE = Value then Exit;
+  FEVENTSTATECODE := Value;
+
+  if InfoInitialize then Exit;
+
+  if Assigned(FOnZonePacketChange) then
+  begin
+    OnZonePacketChange(Self,con_ZoneCmdEventStateCode,TNode(Device.DeviceNode).NO,TDevice(Device).EcuID,inttostr(EXTENDID),inttostr(ZoneNo),Value);
+  end;
+end;
+
+procedure TDeviceZone.SetReciveStateChange(const Value: Boolean);
+begin
+  if FReciveStateChange = Value then Exit;
+  FReciveStateChange := Value;
+  if Value then
+     TDevice(Device).ReciveStateChange := True;
+end;
+
+procedure TDeviceZone.SetZONEDELAY(const Value: string);
+begin
+  if FZONEDELAY = Value then Exit;
+
+  FZONEDELAY := Value;
+
+  if InfoInitialize then Exit;
+
+  if Assigned(FOnZonePacketChange) then
+  begin
+    OnZonePacketChange(Self,con_ZoneCmdDelayUse,TNode(Device.DeviceNode).NO,TDevice(Device).EcuID,inttostr(EXTENDID),inttostr(ZoneNo),Value);
+  end;
+end;
+
+procedure TDeviceZone.SetZONERECOVERY(const Value: string);
+begin
+  if FZONERECOVERY = Value then Exit;
+
+  FZONERECOVERY := Value;
+
+  if InfoInitialize then Exit;
+
+  if Assigned(FOnZonePacketChange) then
+  begin
+    OnZonePacketChange(Self,con_ZoneCmdRecovery,TNode(Device.DeviceNode).NO,TDevice(Device).EcuID,inttostr(EXTENDID),inttostr(ZoneNo),Value);
+  end;
+end;
+
+procedure TDeviceZone.SetZONESENSETIME(const Value: string);
+begin
+  if FZONESENSETIME = Value then Exit;
+  FZONESENSETIME := Value;
+
+  if InfoInitialize then Exit;
+
+  if Assigned(FOnZonePacketChange) then
+  begin
+    OnZonePacketChange(Self,con_ZoneCmdSenseTime,TNode(Device.DeviceNode).NO,TDevice(Device).EcuID,inttostr(EXTENDID),inttostr(ZoneNo),Value);
+  end;
+end;
+
+procedure TDeviceZone.SetZONESETTINGRcv(const Value: string);
+begin
+  L_cZoneRCVSTATE[con_ZoneCmdSetting] := Value[1];
+  if FZONESETTINGRcv = Value then Exit;
+  ReciveStateChange := True;
+  FZONESETTINGRcv := Value;
+  if Assigned(FOnReceiveTypeChage) then
+  begin
+    OnReceiveTypeChage(Self,TNode(Device.DeviceNode).NO,'ZONE',TDevice(Device).EcuID,'0',inttostr(ZoneNo),con_ZoneCmdSetting,Value);
+  end;
+end;
+
+procedure TDeviceZone.SetZONETYPE(const Value: string);
+begin
+  if FZONETYPE = Value then Exit;
+  FZONETYPE := Value;
+  case Value[1] of
+    '0' : begin
+      EVENTSTATECODE := 'S' + inttostr(ZoneNo);
+      ZONERECOVERY := '0';
+    end;
+    '1' : begin
+      EVENTSTATECODE := 'FI';
+      ZONERECOVERY := '1';
+    end;
+    '2' : begin
+      EVENTSTATECODE := 'G1';
+      ZONERECOVERY := '1';
+    end;
+    '3' : begin
+      EVENTSTATECODE := 'E1';
+      ZONERECOVERY := '1';
+    end;
+    '4' : begin
+      EVENTSTATECODE := 'Q1';
+      ZONERECOVERY := '1';
+    end;
+    '5' : begin
+      EVENTSTATECODE := 'CL';
+      ZONERECOVERY := '0';
+    end;
+    '6' : begin
+      EVENTSTATECODE := 'S' + inttostr(ZoneNo);
+      ZONERECOVERY := '0';
+    end;
+  end;
+
+  if InfoInitialize then Exit;
+
+  if Assigned(FOnZonePacketChange) then
+  begin
+    OnZonePacketChange(Self,con_ZoneCmdType,TNode(Device.DeviceNode).NO,TDevice(Device).EcuID,inttostr(EXTENDID),inttostr(ZoneNo),Value);
+  end;
+end;
+
+procedure TDeviceZone.ZoneInformationCheck(aInformationType: integer);
+begin
+  case aInformationType of
+    con_ZoneCmdSetting : begin
+      ZONESETTINGRcv :='R';
+      ZoneSettingInformationCheck;
+      if ZONESETTINGRcv ='R' then ZONESETTINGRcv := 'N';
+    end;
+  end;
+end;
+
+procedure TDeviceZone.ZoneInformationSend(aInformationType: integer);
+begin
+  case aInformationType of
+    con_ZoneCmdSetting : begin
+      ZONESETTINGRcv :='S';
+      ZoneSettingInformationSetting;
+      if ZONESETTINGRcv ='S' then ZONESETTINGRcv := 'U';
+    end;
+  end;
+end;
+
+procedure TDeviceZone.ZoneReciveCheck;
+var
+  i : integer;
+  bReciveStateCheck : Boolean;
+begin
+  if EXTENDID <> 0 then   //존확장기는 존확장기에서 상태 조회해야 됨
+  begin
+    ReciveStateChange := False;
+    Exit;
+  end;
+  Try
+    for i := 0 to HIGH(L_cZoneRCVSTATE) do
+    begin
+      if L_cZoneRCVSTATE[i] = 'U' then  //변경된 건이 있으면 송신 하자....
+      begin
+        ZoneInformationSend(i);
+        Exit;
+      end;
+    end;
+    for i := 0 to HIGH(L_cZoneRCVSTATE) do
+    begin
+      if L_cZoneRCVSTATE[i] = 'N' then  //상태를 수신할 건이 있으면 수신 체크 하자....
+      begin
+        ZoneInformationCheck(i);
+        Exit;
+      end;
+    end;
+    //여기서는 수신상태 체크 하는 곳 ==> 수신이 안되면 여기서 멈춤 현상 발생
+    bReciveStateCheck := False;
+    for i := 0 to HIGH(L_cZoneRCVSTATE) do
+    begin
+      if L_cZoneRCVSTATE[i] <> 'Y' then
+      begin
+        bReciveStateCheck := True;
+        break;
+      end;
+    end;
+    ReciveStateChange := bReciveStateCheck;  //전체 송신 했으면 False로 하자
+  Finally
+  End;
+end;
+
+function TDeviceZone.ZoneResponseCheck(aIndex, aDelay: integer): Boolean;
+var
+  FirstTickCount : double;
+begin
+  FirstTickCount := GetTickCount + aDelay;
+  While Not L_bZoneResponse[aIndex] do
+  begin
+    sleep(1);
+    Application.ProcessMessages;
+    if GetTickCount > FirstTickCount then Break;
+  end;
+  result := L_bZoneResponse[aIndex];
+end;
+
+function TDeviceZone.ZoneSettingInformationCheck(aDelay: Boolean): Boolean;
+var
+  stData : string;
+begin
+  L_bZoneResponse[con_ZoneCmdSetting] := False;
+  stData := 'LP' +                             //MSG Code
+            FillZeroNumber(ZoneNo, 2);               //리더번호
+  SendPacket('Q',TNode(Device.DeviceNode).GetSendMsgNo,TNode(Device.DeviceNode).GetDeviceVer, stData,0);
+  if aDelay then
+    result := ZoneResponseCheck(con_ZoneCmdSetting,con_DelayTime);
+
+end;
+
+function TDeviceZone.ZoneSettingInformationSetting(aDelay: Boolean): Boolean;
+var
+  stData : string;
+begin
+  if ZONETYPE = '' then ZONETYPE := '0';
+  if ZONERECOVERY = '' then ZONERECOVERY := '0';
+  if ZONEDELAY = '' then ZONEDELAY := '0';
+  if Not isdigit(ARMAREANO) then ARMAREANO := '0';
+  if Device.ARMAREAUSE = '0' then ARMAREANO := '0'
+  else if Device.ARMAREAUSE = '1' then
+  begin
+    if ARMAREANO = '0' then ARMAREANO := '1';
+  end;
+
+  if EVENTSTATECODE = '' then EVENTSTATECODE := 'SS';
+
+  L_bZoneResponse[con_ZoneCmdSetting] := False;
+  stData := 'LP' +                                   //MSG Code
+            FillZeroNumber(ZoneNo, 2) +               //존번호
+            EVENTSTATECODE +                              //상태코드('SS' 디폴트)
+            ZONETYPE[1] +                               //감시형태
+            '0' +                                      //알람발생 방식(고정)
+            ZONERECOVERY[1] +                              //복구신호전송(고정)
+            ZONEDELAY[1] +                                //지연시간 사용유무
+            '00' +                                     //램프
+            '00' +                                     //싸이렌
+            '00' +                                     //릴레이1
+            '00' +                                     //릴레이2
+            '00' +                                     //출입문연동1
+            '00' +                                     //출입문연동2
+            '00' +                                     //메인램프
+            '00' +                                     //메인싸이렌
+            '00' +                                     //메인릴레이1
+            '00' +                                     //메인릴레이2
+            FillZeroNumber(strtoint(ARMAREANO),2) +    //구역번호
+            SetSpacelength('', 16) +                   //위치명
+            '04' +                                     //감지시간 고정
+            '00';                                          //사용안함
+            //aZoneUsed;
+
+  SendPacket('I',TNode(Device.DeviceNode).GetSendMsgNo,TNode(Device.DeviceNode).GetDeviceVer, stData,0);
+  if aDelay then
+    result := ZoneResponseCheck(con_ZoneCmdSetting,con_DelayTime);
+
+end;
+
+end.

@@ -1,0 +1,3832 @@
+unit uWinsockNode;
+
+interface
+
+uses
+  System.SysUtils, System.Classes,Web.Win.Sockets,Vcl.ExtCtrls,System.SyncObjs,
+  uDeviceVariable,Winapi.WinSock,Vcl.Controls,Winapi.Messages,Forms,
+  u_c_byte_buffer;
+
+const wm_asynch_select= wm_User;
+const k_buffer_max= 4096;
+      k_tcp_ip_chunk= 1500;
+
+
+
+type
+  TNode = Class(TComponent)
+  private
+    RcvCheckTimer: TTimer;
+    CardDownLoadTimer : TTimer;
+    StateCheckTimer : TTimer;
+    NodeSendPacketTimer : TTimer;
+    FTPCardDownLoadTimer : TTimer;
+    FireRecoveryTimer : TTimer;
+    L_bSocketWriting : Boolean;  //소켓 전송 중
+    L_bRcvChecking : Boolean;   //등록정보 수신중
+    L_bCardDownLoading : Boolean;  //카드 다운로드 중
+    L_bStateChecking : Boolean;    //방범 출입 상태 확인 중
+    L_bFireEvent : Boolean;        //화재 알람 발생
+    L_nSendMsgNo : integer;        //송신 메시지 번호
+    L_nStateCheckEcuSeq : integer; //출입 방범 상태 체크 컨트롤러
+    L_nCardDownLoadEcuSeq : integer; //카드데이터 다운로드 컨트롤러
+    L_cNodeRCVSTATE: Array [0..MAXNODERCVCOUNT] of char;     //수신상태
+    //********************* WinSock 변수
+    l_wsa_data: twsaData;
+    //l_client_socket_handle: tSocket;
+    l_c_reception_buffer: c_byte_buffer;
+    //********************* WinSock 변수
+    L_stComBuffer : RawByteString;
+    L_stReceivedLastpacket: String;
+    L_stDeviceVer : string;
+    NodeDeviceList : TStringList;
+    ConnectDeviceList : TStringList;
+    Send1stDataList : TStringList;
+    Send2ndDataList : TStringList;
+    Send3rdDataList : TStringList;
+    Send4thDataList : TStringList;
+    FTPDownEcuList : TStringList;
+    L_n1stCount : integer;
+    L_n2ndCount : integer;
+    L_n3rdCount : integer;
+    L_n4thCount : integer;
+    L_nSendDelayCount : integer;
+  private
+    //노드 처리 함수
+    function ECUConnected(aECUID:string;aConnected:TConnectedState):Boolean;
+    function ECUUsed(aECUID:string;aUsed:Boolean):Boolean;
+  private
+    //컨트롤러의 이벤트 수신부
+    procedure AntiPassDataEvent(Sender: TObject;  aNodeNo : integer;aECUID,aSubCmd,aAntiGroup,aData: string );
+    procedure ArmAreaPacketChange(Sender: TObject;  aCmd,aNodeNo : integer;aEcuID,aExtendID,aNumber:string; aData:string);
+
+    procedure CardPermitChange(Sender: TObject;  aNodeNo : integer;aEcuID,aCardNo,aPermit,aDoorPermit,aArmAreaPermit,aTimeCodeUse,aTimeCodeGroup,aTimeData,aWeekCode:string);
+    procedure CardPermitLoading(Sender: TObject;aCardNo:string);
+    procedure CardRcvAckChange(Sender: TObject;  aNodeNo : integer;aEcuID,aCardNo,aRcvAck:string);
+
+    procedure CardReaderPacketChange(Sender: TObject;  aCmd,aNodeNo : integer;aEcuID,aExtendID,aNumber:string; aData:string);
+
+    procedure CurrentAlarmEvent(Sender: TObject;  aNodeNo,aECUID,aCmd,aMsgNo,aTime,aSubCLass,aSubAddr,aArmArea,aMode,aAlarmStateCode,aLoop,aZoneState,aOper,
+                                            aAlarmStateCodeName,aAlarmStatePCCode,aAlarmStatePCCodeName,aArmModeChange,aAlarmView,aAlarmSound,aAlarmColor:string);
+    procedure CurrentDoorState(Sender: TObject;  aNodeNo : integer;aEcuID,aExtendID,aNumber:string; aCardMode,aDoorMode,aDoorState,aLockState,aDoorFire:string);
+
+    procedure DevicePacketChange(Sender: TObject; aCmd, aNodeNo : integer;aEcuID:string; aData:string);
+
+    procedure DeviceCardAccessEvent(Sender: TObject; aNodeNo,aECUID,aDoorNo,aReaderNo,aInOut,aTime,aCardMode,aDoorMode,aChangeState,aAccessResult,aDoorState,aATButton,aCardNo,aType,aArmAreaNo,aAntiGroup:string);
+    procedure DeviceConnectedEvent(Sender: TObject; aSocketNo, aNodeNo : integer;aEcuID:string; aConnected:TConnectedState;aAntiGroupCode:string);
+    procedure DeviceUsedEvent(Sender: TObject;  aNodeNo : integer;aType:string;aEcuID,aExtendID,aNumber:string; aUsed:Boolean);
+    procedure DeviceReceiveData(Sender: TObject;  aNodeNo : integer;aType:string;aEcuID,aExtendID,aNumber:string;aRcvInfoType:integer; aData: string);
+    procedure DeviceReceiveTypeChage(Sender: TObject;  aNodeNo : integer;aType:string;aEcuID,aExtendID,aNumber:string;aRcvInfoType:integer; aData: string);
+
+    procedure DoorPacketChange(Sender: TObject;  aCmd,aNodeNo : integer;aEcuID,aExtendID,aNumber:string; aData:string);
+
+    procedure ZONEEXTENDTYPEChange(Sender: TObject;  aNodeNo : integer;aEcuID,aExtendID,aNumber:string; aData:string);
+    procedure ZonePacketChange(Sender: TObject;  aCmd,aNodeNo : integer;aEcuID,aExtendID,aNumber:string; aData:string);
+
+    procedure CardPermitAllLoading(Sender: TObject;  aNodeNo : integer; aData:string);
+    procedure EmployeePermitAllLoading(Sender: TObject;  aNodeNo : integer; aData:string);
+
+  private
+    { Private declarations }
+    procedure FTPCardDownLoadTimerTimer(Sender:TObject);
+    procedure NodeSendPacketTimerTimer(Sender: TObject);
+    procedure RcvCheckTimerTimer(Sender: TObject);
+    procedure CardDownLoadTimerTimer(Sender:TObject);
+    procedure StateCheckTimerTimer(Sender:TObject);
+    procedure FireRecoveryTimerTimer(Sender:TObject);
+    procedure TcpClientReceive(Sender: TObject; Buf: PAnsiChar;
+      var DataLen: Integer);
+    procedure TcpClientConnect(Sender: TObject);
+    procedure TcpClientDisconnect(Sender: TObject);
+    procedure TcpClientError(Sender: TObject; SocketError: Integer);
+    procedure TcpClientSend(Sender: TObject; Buf: PAnsiChar;
+      var DataLen: Integer);
+
+    procedure NodeDataReadingProcessing;
+    Function NodeDataPacketProcess(aPacketData:string):Boolean;
+
+    procedure NodeInformationSend(aInformationType:integer);
+    procedure NodeInformationCheck(aInformationType:integer);
+  private
+    function GetDeviceIDArmAreaInformation(aCmd:integer;aEcuID,aSubNo:string):string;
+    function GetDeviceIDCardReaderInformation(aCmd:integer;aEcuID,aSubNo:string):string;
+    function GetDeviceIDDoorInformation(aCmd:integer;aEcuID,aSubNo:string):string;
+    function GetDeviceIDExtentionInformation(aCmd:integer;aEcuID,aSubNo:string):string;
+    function GetDeviceIDZoneInformation(aCmd:integer;aEcuID,aZoneID:string):string;
+    function GetDeviceIndexArmAreaInformation(aCmd,aIndex,aSubIndex:integer):string;
+    function GetDeviceIndexCardReaderInformation(aCmd,aIndex,aSubIndex:integer):string;
+    function GetDeviceIndexDoorInformation(aCmd,aIndex,aSubIndex:integer):string;
+    function GetDeviceIndexExtentionInformation(aCmd,aIndex,aSubIndex:integer):string;
+    function GetDeviceDoorArmaAreaState(aEcuID:string):string;
+    function GetRegEcuUseData : string; //ECU 사용유무 등록
+  private
+    FTCSDeviceSender : TCriticalSection;
+    FNo: Integer;
+    FLanPort: integer;
+    FLanIP: string;
+    FSocketOpen: Boolean;
+    FNodeConnected: TConnectedState;
+    FDeviceID: string;
+    FNodeName: string;
+    FKTTSYSTEMID: string;
+    FDVRUSE: string;
+    FKTTCDMAUSE: string;
+    FKTTCDMASKILL: Boolean;
+    FKTTCDMARSSI: string;
+    FKTTCDMAMIN: string;
+    FFIREGUBUNCODE: string;
+    FKTTREMOTEARMRINGCOUNT: integer;
+    FDVRPORT: string;
+    FKTTCDMAPORT: string;
+    FKTTCDMACHECKTIME: string;
+    FKTTCDMAMUX: string;
+    FKTTREMOTEDISARMRINGCOUNT: integer;
+    FKTTTELNUMBER2: string;
+    FKTTTELNUMBER1: string;
+    FDVRIP: string;
+    FKTTCDMAIP: string;
+    FDVRSKILL: Boolean;
+    FKTTREMOTERINGCOUNTRCV: string;
+    FKTTREMOTEDISARMRINGCOUNTRCV: string;
+    FKTTTELNUMBERRCV: string;
+    FDVRDATARCV: string;
+    FKTTCDMADATARCV: string;
+    FKTTSYSTEMIDRCV: string;
+    FDVRUSERCV: string;
+    FKTTCDMAUSERCV: string;
+    FOnDeviceConnected: TDeviceConnect;
+    FOnRcvInvalidDevice: TNotifyReceive;
+    FOnSendData: TNotifyReceive;
+    FOnRcvData: TNotifyReceive;
+    FReciveStateChange: Boolean;
+    FOnReceiveTypeChage: TReceiveTypeChange;
+    FLastReceiveTime: TDateTime;
+    FOnNodePacket: TNodePacket;
+    //Handle 생성 부분
+    FHandle : THandle;
+    FOnDeviceUsed: TDeviceUsed;
+    FOnReceiveData: TReceiveTypeChange;
+    FARMEXTENTIONMAINTOLOCALRCV: string;
+    FARMEXTENTIONMAINTOLOCAL: string;
+    FARMEXTENTIONMAINFROMLOCALRCV: string;
+    FARMEXTENTIONMAINFROMLOCAL: string;
+    FARMEXTENTIONSKILL: Boolean;
+    FARMEXTENTIONGUBUN: string;
+    FOnZONEEXTENDTYPEChange: TZoneExtentionPacket;
+    FInfoInitialize: Boolean;
+    FOnCardPermitChange: TCardPermitPacket;
+    FCardDownLoadStart: Boolean;
+    FOnCurrentAlarmEvent: TAlarmEvent;
+    FOnCurrentDoorState: TDoorStatePacket;
+    FOnDeviceCardAccessEvent: TDeviceCardAccessEvent;
+    FOnCardRcvAckChange: TCardRcvPacket;
+    FFireEvent: Boolean;
+    FDoorArmAreaStateRCV: Boolean;
+    FECUUSERCV: string;
+    FSocketType: integer;
+    FWinSocket: tSocket;
+    FOnDevicePacketChange: TDevicePacket;
+    FOnDoorPacketChange: TDoorPacket;
+    FOnCardReaderPacketChange: TCardReaderPacket;
+    FOnDeviceNodeServerPacketChange: TDeviceNodeServerPacket;
+    FOnZonePacketChange: TZonePacket;
+    FMaxEcuCount: integer;
+    FOnArmAreaPacketChange: TArmAreaPacket;
+    FStart: Boolean;
+    FCardLoadComplete: Boolean;
+    FOnAutoDownLoadStart: TNotifyReceive;
+    FNodeDestory: Boolean;
+    FOnCardPermitLoading: TCardPermitLoading;
+    FOnCardPermitAllLoading: TNotifyReceive;
+    FOnEmployeePermitAllLoading: TNotifyReceive;
+    FOnAntiPassDataEvent: TAntiPassEvent;
+
+    function GetHandle : THandle;
+
+    procedure SetNo(const Value: Integer);
+    procedure SetLanIP(const Value: string);
+    procedure SetLanPort(const Value: integer);
+    procedure SetSocketOpen(const Value: Boolean);
+    procedure SetNodeConnected(const Value: TConnectedState);
+    procedure SetDeviceID(const Value: string);
+    procedure SetNodeName(const Value: string);
+    procedure SetKTTSYSTEMID(const Value: string);
+    procedure SetDVRIP(const Value: string);
+    procedure SetDVRPORT(const Value: string);
+    procedure SetDVRUSE(const Value: string);
+    procedure SetFIREGUBUNCODE(const Value: string);
+    procedure SetKTTCDMACHECKTIME(const Value: string);
+    procedure SetKTTCDMAIP(const Value: string);
+    procedure SetKTTCDMAMIN(const Value: string);
+    procedure SetKTTCDMAPORT(const Value: string);
+    procedure SetKTTCDMARSSI(const Value: string);
+    procedure SetKTTCDMASKILL(const Value: Boolean);
+    procedure SetKTTCDMAMUX(const Value: string);
+    procedure SetKTTCDMAUSE(const Value: string);
+    procedure SetKTTREMOTEARMRINGCOUNT(const Value: integer);
+    procedure SetKTTREMOTEDISARMRINGCOUNT(const Value: integer);
+    procedure SetKTTTELNUMBER1(const Value: string);
+    procedure SetKTTTELNUMBER2(const Value: string);
+    procedure SetDVRSKILL(const Value: Boolean);
+    procedure SetARMEXTENTIONMAINFROMLOCAL(const Value: string);
+    procedure SetARMEXTENTIONMAINTOLOCAL(const Value: string);
+    procedure SetARMEXTENTIONSKILL(const Value: Boolean);
+    procedure SetARMEXTENTIONGUBUN(const Value: string);
+
+    procedure SetDVRDATARCV(const Value: string);
+    procedure SetDVRUSERCV(const Value: string);
+    procedure SetKTTCDMADATARCV(const Value: string);
+    procedure SetKTTREMOTERINGCOUNTRCV(const Value: string);
+    procedure SetKTTSYSTEMIDRCV(const Value: string);
+    procedure SetKTTTELNUMBERRCV(const Value: string);
+    procedure SetReciveStateChange(const Value: Boolean);
+    procedure SetKTTCDMAUSERCV(const Value: string);
+    procedure SetARMEXTENTIONMAINFROMLOCALRCV(const Value: string);
+    procedure SetARMEXTENTIONMAINTOLOCALRCV(const Value: string);
+    procedure SetCardDownLoadStart(const Value: Boolean);
+    procedure SetFireEvent(const Value: Boolean);
+    procedure SetDoorArmAreaStateRCV(const Value: Boolean);
+    procedure SetECUUSERCV(const Value: string);
+  public
+    constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
+    function HandleAllocated : Boolean;
+    procedure HandleNeeded;
+    procedure handle_wm_async_select(var Msg: TMessage); message wm_asynch_select;
+    procedure ReceiveStateClear;
+  protected
+    procedure WndProc ( var Message : TMessage ); virtual;
+  public
+    { Public declarations }
+    Procedure SendPacket(aEcuId: String;aCmd:Char;aMsgNo:char;aDeviceVer, aData: String;aPriority:integer=0);
+    procedure ServerSocketClose;
+    procedure ServerSocketRead;
+    function PutString(aData:string):Boolean;
+  public
+    function GetDeviceIDInformation(aCmd:integer;aEcuID:string):string;  //ECU 정보
+    function GetDeviceIDSubInformation(aSubType,aCmd:integer;aEcuID,aSubNo:string):string;  // 정보
+    function GetDeviceIndexInformation(aCmd,aIndex:integer):string;  //ECU 정보
+    function GetDeviceIndexSubInformation(aSubType,aCmd,aIndex,aSubIndex:integer):string;  //기기정보
+    function GetDeviceIndexZoneInformation(aCmd,aEcuIndex,aExtentionIndex,aZoneNo:integer):string;  //기기정보
+    function GetNodeIndexInformation(aCmd:integer):string;  //ECU 정보
+
+    function GetDeviceVer:string;
+    function GetSendMsgNo:char;
+
+    function SetDeviceIDInformation(aCmd:integer;aEcuID,aValue:string):Boolean;
+    function SetDeviceIDSubInformation(aSubType,aCmd:integer;aEcuID,aSubNo,aValue:string):Boolean;  //기기정보
+    function SetDeviceRcvIDInformation(aCmd:integer;aEcuID,aValue:string):Boolean;
+    function SetDeviceRcvIDSubInformation(aSubType,aCmd:integer;aEcuID,aSubNo,aValue:string):Boolean;  //기기정보
+    function SetNodeIndexInformation(aCmd,aIndex:integer;aValue:string):string;  //ECU 정보
+    function SetHolidayClear:Boolean;
+    function SetDeviceHoliday(aEcuID,aDay,aValue:string):Boolean;
+  public
+    //컨트롤러 초기셋팅
+    procedure SetNodeToCardPermitInitialize(aEcuID,aExtendID,aCardNo,aCardPermit,aCardState,aDoor1,aDoor2,aDoor3,aDoor4,aDoor5,aDoor6,aDoor7,aDoor8,
+            aArmArea0,aArmArea1,aArmArea2,aArmArea3,aArmArea4,aArmArea5,aArmArea6,aArmArea7,aArmArea8,aRcvAck,aPositionNum,
+            aTimeCodeUse,aTCGroup,aTime1,aTime2,aTime3,aTime4,aTCWeekCode,aRegDate,aEndDate,aEmState:string);
+    procedure SetNodeToCardPermitExcute(aEcuID,aCardNo,aRcvAck:string);
+    procedure SetNodeToCardPermitSetting(aEcuID,aExtendID,aCardNo,aPermit,aCardState,aType,aNumber,
+          aPositionNum,aTimeCodeUse,aTCGroup,aTime1,aTime2,aTime3,aTime4,aWeekCode,aRegDate,aEndDate,aEmState:string);
+
+  public
+    procedure ControlNodeToDeviceArmAreaStateCheck(aEcuID,aArmAreaNo :string); //방범구역 상태 재전송
+    procedure ControlNodeToDeviceCardResend(aEcuID :string); //컨트롤러 카드 재전송
+    procedure ControlNodeToDeviceRegDeviceID(aDeviceID:string);  //컨트롤러 ID 셋팅
+    procedure ControlNodeToDeviceReset(aEcuID:string);   //컨트롤러리셋
+    procedure ControlNodeToDeviceTimeSync;               //컨트롤러 시간 동기화
+    procedure FireRecovery;
+    procedure FireDoorOpen(aFireGubunCode:string);
+  published
+    property Handle : THandle read GetHandle;
+    property SocketOpen : Boolean read FSocketOpen write SetSocketOpen;
+    property NodeConnected : TConnectedState read FNodeConnected write SetNodeConnected;
+    property LastReceiveTime : TDateTime read FLastReceiveTime write FLastReceiveTime;
+    property WinSocket : tSocket read FWinSocket write FWinSocket;
+    property Start : Boolean read FStart write FStart;
+  published
+    //설정값 정보
+    property NodeDestory : Boolean read FNodeDestory write FNodeDestory;
+    property InfoInitialize : Boolean Read FInfoInitialize write FInfoInitialize;
+    Property No: Integer Read FNo write SetNo;
+    Property DeviceID:string Read FDeviceID write SetDeviceID;   //노드 아이디 7자리
+    Property NodeName:string Read FNodeName write SetNodeName;   //노드 명
+    property CardDownLoadStart : Boolean Read FCardDownLoadStart write SetCardDownLoadStart;
+    property SocketType : integer read FSocketType write FSocketType;  //소켓 타입 1.PC -> 기기,2.PC <- 기기
+    property LANIP : string read FLanIP write SetLanIP;
+    property LANPort : integer read FLanPort write SetLanPort;
+    property CardLoadComplete : Boolean read FCardLoadComplete write FCardLoadComplete;
+
+    property ARMEXTENTIONSKILL : Boolean read FARMEXTENTIONSKILL write SetARMEXTENTIONSKILL;
+    property ARMEXTENTIONGUBUN : string read FARMEXTENTIONGUBUN write SetARMEXTENTIONGUBUN;
+    property ARMEXTENTIONMAINTOLOCAL : string read FARMEXTENTIONMAINTOLOCAL write SetARMEXTENTIONMAINTOLOCAL;
+    property ARMEXTENTIONMAINFROMLOCAL : string read FARMEXTENTIONMAINFROMLOCAL write SetARMEXTENTIONMAINFROMLOCAL;
+    property KTTSYSTEMID : string read FKTTSYSTEMID write SetKTTSYSTEMID;  //관제 시스템 아이디
+    property KTTTELNUMBER1 : string read FKTTTELNUMBER1 write SetKTTTELNUMBER1;  //관제 데코더 전화번호1
+    property KTTTELNUMBER2 : string read FKTTTELNUMBER2 write SetKTTTELNUMBER2;  //관제 데코더 전화번호2
+    property KTTREMOTEARMRINGCOUNT : integer read FKTTREMOTEARMRINGCOUNT write SetKTTREMOTEARMRINGCOUNT;  //원격경계시 링횟수
+    property KTTREMOTEDISARMRINGCOUNT : integer read FKTTREMOTEDISARMRINGCOUNT write SetKTTREMOTEDISARMRINGCOUNT;  //원격해제시 링횟수
+    property KTTCDMASKILL : Boolean read FKTTCDMASKILL write SetKTTCDMASKILL;   //CDMA 기능 유무
+    property KTTCDMAUSE : string read FKTTCDMAUSE write SetKTTCDMAUSE; //CDMA 사용 유무 0.미사용,1.사용
+    property KTTCDMAIP : string read FKTTCDMAIP write SetKTTCDMAIP;     //CDMA IP
+    property KTTCDMAPORT : string read FKTTCDMAPORT write SetKTTCDMAPORT; //CDMA Port
+    property KTTCDMACHECKTIME : string read FKTTCDMACHECKTIME write SetKTTCDMACHECKTIME; //CDMA check time
+    property KTTCDMARSSI : string read FKTTCDMARSSI write SetKTTCDMARSSI; //CDMA rssi
+    property KTTCDMAMIN : string read FKTTCDMAMIN write SetKTTCDMAMIN;
+    property KTTCDMAMUX : string read FKTTCDMAMUX write SetKTTCDMAMUX;
+    property DVRSKILL : Boolean read FDVRSKILL write SetDVRSKILL;   //DVR 기능 유무
+    property DVRUSE : string read FDVRUSE write SetDVRUSE; //DVR 사용 유무 0.미사용,1.사용
+    property DVRIP : string read FDVRIP write SetDVRIP; //DVR IP
+    property DVRPORT : string read FDVRPORT write SetDVRPORT; //DVR Port
+    property FIREGUBUNCODE : string read FFIREGUBUNCODE write SetFIREGUBUNCODE; //화재그룹코드
+    property FireEvent : Boolean read FFireEvent write SetFireEvent;
+    property MaxEcuCount : integer read FMaxEcuCount write FMaxEcuCount;
+
+    property ReciveStateChange : Boolean read FReciveStateChange write SetReciveStateChange; //수신 상태 변경 여부
+  published
+    //수신상태 정보
+    property ARMEXTENTIONMAINTOLOCALRCV : string read FARMEXTENTIONMAINTOLOCALRCV write SetARMEXTENTIONMAINTOLOCALRCV;
+    property ARMEXTENTIONMAINFROMLOCALRCV : string read FARMEXTENTIONMAINFROMLOCALRCV write SetARMEXTENTIONMAINFROMLOCALRCV;
+    property ECUUSERCV : string read FECUUSERCV write SetECUUSERCV;  //ECU 사용유무 설정
+    property KTTSYSTEMIDRCV : string read FKTTSYSTEMIDRCV write SetKTTSYSTEMIDRCV;  //관제 시스템 아이디
+    property KTTTELNUMBERRCV : string read FKTTTELNUMBERRCV write SetKTTTELNUMBERRCV;  //관제 데코더 전화번호1
+    property KTTREMOTERINGCOUNTRCV : string read FKTTREMOTERINGCOUNTRCV write SetKTTREMOTERINGCOUNTRCV;  //원격경계시 링횟수
+    property KTTCDMADATARCV : string read FKTTCDMADATARCV write SetKTTCDMADATARCV;     //CDMA DATA
+    property KTTCDMAUSERCV : string read FKTTCDMAUSERCV write SetKTTCDMAUSERCV; //CDMA 사용 유무 0.미사용,1.사용
+    property DVRUSERCV : string read FDVRUSERCV write SetDVRUSERCV; //DVR 사용 유무 0.미사용,1.사용
+    property DVRDATARCV : string read FDVRDATARCV write SetDVRDATARCV; //DVR IP
+    property DoorArmAreaStateRCV : Boolean read FDoorArmAreaStateRCV write SetDoorArmAreaStateRCV;
+  published
+    //AntiPass 이벤트
+    property OnAntiPassDataEvent : TAntiPassEvent read FOnAntiPassDataEvent write FOnAntiPassDataEvent;               //데이터 수신
+    //노드 이벤트
+    property OnArmAreaPacketChange : TArmAreaPacket read FOnArmAreaPacketChange write FOnArmAreaPacketChange;
+    //카드데이터 이벤트 발생
+    property OnCardPermitChange : TCardPermitPacket read FOnCardPermitChange write FOnCardPermitChange;
+    property OnCardPermitLoading : TCardPermitLoading read FOnCardPermitLoading write FOnCardPermitLoading;
+    property OnCardRcvAckChange : TCardRcvPacket read FOnCardRcvAckChange write FOnCardRcvAckChange;
+
+    property OnCardReaderPacketChange : TCardReaderPacket read FOnCardReaderPacketChange write FOnCardReaderPacketChange;
+
+    //현재 상태 이벤트 변경 발생
+    property OnCurrentAlarmEvent: TAlarmEvent read FOnCurrentAlarmEvent write FOnCurrentAlarmEvent;
+    property OnCurrentDoorState : TDoorStatePacket read FOnCurrentDoorState write FOnCurrentDoorState;
+
+    property OnDeviceNodeServerPacketChange : TDeviceNodeServerPacket read FOnDeviceNodeServerPacketChange write FOnDeviceNodeServerPacketChange;
+    property OnDevicePacketChange : TDevicePacket read FOnDevicePacketChange write FOnDevicePacketChange;
+
+    property OnDeviceCardAccessEvent : TDeviceCardAccessEvent read FOnDeviceCardAccessEvent write FOnDeviceCardAccessEvent;
+    ProPerty OnDeviceConnected : TDeviceConnect read FOnDeviceConnected Write FOnDeviceConnected;
+    ProPerty OnDeviceUsed : TDeviceUsed read FOnDeviceUsed Write FOnDeviceUsed;
+
+    property OnDoorPacketChange:TDoorPacket read FOnDoorPacketChange write FOnDoorPacketChange;
+
+    property OnNodePacket : TNodePacket read FOnNodePacket write FOnNodePacket;
+    ProPerty OnRcvData : TNotifyReceive read FOnRcvData write FOnRcvData;
+    ProPerty OnRcvInvalidDevice: TNotifyReceive read FOnRcvInvalidDevice write FOnRcvInvalidDevice;
+    property OnReceiveData : TReceiveTypeChange read FOnReceiveData write FOnReceiveData;                //데이터 수신
+    property OnReceiveTypeChage : TReceiveTypeChange read FOnReceiveTypeChage write FOnReceiveTypeChage; //수신상태 변경
+    ProPerty OnSendData : TNotifyReceive read FOnSendData write FOnSendData;
+
+    property OnZONEEXTENDTYPEChange :TZoneExtentionPacket read FOnZONEEXTENDTYPEChange write FOnZONEEXTENDTYPEChange;
+    property OnZonePacketChange : TZonePacket read FOnZonePacketChange write FOnZonePacketChange;
+
+    property OnAutoDownLoadStart : TNotifyReceive read FOnAutoDownLoadStart write FOnAutoDownLoadStart;
+    property OnCardPermitAllLoading: TNotifyReceive read FOnCardPermitAllLoading write FOnCardPermitAllLoading;
+    property OnEmployeePermitAllLoading: TNotifyReceive read FOnEmployeePermitAllLoading write FOnEmployeePermitAllLoading;
+  end;
+
+
+  TdmWinsockNode = class(TDataModule)
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+  end;
+
+var
+  dmWinsockNode: TdmWinsockNode;
+
+implementation
+
+uses
+  uCommonFunction,
+  uCommonVariable,
+  uDevice,
+  uDeviceFunction,
+  uDevicePacket;
+
+{%CLASSGROUP 'System.Classes.TPersistent'}
+
+{$R *.dfm}
+
+{ TNode }
+
+(*
+constructor TNode.Create(AOwner : TComponent);
+var
+  i : integer;
+  oDevice : TDevice;
+begin
+  inherited Create(Application);
+
+  for i := 0 to HIGH(L_cNodeRCVSTATE) do
+  begin
+    L_cNodeRCVSTATE[i] := 'Y';
+  end;
+  L_nSendMsgNo := 0;
+
+  FTCSDeviceSender := TCriticalSection.Create;
+
+  NodeDeviceList := TStringList.Create;
+  for i := 0 to G_nDefaultECUCount do
+  begin
+    oDevice := TDevice.Create(nil);
+    oDevice.DeviceID := FillZeroNumber(i,2);
+    if i = 0 then oDevice.DeviceUse := True
+    else oDevice.DeviceUse := False;
+    oDevice.DeviceNode := self;
+    oDevice.OnReceiveTypeChage := DeviceReceiveTypeChage;
+    NodeDeviceList.AddObject(FillZeroNumber(i,2),oDevice);
+  end;
+  l_client_socket_handle := Invalid_Socket;
+  l_c_reception_buffer := Nil;
+  RcvCheckTimer := TTimer.Create(nil);
+  RcvCheckTimer.Interval := 200;
+  RcvCheckTimer.OnTimer := RcvCheckTimerTimer;
+  RcvCheckTimer.Enabled := False;
+end;
+*)
+
+procedure TNode.AntiPassDataEvent(Sender: TObject; aNodeNo: integer; aECUID,
+  aSubCmd, aAntiGroup, aData: string);
+begin
+  Try
+    if Assigned(FOnAntiPassDataEvent) then
+    begin
+      OnAntiPassDataEvent(Self,aNodeNo,aEcuID,aSubCmd,aAntiGroup,aData);
+    end;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.AntiPassDataEvent');
+  End;
+end;
+
+procedure TNode.ArmAreaPacketChange(Sender: TObject; aCmd,aNodeNo : integer;
+  aEcuID, aExtendID, aNumber, aData: string);
+begin
+  Try
+    if Assigned(FOnArmAreaPacketChange) then
+    begin
+      OnArmAreaPacketChange(Self,aCmd,aNodeNo,aEcuID,aExtendID,aNumber,aData);
+    end;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.ArmAreaPacketChange');
+  End;
+end;
+
+procedure TNode.CardDownLoadTimerTimer(Sender: TObject);
+var
+  i : integer;
+  bResult : Boolean;
+begin
+  if G_bApplicationTerminate then Exit;
+
+  if L_bCardDownLoading then Exit;
+  if NodeDestory then Exit;
+  CardDownLoadTimer.Enabled := False;
+  Try
+    L_bCardDownLoading := True;
+    //여기서 카드데이터 다운로드 하자.
+    if L_nCardDownLoadEcuSeq > NodeDeviceList.Count - 1 then L_nCardDownLoadEcuSeq := 0;
+
+    Try
+      for i := L_nCardDownLoadEcuSeq to NodeDeviceList.Count - 1 do
+      begin
+        if NodeDestory then Exit;
+        if (TDevice(NodeDeviceList.Objects[i]).DEVICECONNECTED = csConnected) and Not TDevice(NodeDeviceList.Objects[i]).CardDownloadRCV then
+        begin
+          TDevice(NodeDeviceList.Objects[i]).AutoCardDownloadStart;
+          if NodeDestory then Exit;
+          if Assigned(FOnAutoDownLoadStart) then
+            OnAutoDownLoadStart(self,NO,TDevice(NodeDeviceList.Objects[i]).EcuId + ' CardDownLoad Start ');
+
+          break;
+        end else L_nCardDownLoadEcuSeq := i;
+      end;
+
+      if L_nCardDownLoadEcuSeq = NodeDeviceList.Count - 1 then
+      begin
+        bResult := True;
+        for i := 0 to NodeDeviceList.Count - 1 do
+        begin
+          if NodeDestory then Exit;
+          if Not TDevice(NodeDeviceList.Objects[i]).CardDownloadRCV then //다운로드 되지 않은 컨트롤러가 있으면
+          begin
+            bResult := False;
+            break;
+          end;
+        end;
+        //if bResult then CardDownLoadTimer.Enabled := False;  //전체 다운로드 완료시 타이머 스톱
+      end;
+      L_nCardDownLoadEcuSeq := L_nCardDownLoadEcuSeq + 1;
+    Except
+      L_nCardDownLoadEcuSeq := L_nCardDownLoadEcuSeq + 1;
+      LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.CardDownLoadTimerTimer');
+    End;
+  Finally
+    CardDownLoadTimer.Enabled := Not G_bApplicationTerminate;
+    L_bCardDownLoading := False;
+  End;
+end;
+
+procedure TNode.CardPermitAllLoading(Sender: TObject; aNodeNo: integer;
+  aData: string);
+begin
+  Try
+    if Assigned(FOnCardPermitAllLoading) then
+    begin
+      OnCardPermitAllLoading(Self,aNodeNo,aData);
+    end;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.CardPermitAllLoading');
+  End;
+end;
+
+procedure TNode.CardPermitChange(Sender: TObject; aNodeNo: integer; aEcuID,aCardNo,
+  aPermit, aDoorPermit, aArmAreaPermit, aTimeCodeUse, aTimeCodeGroup, aTimeData,
+  aWeekCode: string);
+begin
+  Try
+    if Assigned(FOnCardPermitChange) then
+    begin
+      OnCardPermitChange(Self,aNodeNo,aEcuID,aCardNo,aPermit,aDoorPermit,aArmAreaPermit,aTimeCodeUse,aTimeCodeGroup,aTimeData,aWeekCode);
+    end;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.CardPermitChange');
+  End;
+end;
+
+procedure TNode.CardPermitLoading(Sender: TObject; aCardNo: string);
+begin
+  Try
+    if Assigned(FOnCardPermitLoading) then
+    begin
+      OnCardPermitLoading(Self,aCardNo);
+    end;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.CardPermitLoading');
+  End;
+end;
+
+procedure TNode.CardRcvAckChange(Sender: TObject; aNodeNo: integer; aEcuID,
+  aCardNo, aRcvAck: string);
+begin
+  Try
+    if Assigned(FOnCardRcvAckChange) then
+    begin
+      OnCardRcvAckChange(Self,aNodeNo,aEcuID,aCardNo,aRcvAck);
+    end;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.CardRcvAckChange');
+  End;
+end;
+
+procedure TNode.CardReaderPacketChange(Sender: TObject; aCmd, aNodeNo: integer;
+  aEcuID, aExtendID, aNumber, aData: string);
+begin
+  Try
+    if Assigned(FOnCardReaderPacketChange) then
+    begin
+      OnCardReaderPacketChange(Self,aCmd,aNodeNo,aEcuID,aExtendID,aNumber,aData);
+    end;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.CardReaderPacketChange');
+  End;
+end;
+
+procedure TNode.ControlNodeToDeviceArmAreaStateCheck(aEcuID,
+  aArmAreaNo: string);
+var
+  nIndex : integer;
+begin
+  Try
+    nIndex := NodeDeviceList.IndexOf(aEcuID);
+    if nIndex < 0 then Exit;
+    if Not isDigit(aArmAreaNo) then Exit;
+    TDevice(NodeDeviceList.Objects[nIndex]).DeviceArmAreaStateCheck(strtoint(aArmAreaNo));
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.ControlNodeToDeviceArmAreaStateCheck');
+  End;
+end;
+
+procedure TNode.ControlNodeToDeviceCardResend(aEcuID: string);
+var
+  nIndex : integer;
+begin
+  Try
+    nIndex := FTPDownEcuList.IndexOf(aEcuID);
+    if nIndex > -1 then Exit;
+    FTPDownEcuList.Add(aEcuID);
+    FTPCardDownLoadTimer.Enabled := True;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.ControlNodeToDeviceArmAreaStateCheck');
+  End;
+end;
+
+procedure TNode.ControlNodeToDeviceRegDeviceID(aDeviceID: string);
+var
+  nIndex : integer;
+begin
+  Try
+    nIndex := NodeDeviceList.IndexOf('00'); //메인만 해당 하는것임
+    if nIndex < 0 then Exit;
+    TDevice(NodeDeviceList.Objects[nIndex]).RegistDeviceID(aDeviceID);
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.ControlNodeToDeviceRegDeviceID');
+  End;
+end;
+
+procedure TNode.ControlNodeToDeviceReset(aEcuID: string);
+var
+  nIndex : integer;
+begin
+  Try
+    nIndex := NodeDeviceList.IndexOf(aEcuID);
+    if nIndex < 0 then Exit;
+    TDevice(NodeDeviceList.Objects[nIndex]).DeviceReset;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.ControlNodeToDeviceReset');
+  End;
+end;
+
+procedure TNode.ControlNodeToDeviceTimeSync;
+var
+  nIndex : integer;
+begin
+  Try
+    nIndex := NodeDeviceList.IndexOf('00');
+    if nIndex < 0 then Exit;
+    TDevice(NodeDeviceList.Objects[nIndex]).TimeSync;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.ControlNodeToDeviceTimeSync');
+  End;
+end;
+
+constructor TNode.Create(AOwner: TComponent);
+var
+  i : integer;
+  oDevice : TDevice;
+begin
+  inherited;
+  Try
+    Start := False;
+    InfoInitialize := False;
+    FHandle := 0;
+    L_stDeviceVer := 'K1';
+    NodeConnected := csNothing;
+    DeviceID := '';
+    MaxEcuCount := 63;
+
+    L_nSendMsgNo := 0;
+    L_bCardDownLoading := False;
+
+    FTCSDeviceSender := TCriticalSection.Create;
+
+    NodeDeviceList := TStringList.Create;
+    ConnectDeviceList := TStringList.Create;
+    Send1stDataList := TStringList.Create;
+    Send2ndDataList := TStringList.Create;
+    Send3rdDataList := TStringList.Create;
+    Send4thDataList := TStringList.Create;
+    FTPDownEcuList := TStringList.Create;
+
+    RcvCheckTimer := TTimer.Create(nil);
+    RcvCheckTimer.Interval := 200;
+    RcvCheckTimer.OnTimer := RcvCheckTimerTimer;
+    RcvCheckTimer.Enabled := False;
+
+    CardDownLoadTimer := TTimer.Create(nil);
+    CardDownLoadTimer.Interval := 500;
+    CardDownLoadTimer.OnTimer := CardDownLoadTimerTimer;
+    CardDownLoadTimer.Enabled := False;
+
+    StateCheckTimer := TTimer.Create(nil);
+    StateCheckTimer.Interval := 5000;
+    StateCheckTimer.OnTimer := StateCheckTimerTimer;
+    StateCheckTimer.Enabled := False;
+    DoorArmAreaStateRCV := True;
+
+    NodeSendPacketTimer := TTimer.Create(nil);
+    NodeSendPacketTimer.Interval := 20;
+    NodeSendPacketTimer.OnTimer := NodeSendPacketTimerTimer;
+    NodeSendPacketTimer.Enabled := False;
+
+    FTPCardDownLoadTimer := TTimer.Create(nil);
+    FTPCardDownLoadTimer.Interval := 10000;
+    FTPCardDownLoadTimer.OnTimer := FTPCardDownLoadTimerTimer;
+    FTPCardDownLoadTimer.Enabled := False;
+
+    FireRecoveryTimer := TTimer.Create(nil);
+    FireRecoveryTimer.Interval := 10000;
+    FireRecoveryTimer.OnTimer := FireRecoveryTimerTimer;
+    FireRecoveryTimer.Enabled := False;
+    L_bFireEvent := False;
+
+    KTTCDMASKILL := True; //CDMA SKill 기능이 있는 것으로 설정 후에 없으면 수신상태 변경 처리 하기 위해서
+    DVRSKILL := True;     //DVR Skill 기능이 있는 것으로 설정 후에 없으면 수신상태 변경 처리 하기 위해서
+    ARMEXTENTIONSKILL := True;
+
+    for i := 0 to HIGH(L_cNodeRCVSTATE) do
+    begin
+      L_cNodeRCVSTATE[i] := 'Y';
+    end;
+
+    for i := 0 to G_nDefaultECUCount do
+    begin
+      oDevice := TDevice.Create(nil);
+      oDevice.DeviceNode := self;
+      oDevice.EcuID := FillZeroNumber(i,2);
+      if i = 0 then oDevice.DeviceUse := True
+      else oDevice.DeviceUse := False;
+
+      oDevice.OnAntiPassDataEvent := AntiPassDataEvent;
+
+      oDevice.OnArmAreaPacketChange := ArmAreaPacketChange;
+
+      oDevice.OnCardPermitChange := CardPermitChange;
+      ODevice.OnCardPermitLoading := CardPermitLoading;
+      oDevice.OnCardRcvAckChange := CardRcvAckChange;
+
+      oDevice.OnCardReaderPacketChange := CardReaderPacketChange;
+
+      oDevice.OnCurrentAlarmEvent := CurrentAlarmEvent;
+      oDevice.OnCurrentDoorState  := CurrentDoorState;
+
+      oDevice.OnDevicePacketChange := DevicePacketChange;
+
+      oDevice.OnDeviceCardAccessEvent := DeviceCardAccessEvent;
+      oDevice.OnDeviceConnected := DeviceConnectedEvent;
+      oDevice.OnDeviceUsed := DeviceUsedEvent;
+
+      oDevice.OnDoorPacketChange := DoorPacketChange;
+
+      oDevice.OnReceiveTypeChage := DeviceReceiveTypeChage;
+      oDevice.OnDeviceReceiveDataEvent := DeviceReceiveData;
+
+      oDevice.OnZONEEXTENDTYPEChange := ZONEEXTENDTYPEChange;
+      oDevice.OnZonePacketChange := ZonePacketChange;
+
+      oDevice.OnCardPermit := CardPermitAllLoading; //컨트롤러의 카드권한을 모두 로딩 하자.
+      oDevice.OnEmployeePermit := EmployeePermitAllLoading; //컨트롤러의 사원권한을 모두 로딩하자.
+
+      oDevice.InfoInitialize := False;
+      NodeDeviceList.AddObject(FillZeroNumber(i,2),oDevice);
+    end;
+    if SocketType = 1 then
+      WinSocket := Invalid_Socket;
+  //  l_c_reception_buffer := Nil;
+    l_c_reception_buffer:= c_byte_buffer.create_byte_buffer('reception_buffer', k_buffer_max);
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.Create');
+  End;
+end;
+
+procedure TNode.CurrentAlarmEvent(Sender: TObject; aNodeNo,aECUID, aCmd,aMsgNo, aTime,
+  aSubCLass, aSubAddr, aArmArea, aMode, aAlarmStateCode, aLoop, aZoneState,
+  aOper, aAlarmStateCodeName, aAlarmStatePCCode, aAlarmStatePCCodeName,aArmModeChange,
+  aAlarmView, aAlarmSound, aAlarmColor: string);
+begin
+  Try
+    if (aZoneState <> 'N') and (aAlarmStateCode = G_stFireStateCode) then
+    begin
+      FireRecoveryTimer.Enabled := False;
+      L_bFireEvent := True;
+    end;
+
+    if Assigned(FOnCurrentAlarmEvent) then
+    begin
+      OnCurrentAlarmEvent(Self,aNodeNo,aECUID,aCmd,aMsgNo,aTime,aSubCLass,aSubAddr,aArmArea,aMode,aAlarmStateCode,aLoop,aZoneState,aOper,
+                          aAlarmStateCodeName,aAlarmStatePCCode,aAlarmStatePCCodeName,aArmModeChange,aAlarmView,aAlarmSound,aAlarmColor);
+    end;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.CurrentAlarmEvent');
+  End;
+end;
+
+procedure TNode.CurrentDoorState(Sender: TObject; aNodeNo: integer; aEcuID,
+  aExtendID, aNumber, aCardMode, aDoorMode, aDoorState, aLockState,
+  aDoorFire: string);
+begin
+  Try
+    if Assigned(FOnCurrentDoorState) then
+    begin
+      OnCurrentDoorState(self,aNodeNo,aEcuID,aExtendID,aNumber, aCardMode, aDoorMode, aDoorState, aLockState,aDoorFire);
+    end;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.CurrentDoorState');
+  End;
+end;
+
+destructor TNode.Destroy;
+var
+  i : integer;
+begin
+  Try
+    NodeDestory := True;
+    Delay(10);
+
+    NodeConnected := csDisConnected;
+
+    SocketOpen := False;
+
+    //Delay(5000);  //카드 다운로드 하던게 있을수 있다...
+
+    l_c_reception_buffer.Free;
+    l_c_reception_buffer:= Nil;
+
+    if HandleAllocated
+     then DeAllocateHWND ( FHandle );
+
+    ReciveStateChange := False;
+    ReceiveStateClear; //수신상태를 초기화 하자
+    for i := NodeDeviceList.Count - 1 downto 0 do
+    begin
+      TDevice(NodeDeviceList.Objects[i]).Free;
+    end;
+    RcvCheckTimer.Enabled := False;
+    CardDownLoadTimer.Enabled := False;
+    StateCheckTimer.Enabled := False;
+    NodeSendPacketTimer.Enabled := False;
+    FTPCardDownLoadTimer.Enabled := False;
+    FireRecoveryTimer.Enabled := False;
+
+    RcvCheckTimer.Free;
+    CardDownLoadTimer.Free;
+    StateCheckTimer.Free;
+    NodeSendPacketTimer.Free;
+    FTPCardDownLoadTimer.Free;
+    FireRecoveryTimer.Free;
+
+    NodeDeviceList.Clear;
+    NodeDeviceList.Free;
+    ConnectDeviceList.Free;
+    Send1stDataList.Free;
+    Send2ndDataList.Free;
+    Send3rdDataList.Free;
+    Send4thDataList.Free;
+    FTPDownEcuList.Free;
+    FTCSDeviceSender.Free;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.Destroy');
+  End;
+  inherited;
+end;
+
+procedure TNode.DeviceCardAccessEvent(Sender: TObject; aNodeNo, aECUID, aDoorNo,
+  aReaderNo, aInOut, aTime, aCardMode, aDoorMode, aChangeState, aAccessResult,
+  aDoorState, aATButton, aCardNo, aType, aArmAreaNo,aAntiGroup: string);
+begin
+  Try
+    if Assigned(FOnDeviceCardAccessEvent) then
+    begin
+      OnDeviceCardAccessEvent(Self,aNodeNo, aECUID, aDoorNo,aReaderNo, aInOut, aTime, aCardMode, aDoorMode, aChangeState, aAccessResult,
+                    aDoorState, aATButton, aCardNo, aType, aArmAreaNo,aAntiGroup);
+    end;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.DeviceCardAccessEvent');
+  End;
+end;
+
+procedure TNode.DeviceConnectedEvent(Sender: TObject;aSocketNo, aNodeNo: integer;
+  aEcuID: string; aConnected: TConnectedState;aAntiGroupCode:string);
+begin
+  Try
+    ECUConnected(aEcuID,aConnected);
+    if Assigned(FOnDeviceConnected) then
+    begin
+      OnDeviceConnected(Self,aSocketNo,aNodeNo,aEcuID,aConnected,aAntiGroupCode);
+    end;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.DeviceConnectedEvent');
+  End;
+end;
+
+procedure TNode.DevicePacketChange(Sender: TObject; aCmd, aNodeNo: integer;
+  aEcuID, aData: string);
+begin
+  Try
+    if Assigned(FOnDevicePacketChange) then
+    begin
+      OnDevicePacketChange(Self,aCmd,aNodeNo,aEcuID,aData);
+    end;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.DevicePacketChange');
+  End;
+end;
+
+procedure TNode.DeviceReceiveData(Sender: TObject; aNodeNo: integer; aType,
+  aEcuID, aExtendID, aNumber: string; aRcvInfoType: integer; aData: string);
+var
+  i : integer;
+  nIndex : integer;
+begin
+  Try
+    if aType = 'DEVICE' then
+    begin
+      case aRcvInfoType of
+        con_DeviceCmdNetworkState :
+        begin //네트웍 상태 체크중
+          for i := 1 to Length(aData) do
+          begin
+            nIndex := NodeDeviceList.IndexOf(FillZeroNumber(i-1,2));
+            if nIndex > -1 then
+            begin
+              if aData[i] = 'u' then
+              begin
+                //TDevice(NodeDeviceList.Objects[nIndex]).DeviceUse := False;   //사용유무 체크 하여 설정 하자.
+                TDevice(NodeDeviceList.Objects[nIndex]).DeviceConnected := csNothing;
+              end else
+              begin
+                //TDevice(NodeDeviceList.Objects[nIndex]).DeviceUse := True;
+                if aData[i] = '1' then
+                  TDevice(NodeDeviceList.Objects[nIndex]).DeviceConnected := csConnected
+                else TDevice(NodeDeviceList.Objects[nIndex]).DeviceConnected := csDisConnected;
+              end;
+            end;
+          end;
+        end;
+        con_DeviceCmdUseState :  //Ecu 사용유무 체크중...
+        begin
+          for i := 2 to Length(aData) do
+          begin
+            nIndex := NodeDeviceList.IndexOf(FillZeroNumber(i-1,2));
+            if nIndex > -1 then
+            begin
+              if aData[i] = '1' then
+              begin
+                TDevice(NodeDeviceList.Objects[nIndex]).DeviceUse := True;
+              end else
+              begin
+                TDevice(NodeDeviceList.Objects[nIndex]).DeviceUse := False;
+              end;
+            end;
+          end;
+        end;
+      end;
+    end;
+    if Assigned(FOnReceiveData) then
+    begin
+      OnReceiveData(Self,aNodeNo,aType,aEcuID,aExtendID,aNumber,aRcvInfoType,aData);
+    end;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.DeviceReceiveData');
+  End;
+end;
+
+procedure TNode.DeviceReceiveTypeChage(Sender: TObject; aNodeNo: integer; aType,
+  aEcuID, aExtendID, aNumber: string; aRcvInfoType: integer; aData: string);
+begin
+  Try
+    if Assigned(FOnReceiveTypeChage) then
+    begin
+      OnReceiveTypeChage(Self,aNodeNo,aType,aEcuID,aExtendID,aNumber,aRcvInfoType,aData);
+    end;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.DeviceReceiveTypeChage');
+  End;
+end;
+
+procedure TNode.DeviceUsedEvent(Sender: TObject; aNodeNo: integer; aType,
+  aEcuID, aExtendID, aNumber: string; aUsed: Boolean);
+begin
+  Try
+    if Assigned(FOnDeviceUsed) then
+    begin
+      OnDeviceUsed(Self,aNodeNo,aType,aEcuID,aExtendID,aNumber,aUsed);
+    end;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.DeviceUsedEvent');
+  End;
+end;
+
+procedure TNode.DoorPacketChange(Sender: TObject; aCmd, aNodeNo: integer;
+  aEcuID, aExtendID, aNumber, aData: string);
+begin
+  Try
+    if Assigned(FOnDoorPacketChange) then
+    begin
+      OnDoorPacketChange(Self,aCmd,aNodeNo,aEcuID,aExtendID,aNumber,aData);
+    end;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.DoorPacketChange');
+  End;
+end;
+
+function TNode.ECUConnected(aECUID: string; aConnected: TConnectedState): Boolean;
+var
+  nIndex : integer;
+begin
+  result := True;
+  Try
+    if (aConnected = csConnected) then
+    begin
+      if ConnectDeviceList.IndexOf(aEcuID) < 0 then
+      begin
+        ConnectDeviceList.Add(aEcuID);
+        DoorArmAreaStateRCV := False;
+      end;
+    end else
+    begin
+      if ConnectDeviceList.IndexOf(aEcuID) > -1 then ConnectDeviceList.Delete(ConnectDeviceList.IndexOf(aEcuID));
+    end;
+
+    nIndex := NodeDeviceList.IndexOf(aEcuID);
+    if nIndex < 0 then Exit;
+    if TDevice(NodeDeviceList.Objects[nIndex]).DeviceConnected = aConnected then Exit;
+    TDevice(NodeDeviceList.Objects[nIndex]).DeviceConnected := aConnected;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.ECUConnected');
+  End;
+end;
+
+function TNode.ECUUsed(aECUID: string; aUsed: Boolean): Boolean;
+var
+  nIndex : integer;
+begin
+  Try
+    nIndex := NodeDeviceList.IndexOf(aEcuID);
+    if nIndex < 0 then Exit;
+    if TDevice(NodeDeviceList.Objects[nIndex]).DeviceUse = aUsed then Exit;
+    TDevice(NodeDeviceList.Objects[nIndex]).DeviceUse := aUsed;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.ECUUsed');
+  End;
+end;
+
+procedure TNode.EmployeePermitAllLoading(Sender: TObject; aNodeNo: integer;
+  aData: string);
+begin
+  Try
+    if Assigned(FOnEmployeePermitAllLoading) then
+    begin
+      OnEmployeePermitAllLoading(Self,aNodeNo,aData);
+    end;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.EmployeePermitAllLoading');
+  End;
+
+end;
+
+procedure TNode.FireDoorOpen(aFireGubunCode: string);
+begin
+  Try
+    if FireGubunCode = '' then Exit; //화재그룹 사용 안하는 경우
+    if FireGubunCode <> aFireGubunCode then Exit;
+    FireRecoveryTimer.Enabled := False;
+    L_bFireEvent := True;
+    SendPacket('00','R',GetSendMsgNo,GetDeviceVer, 'SM2900Fire',1);
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.FireDoorOpen');
+  End;
+
+end;
+
+procedure TNode.FireRecovery;
+begin
+  Try
+    L_bFireEvent := False;
+    SendPacket('00','R',GetSendMsgNo,GetDeviceVer, 'SM2699RSM2500',1);
+    FireRecoveryTimer.Enabled := True;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.FireRecovery');
+  End;
+end;
+
+procedure TNode.FireRecoveryTimerTimer(Sender: TObject);
+var
+  i : integer;
+  bResult : Boolean;
+begin
+  Try
+    FireRecoveryTimer.Enabled := False;
+    if NodeDeviceList.Count < 1 then
+    begin
+      FireEvent := False;
+      Exit;
+    end;
+    bResult := False;
+    for i := 0 to NodeDeviceList.Count - 1 do
+    begin
+      if (TDevice(NodeDeviceList.Objects[i]).DEVICECONNECTED = csConnected) and
+         (TDevice(NodeDeviceList.Objects[i]).FireEvent) then bResult := True;
+    end;
+
+    if bResult and Not L_bFireEvent then FireRecovery;
+
+    FireEvent := bResult;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.FireRecoveryTimerTimer');
+  End;
+end;
+
+procedure TNode.FTPCardDownLoadTimerTimer(Sender: TObject);
+var
+  nIndex : integer;
+  i,j : integer;
+begin
+  if G_bFTPCardDownLoading then Exit;
+  G_bFTPCardDownLoading := True;
+  Try
+    Try
+      if FTPDownEcuList.Count < 1 then
+      begin
+        FTPCardDownLoadTimer.Enabled := False;
+        Exit;
+      end;
+      for i := 0 to FTPDownEcuList.Count - 1 do
+      begin
+        nIndex := NodeDeviceList.IndexOf(FTPDownEcuList.strings[i]);
+        if nIndex < 0 then Exit;
+        for j := 1 to 3 do // 실패시 3번 재전송 해 보자
+        begin
+          if j = 1 then TDevice(NodeDeviceList.Objects[nIndex]).FTPFirst := True;
+
+          if TDevice(NodeDeviceList.Objects[nIndex]).DeviceFTPCardDownLoadStart then
+          begin
+            FTPDownEcuList.Delete(i);
+            break;
+          end;
+          if j > 2 then  //3 번 전송에서 실패 하면 전체를 전문 타입으로 전송 처리
+          begin
+            TDevice(NodeDeviceList.Objects[nIndex]).DeviceCardAllResend;
+          end;
+        end;
+      end;
+    Except
+      LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.FTPCardDownLoadTimerTimer');
+    End;
+  Finally
+    G_bFTPCardDownLoading := False;
+  End;
+
+end;
+
+function TNode.GetDeviceDoorArmaAreaState(aEcuID: string): string;
+var
+  nIndex : integer;
+  stData : string;
+  nTemp : integer;
+  i : integer;
+  nDoorFormatLength :integer;
+  nArmAreaFormatLength :integer;
+  nCardReaderFormatLength :integer;
+begin
+  Try
+    nDoorFormatLength := 5;
+    nArmAreaFormatLength := 1;
+    nCardReaderFormatLength := 1;
+
+    stData := '';
+    result := '00'; //오류발생시 0 건처리
+    nIndex := NodeDeviceList.IndexOf(aEcuID);
+    if nIndex < 0 then Exit;
+    nTemp := TDevice(NodeDeviceList.Objects[nIndex]).MaxDoorCount;
+    stData := stData + char($30 + nTemp); //출입문 최대 갯수
+    stData := stData + char($30 + nDoorFormatLength);     //출입문상태포맷길이
+    for i := 0 to nTemp - 1 do
+    begin
+      stData := stData + TDevice(NodeDeviceList.Objects[nIndex]).GetDeviceToDoorIndexState(i,nDoorFormatLength);
+    end;
+    stData := stData + char($30 + 9); //방범구역 최대 갯수  - 9
+    stData := stData + char($30 + nArmAreaFormatLength);     //방범구역상태포맷길이
+    for i := 0 to 8 do
+    begin
+      stData := stData + TDevice(NodeDeviceList.Objects[nIndex]).GetDeviceToArmAreaIndexMode(i,nArmAreaFormatLength);
+    end;
+    nTemp := TDevice(NodeDeviceList.Objects[nIndex]).MaxReaderCount;
+    stData := stData + char($30 + nTemp); //카드리더 최대 갯수
+    stData := stData + char($30 + nCardReaderFormatLength);     //카드리더상태포맷길이
+    for i := 0 to nTemp - 1 do
+    begin
+      stData := stData + TDevice(NodeDeviceList.Objects[nIndex]).GetDeviceToCardReaderIndexState(i,nCardReaderFormatLength);
+    end;
+    result := stData;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.GetDeviceDoorArmaAreaState');
+  End;
+end;
+
+function TNode.GetDeviceIDArmAreaInformation(aCmd: integer; aEcuID,
+  aSubNo: string): string;
+var
+  nIndex : integer;
+begin
+  Try
+    result := '';
+    nIndex := NodeDeviceList.IndexOf(aEcuID);
+    if nIndex < 0 then Exit;
+    result := TDevice(NodeDeviceList.Objects[nIndex]).GetDeviceToArmAreaIDInformation(aCmd,aSubNo);
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.GetDeviceIDArmAreaInformation');
+  End;
+end;
+
+function TNode.GetDeviceIDCardReaderInformation(aCmd: integer; aEcuID,
+  aSubNo: string): string;
+var
+  nIndex : integer;
+begin
+  Try
+    result := '';
+    nIndex := NodeDeviceList.IndexOf(aEcuID);
+    if nIndex < 0 then Exit;
+
+    case aCmd of
+      con_CardReaderCmdBuildingPositionCode : begin
+        result := TDevice(NodeDeviceList.Objects[nIndex]).GetDeviceToCardReaderIDBuildingPosition(aSubNo);
+      end;
+      con_CardReaderCmdDoorPosition : begin  //출입문 위치
+        result := TDevice(NodeDeviceList.Objects[nIndex]).GetDeviceToCardReaderIDDoorPosition(aSubNo);
+      end;
+      con_CardReaderCmdType : begin   //카드리더 타입
+        result := TDevice(NodeDeviceList.Objects[nIndex]).GetDeviceToCardReaderIDType(aSubNo);
+      end;
+    end;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.GetDeviceIDCardReaderInformation');
+  End;
+end;
+
+function TNode.GetDeviceIDDoorInformation(aCmd: integer; aEcuID,
+  aSubNo: string): string;
+var
+  nIndex : integer;
+begin
+  Try
+    result := '';
+    nIndex := NodeDeviceList.IndexOf(aEcuID);
+    if nIndex < 0 then Exit;
+    result := TDevice(NodeDeviceList.Objects[nIndex]).GetDeviceToDoorIDInformation(aCmd,aSubNo);
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.GetDeviceIDDoorInformation');
+  End;
+end;
+
+function TNode.GetDeviceIDExtentionInformation(aCmd: integer; aEcuID,
+  aSubNo: string): string;
+var
+  nIndex : integer;
+begin
+  Try
+    result := '';
+    nIndex := NodeDeviceList.IndexOf(aEcuID);
+    if nIndex < 0 then Exit;
+    result := TDevice(NodeDeviceList.Objects[nIndex]).GetDeviceToExtentionIDInformation(aCmd,aSubNo);
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.GetDeviceIDExtentionInformation');
+  End;
+end;
+
+function TNode.GetDeviceIDInformation(aCmd: integer; aEcuID: string): string;
+var
+  nIndex : integer;
+begin
+  Try
+    result := '';
+    nIndex := NodeDeviceList.IndexOf(aEcuID);
+    if nIndex < 0 then Exit;
+    case aCmd of
+      con_DeviceCmdArmAreaSKill : begin
+        if TDevice(NodeDeviceList.Objects[nIndex]).ARMAREASKILL then result := '1'
+        else result := '0'
+      end;
+      con_DeviceCmdArmAreaState : begin
+        result := GetDeviceDoorArmaAreaState(aEcuID);
+      end;
+      con_DeviceCmdArmAreaUse : begin
+        if TDevice(NodeDeviceList.Objects[nIndex]).ARMAREASKILL then result := TDevice(NodeDeviceList.Objects[nIndex]).ARMAREAUSE
+        else result := '0';
+      end;
+      con_DeviceCmdArmInDelay : begin
+        result := inttostr(TDevice(NodeDeviceList.Objects[nIndex]).ARMINDELAY);
+      end;
+      con_DeviceCmdArmOutDelay : begin
+        result := inttostr(TDevice(NodeDeviceList.Objects[nIndex]).ARMOUTDELAY);
+      end;
+      con_DeviceCmdArmRelay : begin
+        result := TDevice(NodeDeviceList.Objects[nIndex]).ARMRELAY;
+      end;
+      con_DeviceCmdDeviceDoor2RelayType : begin
+        result := TDevice(NodeDeviceList.Objects[nIndex]).DOOR2RELAY;
+      end;
+      con_DeviceCmdDeviceDoor2Skill : begin
+        if TDevice(NodeDeviceList.Objects[nIndex]).DOOR2RELAYSKILL then result := '1'
+        else result := '0';
+      end;
+      con_DeviceCmdDeviceType : begin
+        result := TDevice(NodeDeviceList.Objects[nIndex]).DEVICETYPE;
+      end;
+      con_DeviceCmdExtentionSkill : begin
+        if TDevice(NodeDeviceList.Objects[nIndex]).ExtendSkill then result := '1'
+        else result := '0';
+      end;
+      con_DeviceCmdJaeJungDelaySkill : begin
+        if TDevice(NodeDeviceList.Objects[nIndex]).JAEJUNGSKILL then result := '1'
+        else result := '0';
+      end;
+      con_DeviceCmdJaeJungDelayUse : begin
+        result := TDevice(NodeDeviceList.Objects[nIndex]).JAEJUNGDELAYUSE;
+      end;
+      con_DeviceCmdDoorScheduleSkill : begin
+        if TDevice(NodeDeviceList.Objects[nIndex]).DEVICEScheduleSkill then result := '1'
+        else result := '0';
+      end;
+      con_DeviceCmdJAVARAARMCLOSE : begin
+        result := TDevice(NodeDeviceList.Objects[nIndex]).JAVARAARMCLOSE;
+      end;
+      con_DeviceCmdJAVARAAUTOCLOSE : begin
+        result := TDevice(NodeDeviceList.Objects[nIndex]).JAVARAAUTOCLOSE;
+      end;
+      con_DeviceCmdTimeCodeSkill : begin
+        if TDevice(NodeDeviceList.Objects[nIndex]).TimeCodeSkill then result := '1'
+        else result := '0';
+      end;
+      con_DeviceCmdWATCHACPOWER : begin
+        result := TDevice(NodeDeviceList.Objects[nIndex]).WATCHACPOWER;
+      end;
+    end;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.GetDeviceIDInformation');
+  End;
+end;
+
+function TNode.GetDeviceIDSubInformation(aSubType, aCmd: integer; aEcuID,
+  aSubNo: string): string;
+begin
+  Try
+    result := '';
+    case aSubType of
+      con_DeviceTypeArmArea : begin
+        result := GetDeviceIDArmAreaInformation(aCmd,aEcuID,aSubNo);
+      end;
+      con_DeviceTypeDoor : begin
+        result := GetDeviceIDDoorInformation(aCmd,aEcuID,aSubNo);
+      end;
+      con_DeviceTypeCardReader : begin
+        result := GetDeviceIDCardReaderInformation(aCmd,aEcuID,aSubNo);
+      end;
+      con_DeviceTypeExtention : begin
+        result := GetDeviceIDExtentionInformation(aCmd,aEcuID,aSubNo);
+      end;
+      con_DeviceTypeZone : begin
+        result := GetDeviceIDZoneInformation(aCmd,aEcuID,aSubNo);
+      end;
+    end;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.GetDeviceIDSubInformation');
+  End;
+end;
+
+function TNode.GetDeviceIDZoneInformation(aCmd:integer; aEcuID,
+  aZoneID: string): string;
+var
+  nIndex : integer;
+  stExtendID : string;
+  stZoneNo : string;
+begin
+  Try
+    result := '';
+    nIndex := NodeDeviceList.IndexOf(aEcuID);
+    if nIndex < 0 then Exit;
+    stExtendID := copy(aZoneID,1,2);
+    stZoneNo := copy(aZoneID,3,2);
+    if isDigit(stExtendID) then stExtendID := inttostr(strtoint(stExtendID))
+    else stExtendID := '0';
+    if isDigit(stZoneNo) then stZoneNo := inttostr(strtoint(stZoneNo))
+    else stZoneNo := '0';
+
+    case aCmd of
+      con_ZoneCmdArmArea : begin
+        result := TDevice(NodeDeviceList.Objects[nIndex]).GetDeviceToZoneIDArmArea(stExtendID,stZoneNo);
+      end;
+      con_ZoneCmdDelayUse : begin
+        result := TDevice(NodeDeviceList.Objects[nIndex]).GetDeviceToZoneIDDelayUse(stExtendID,stZoneNo);
+      end;
+      con_ZoneCmdRecovery : begin
+        result := TDevice(NodeDeviceList.Objects[nIndex]).GetDeviceToZoneIDRecovery(stExtendID,stZoneNo);
+      end;
+      con_ZoneCmdType : begin
+        result := TDevice(NodeDeviceList.Objects[nIndex]).GetDeviceToZoneIDType(stExtendID,stZoneNo);
+      end;
+    end;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.GetDeviceIDZoneInformation');
+  End;
+end;
+
+function TNode.GetDeviceIndexArmAreaInformation(aCmd, aIndex,aSubIndex: integer): string;
+begin
+  Try
+    result := '';
+    if aIndex > NodeDeviceList.Count - 1 then Exit;
+    case aCmd of
+      con_ArmAreaCmdName : begin
+        result := TDevice(NodeDeviceList.Objects[aIndex]).GetDeviceToArmAreaName(aSubIndex);
+      end;
+    end;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.GetDeviceIndexArmAreaInformation');
+  End;
+end;
+
+function TNode.GetDeviceIndexCardReaderInformation(aCmd, aIndex,
+  aSubIndex: integer): string;
+begin
+  Try
+    result := '';
+    if aIndex > NodeDeviceList.Count - 1 then Exit;
+    case aCmd of
+      con_CardReaderCmdArmAreaNo : begin
+        result := inttostr(TDevice(NodeDeviceList.Objects[aIndex]).GetDeviceToCardReaderIndexArmAreaNo(aSubIndex));
+      end;
+      con_CardReaderCmdUse : begin
+        if TDevice(NodeDeviceList.Objects[aIndex]).GetDeviceToCardReaderIndexUse(aSubIndex) then result := '1'
+        else result := '0';
+      end;
+      con_CardReaderCmdDoorNo : begin
+        result := inttostr(TDevice(NodeDeviceList.Objects[aIndex]).GetDeviceToCardReaderIndexDoorNo(aSubIndex));
+      end;
+    end;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.GetDeviceIndexCardReaderInformation');
+  End;
+end;
+
+function TNode.GetDeviceIndexDoorInformation(aCmd, aIndex,
+  aSubIndex: integer): string;
+begin
+  Try
+    result := '';
+    if aIndex > NodeDeviceList.Count - 1 then Exit;
+    result := TDevice(NodeDeviceList.Objects[aIndex]).GetDeviceToDoorIndexInformation(aCmd,aSubIndex);
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.GetDeviceIndexDoorInformation');
+  End;
+end;
+
+function TNode.GetDeviceIndexExtentionInformation(aCmd, aIndex,
+  aSubIndex: integer): string;
+begin
+  Try
+    result := '';
+    if aIndex > NodeDeviceList.Count - 1 then Exit;
+    case aCmd of
+      con_ExtentionCmdZoneUse : begin
+        result := TDevice(NodeDeviceList.Objects[aIndex]).GetDeviceToExtentionIndexUse(aSubIndex);
+      end;
+      con_ExtentionCmdZoneCount : begin
+        result := inttostr(TDevice(NodeDeviceList.Objects[aIndex]).GetDeviceToExtentionIndexZoneCount(aSubIndex));
+      end;
+    end;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.GetDeviceIndexExtentionInformation');
+  End;
+end;
+
+function TNode.GetDeviceIndexInformation(aCmd, aIndex: integer): string;
+begin
+  Try
+    result := '';
+    if aIndex > NodeDeviceList.Count - 1 then Exit;
+
+    case aCmd of
+      con_DeviceCmdDeviceID : begin
+        result := TDevice(NodeDeviceList.Objects[aIndex]).EcuID;
+      end;
+      con_DeviceCmdDeviceName : begin
+        result := TDevice(NodeDeviceList.Objects[aIndex]).DEVICENAME;
+      end;
+      con_DeviceCmdDeviceUSE : begin
+        if TDevice(NodeDeviceList.Objects[aIndex]).DeviceUse then result := '1'
+        else result := '0';
+      end;
+      con_DeviceCmdArmAreaUse : begin
+        if TDevice(NodeDeviceList.Objects[aIndex]).ARMAREASKILL then result := TDevice(NodeDeviceList.Objects[aIndex]).ARMAREAUSE
+        else result := '0';
+      end;
+      con_DeviceCmdArmAreaCount : begin
+        result := inttostr(TDevice(NodeDeviceList.Objects[aIndex]).GetDeviceToArmAreaCount);
+      end;
+      con_DeviceCmdDoorCount : begin
+        result := inttostr(TDevice(NodeDeviceList.Objects[aIndex]).GetDeviceToDoorCount);
+      end;
+      con_DeviceCmdCardReaderCount : begin
+        result := inttostr(TDevice(NodeDeviceList.Objects[aIndex]).GetDeviceToCardReaderCount);
+      end;
+      con_DeviceCmdDeviceConnected : begin
+        if TDevice(NodeDeviceList.Objects[aIndex]).DEVICECONNECTED = csConnected then result := '1'
+        else result := '0';
+      end;
+      con_DeviceCmdZoneExtentionCount : begin
+        result := inttostr(TDevice(NodeDeviceList.Objects[aIndex]).GetDeviceToExtentionCount);
+      end;
+    end;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.GetDeviceIndexInformation');
+  End;
+end;
+
+function TNode.GetDeviceIndexSubInformation(aSubType, aCmd,
+  aIndex,aSubIndex: integer): string;
+begin
+  Try
+    result := '';
+    case aSubType of
+      con_DeviceTypeArmArea : begin
+        result := GetDeviceIndexArmAreaInformation(aCmd,aIndex,aSubIndex);
+      end;
+      con_DeviceTypeDoor : begin
+        result := GetDeviceIndexDoorInformation(aCmd,aIndex,aSubIndex);
+      end;
+      con_DeviceTypeCardReader : begin
+        result := GetDeviceIndexCardReaderInformation(aCmd,aIndex,aSubIndex);
+      end;
+      con_DeviceTypeExtention : begin
+        result := GetDeviceIndexExtentionInformation(aCmd,aIndex,aSubIndex);
+      end;
+    end;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.GetDeviceIndexSubInformation');
+  End;
+end;
+
+function TNode.GetDeviceIndexZoneInformation(aCmd, aEcuIndex,
+  aExtentionIndex, aZoneNo: integer): string;
+begin
+  Try
+    result := '';
+    if aEcuIndex > NodeDeviceList.Count - 1 then Exit;
+    case aCmd of
+      con_ZoneCmdName : begin
+        result := TDevice(NodeDeviceList.Objects[aEcuIndex]).GetDeviceToExtentionIndexZoneName(aExtentionIndex,aZoneNo);
+      end;
+      con_ZoneCmdArmArea : begin
+        result := inttostr(TDevice(NodeDeviceList.Objects[aEcuIndex]).GetDeviceToExtentionIndexZoneArmArea(aExtentionIndex,aZoneNo));
+      end;
+    end;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.GetDeviceIndexZoneInformation');
+  End;
+end;
+
+function TNode.GetDeviceVer: string;
+begin
+  Try
+    Result := L_stDeviceVer;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.GetDeviceVer');
+  End;
+end;
+
+function TNode.GetHandle: THandle;
+begin
+  Try
+    HandleNeeded;
+    Result := FHandle;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.GetHandle');
+  End;
+end;
+
+function TNode.GetNodeIndexInformation(aCmd: integer): string;
+begin
+  Try
+    result := '';
+    case aCmd of
+      con_DeviceCmdARMEXTENTIONGUBUN : begin
+        result := ARMEXTENTIONGUBUN;
+      end;
+      con_DeviceCmdARMEXTENTIONMAINFROMLOCAL : begin
+        result := ARMEXTENTIONMAINFROMLOCAL;
+      end;
+      con_DeviceCmdARMEXTENTIONMAINTOLOCAL : begin
+        result := ARMEXTENTIONMAINTOLOCAL;
+      end;
+      con_DeviceCmdARMEXTENTIONSKILL : begin
+        if ARMEXTENTIONSKILL then result := '1'
+        else result := '0';
+      end;
+      con_DeviceCmdDVRIP : begin
+        result := DVRIP;
+      end;
+      con_DeviceCmdDVRPORT : begin
+        result := DVRPORT;
+      end;
+      con_DeivceCmdDVRSKILL : begin
+        if DVRSKILL then result := '1'
+        else result := '0';
+      end;
+      con_DeivceCmdDVRUSE : begin
+        result := DVRUSE;
+      end;
+      con_DeviceCmdKTTREMOTEARMRINGCOUNT : begin
+        result := inttostr(KTTREMOTEARMRINGCOUNT);
+      end;
+      con_DeviceCmdKTTREMOTEDisARMRINGCOUNT : begin
+        result := inttostr(KTTREMOTEDISARMRINGCOUNT);
+      end;
+      con_DeviceCmdKTTSystemID : begin
+        result := KTTSYSTEMID;
+      end;
+      con_DeviceCmdKTTTelNumber1 : begin
+        result := KTTTELNUMBER1;
+      end;
+      con_DeviceCmdKTTTelNumber2 : begin
+        result := KTTTELNUMBER2;
+      end;
+      con_NodeCmdDeviceCount : begin
+        result := inttostr(NodeDeviceList.Count);
+      end;
+      con_NodeCmdDeviceRegState : begin
+        result := GetRegEcuUseData;
+      end;
+      con_NodeCmdEcuMaxCount : begin
+        result := inttostr(MaxEcuCount);
+      end;
+    end;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.GetNodeIndexInformation');
+  End;
+end;
+
+function TNode.GetRegEcuUseData: string;
+var
+  i : integer;
+  aData : String[100];
+  aNo : integer;
+begin
+  Try
+    aData :='1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000';
+    for I:= 1 to NodeDeviceList.Count - 1  do
+    begin
+      Try
+        aNo:= StrtoInt(NodeDeviceList.Strings[i]);
+        if (aNo + 1) > Length(aData) then continue;
+        if TDevice(NodeDeviceList.Objects[i]).DeviceUse then
+           aData[aNo + 1]:= '1';
+      Except
+        continue;
+      End;
+    end;
+    Result:= aData;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.GetRegEcuUseData');
+  End;
+end;
+
+function TNode.GetSendMsgNo: char;
+begin
+  Try
+    result := inttostr(L_nSendMsgNo)[1];
+    L_nSendMsgNo := L_nSendMsgNo + 1;
+    if L_nSendMsgNo > 9 then L_nSendMsgNo := 0;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.GetSendMsgNo');
+  End;
+end;
+
+function TNode.HandleAllocated: Boolean;
+begin
+  Try
+    Result := ( FHandle <> 0 );
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.HandleAllocated');
+  End;
+end;
+
+procedure TNode.HandleNeeded;
+begin
+  Try
+    if not HandleAllocated
+     then FHandle := AllocateHWND ( WndProc );
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.HandleNeeded');
+  End;
+end;
+
+procedure TNode.handle_wm_async_select(var Msg: TMessage);
+// -- wParam: hSocket, lo(lParam): notification, hi(lParam): error
+      procedure handle_fd_connect_notification(p_socket: Integer);
+      begin
+        TcpClientConnect(self);
+      end; // handle_fd_connect_notification
+
+      procedure handle_fd_write_notification(p_socket: Integer);
+      begin
+        L_bSocketWriting := False; //전송 완료
+      end; // handle_fd_write_notification
+
+      procedure handle_fd_read_notification(p_socket: tSocket);
+      var l_remaining: Integer;
+          l_pt_start_reception: Pointer;
+          l_packet_bytes: Integer;
+          l_eol_position: Integer;
+      begin
+        Try
+          if l_c_reception_buffer = nil then Exit;
+
+          with l_c_reception_buffer do
+          begin
+            l_remaining:= m_buffer_size- m_write_index;
+
+            // -- if not at least a tcp-ip chunk, increase the room
+            if l_remaining < k_tcp_ip_chunk then
+            begin
+              // -- reallocate
+              double_the_capacity;
+              l_remaining:= m_buffer_size- m_write_index;
+            end;
+
+            // -- add the received data to the current buffer
+            l_pt_start_reception:= @ m_oa_byte_buffer[m_write_index];
+
+            // -- get the data from the client socket
+            l_packet_bytes:= Recv(WinSocket, l_pt_start_reception^, l_remaining, 0);
+            if l_packet_bytes < 0 then TcpClientError(self,WSAGetLastError)
+            else
+            begin
+              m_write_index:= m_write_index+ l_packet_bytes;
+              TcpClientReceive(self, l_pt_start_reception, l_packet_bytes);
+              (*
+              if l_packet_bytes > 0 then
+              begin
+                m_write_index := m_write_index + l_packet_bytes;
+
+                // -- fetch the size
+                l_eol_position:= f_return_line_feed_position(0);
+                if (g_file_size= 0) and (l_eol_position> 0) then
+                begin
+                  g_file_size:= StrToInt(f_extract_string_start_end(0, l_eol_position- 3));
+                  remove_from_start(l_eol_position);
+                end;
+
+              end; // if l_packet_bytes
+              *)
+            end;
+          end; // with g_c_reception_buffer
+        Except
+          LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','handle_fd_read_notification');
+        End;
+      end; // handle_fd_read_notification
+
+      procedure handle_fd_close_notification(p_socket: Integer);
+      var l_status: Integer;
+          l_linger: TLinger;
+          l_absolute_linger: array[0..3] of char absolute l_linger;
+      begin
+        Try
+          if WSAIsBlocking
+            then
+              begin
+                WSACancelBlockingCall;
+              end;
+
+          ShutDown(p_socket, 2);
+          l_linger.l_onoff:= 1;
+          l_linger.l_linger:= 0;
+
+          SetSockOpt(p_socket, Sol_Socket, So_Linger, pAnsichar(AnsiString(l_absolute_linger)), sizeof(l_linger));  //l_absolute_linger[0] -> AnsiString(l_absolute_linger) 으로 변경
+
+          l_status:= CloseSocket(p_socket);
+          //if l_status <> 0 then
+          TcpClientDisconnect(self);
+        Except
+          LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','handle_fd_close_notification');
+        End;
+      end; // handle_fd_close_notification
+
+var l_param: Integer;
+    l_error, l_notification: Integer;
+    l_socket_handle: Integer;
+
+begin // handle_wm_async_select
+  Try
+    l_param:= Msg.lParam;
+    l_socket_handle:= Msg.wParam;
+
+    // -- extract the error and the notification code from l_param
+    l_error:= wsaGetSelectError(l_param);
+    l_notification:= wsaGetSelectEvent(l_param);
+
+    if l_error <= wsaBaseErr then
+    begin
+        case l_notification of
+          FD_CONNECT: handle_fd_connect_notification(l_socket_handle);
+          FD_ACCEPT: {display_bug_stop('no_client_accept')} ;
+          FD_WRITE: handle_fd_write_notification(l_socket_handle);
+          FD_READ: handle_fd_read_notification(l_socket_handle);
+          FD_CLOSE: handle_fd_close_notification(l_socket_handle);
+        end // case
+    end else
+    begin
+      if l_notification= FD_CLOSE then handle_fd_close_notification(l_socket_handle)
+      else TcpClientError(self,l_error) ;//TcpClientError(self,WSAGetLastError);
+    end;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.handle_wm_async_select');
+  End;
+end;
+
+
+function TNode.NodeDataPacketProcess(aPacketData: string): Boolean;
+var
+  stECUID : string;
+  stRealData : string;
+  chCMD : char;
+  chMsgNo : char;
+  cKey : char;
+  nIndex : integer;
+begin
+  Try
+    result := False;
+    if aPacketData = '' then Exit;
+    cKey := aPacketData[5];
+    DeviceID := Copy(aPacketData, 8, G_nIDLength);
+    stECUID := copy(aPacketData,8 + G_nIDLength,2);
+    chCMD:= aPacketData[G_nIDLength + 10];
+    chMsgNo:= aPacketData[G_nIDLength + 11];
+    L_stDeviceVer := copy(aPacketData,6,2);
+    if Assigned(FOnNodePacket) then
+    begin
+      OnNodePacket(Self,No,NodeName,stECUID,chCMD,chMsgNo,L_stDeviceVer,aPacketData,'RX');
+    end;
+    //066*SK000000000Arn20140113144756MN0000d00***160000000000******81
+    stRealData := Copy(aPacketData,G_nIDLength + 12,Length(aPacketData)-(G_nIDLength + 14));
+
+    if L_stReceivedLastpacket = aPacketData then
+    begin
+      if (chCMD <> 'c') AND (chCMD <> 'A') then   //알람 데이터 또는 출입이벤트가 아니면 Ack 전송
+      begin
+        SendPacket(stECUID,'a',chMsgNo,L_stDeviceVer, 'w000', 0); //Ack 전송
+      end;
+      //최종 패킷과 현재 패킷이 같으면 무시하자
+      Exit;
+    end;
+    L_stReceivedLastpacket := aPacketData;
+
+    //if (pos('Bad Command',aPacketData) > 0) or (pos('COMM ERROR',aPacketData) > 0 ) or (pos('UNUSED',aPacketData) > 0 ) then
+    if (pos('COMM ERROR',aPacketData) > 0 ) then
+    begin
+      ECUConnected(stECUID,csDisConnected);
+    end else if (pos('UNUSED',aPacketData) > 0 ) then
+    begin
+      ECUUsed(stECUID,False);
+      ECUConnected(stECUID,csDisConnected);
+    end else
+    begin
+      if (chCMD <> 'A') and (chCMD <> 'o') then ECUConnected(stECUID,csConnected);//통신에러 나오는 경우도 있음
+    end;
+
+    if (chCMD = 'a') then
+    begin
+      Exit;
+    end;
+
+    {받은 데이터 커맨드별 처리}
+    { ================================================================================
+    "A" = Alarm Data
+    "I" = Initial Data
+    "R" = Remote Command
+    "e" = ENQ
+    "E" = ERROR
+    "a" = ACK
+    "n" = NAK
+    "r" = Remote Answer
+    "c" = Access Control data
+    ★ c(출입통제 데이터)인경우에는 ACK 를 'c' command를 만들어 응답을 해야 한다.
+    즉 ACK 응답을 두번 주어야 한다.(①전체 패킷응답,②출입통제 응답)
+    ================================================================================ }
+    nIndex := NodeDeviceList.IndexOf(stECUID);
+    if nIndex > -1 then
+    begin
+      case chCMD of
+        'A','o':{알람}      begin  TDevice(NodeDeviceList.Objects[nIndex]).ReceiveDeviceAlarmData(stECUID,L_stDeviceVer,chMsgNo,chCMD,stRealData)         end;
+        'i':{Initial}       begin  TDevice(NodeDeviceList.Objects[nIndex]).ReceiveDeviceRegDataProcess(stECUID,L_stDeviceVer,chMsgNo,stRealData)             end;
+        'R':{Remote}        begin  TDevice(NodeDeviceList.Objects[nIndex]).ReceiveDeviceRemoteDataProcess(stECUID,L_stDeviceVer,chMsgNo,stRealData)          end;
+        'r':{Remote Answer} begin  TDevice(NodeDeviceList.Objects[nIndex]).ReceiveDeviceRemoteDataProcess(stECUID,L_stDeviceVer,chMsgNo,stRealData)          end;
+        'c':{출입통제}      begin  TDevice(NodeDeviceList.Objects[nIndex]).ReceiveDeviceAccessDataProcess(stECUID,L_stDeviceVer,chMsgNo,stRealData)          end;
+        'f':{펌웨어}        begin  TDevice(NodeDeviceList.Objects[nIndex]).ReceiveDeviceFirmwareProcess(stECUID,L_stDeviceVer,chMsgNo,stRealData)            end;
+        'F':{펌웨어}        begin  TDevice(NodeDeviceList.Objects[nIndex]).ReceiveDeviceFirmwareProcess2(stECUID,L_stDeviceVer,chMsgNo,stRealData)           end;
+        '*':{브로드캐스트}  begin  TDevice(NodeDeviceList.Objects[nIndex]).ReceiveDeviceBroadCastProcess(stECUID,L_stDeviceVer,chMsgNo,stRealData)           end;
+        'E':{ERROR}         begin  TDevice(NodeDeviceList.Objects[nIndex]).ReceiveDeviceErrorDataProcess(stECUID,L_stDeviceVer,chMsgNo,stRealData)       end;
+        'm':{관제데이터 모니터링 } begin TDevice(NodeDeviceList.Objects[nIndex]).ReceiveDevicePTMonitoringProcess(stECUID,L_stDeviceVer,chMsgNo,stRealData)  end;
+        'M':{메세지참조 }   begin TDevice(NodeDeviceList.Objects[nIndex]).ReceiveDeviceMessageProcess(stECUID,L_stDeviceVer,chMsgNo,stRealData)  end;
+        '#':{게이지 값 모니터링} begin TDevice(NodeDeviceList.Objects[nIndex]).ReceiveDeviceGageMonitor(stECUID,L_stDeviceVer,chMsgNo,stRealData)            end;
+        'e':{ENQ}           begin {ErrorDataProcess(stECUID,G_stDeviceVer,stRealData) }           end;
+        else {error 발생: [E003]정의 되지 않은 커맨드}  begin TDevice(NodeDeviceList.Objects[nIndex]).ReceiveDeviceErrorDataProcess(stECUID,L_stDeviceVer,chMsgNo,stRealData) end;
+      end;
+    end;
+
+    if (chCMD <> 'c') then
+    begin
+      SendPacket(stECUID,'a',chMsgNo,L_stDeviceVer, 'w000', 0); //Ack 전송
+    end;
+
+    Result:= True;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.NodeDataPacketProcess');
+  End;
+end;
+
+procedure TNode.NodeDataReadingProcessing;
+var
+  nFormat : integer;
+  bLoop : Boolean;
+  stLeavePacketData : string;
+  stPacketData : string;
+  bDecoderFormat : Boolean;
+begin
+  Try
+    bLoop := False;
+    repeat
+      if Trim(L_stComBuffer) = '' then Exit;
+      nFormat := dmDevicePacket.PacketFormatCheck(L_stComBuffer,G_nProgramType,stLeavePacketData,stPacketData);
+      if nFormat < 0 then
+      begin
+        if L_stComBuffer = '' then break;
+        if nFormat = -1 then  //비정상 전문 인경우
+        begin
+           Delete(L_stComBuffer,1,1);
+           continue;
+        end else break;   //포맷 길이가 작게 들어온 경우
+      end;
+      L_stComBuffer:= stLeavePacketData;
+      bDecoderFormat := False;
+      if nFormat = 1 then bDecoderFormat := False
+      else if nFormat = 2 then bDecoderFormat := True
+      else continue;
+      if bDecoderFormat then continue;   //데코더 포맷인 경우 처리 하지 말자
+      if stPacketData <> '' then
+      begin
+        NodeDataPacketProcess(stPacketData);
+      end;
+
+      if pos(ETX,L_stComBuffer) = 0 then bLoop := True
+      else bLoop := False;
+      Application.ProcessMessages;
+    until bLoop;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.NodeDataReadingProcessing');
+  End;
+end;
+
+
+procedure TNode.NodeInformationCheck(aInformationType: integer);
+var
+  nIndex : integer;
+begin
+  Try
+    case aInformationType of
+      con_DeviceCmdKTTSystemID: begin
+        KTTSYSTEMIDRCV := 'R';
+        nIndex := NodeDeviceList.IndexOf('00');
+        if nIndex > -1 then
+        begin
+          TDevice(NodeDeviceList.Objects[nIndex]).DeviceKTTSystemIDCheck;
+        end;
+        if KTTSYSTEMIDRCV = 'R' then KTTSYSTEMIDRCV := 'N'; //수신 하지 못한 경우 수신 할때 까지 Retry 하자.
+      end;  //관제 시스템 아이디
+      con_DeviceCmdKTTTelNumber1: begin
+        KTTTELNUMBERRCV := 'R';
+        nIndex := NodeDeviceList.IndexOf('00');
+        if nIndex > -1 then
+        begin
+          TDevice(NodeDeviceList.Objects[nIndex]).DeviceKTTTelNumberCheck('0');
+          TDevice(NodeDeviceList.Objects[nIndex]).DeviceKTTTelNumberCheck('1');
+        end;
+        if KTTTELNUMBERRCV = 'R' then KTTTELNUMBERRCV := 'N'; //수신 하지 못한 경우 수신 할때 까지 Retry 하자.
+      end;  //관제 데코더 전화번호
+      con_DeviceCmdKTTREMOTEARMRINGCOUNT: begin
+        KTTREMOTERINGCOUNTRCV := 'R';
+        nIndex := NodeDeviceList.IndexOf('00');
+        if nIndex > -1 then
+        begin
+          TDevice(NodeDeviceList.Objects[nIndex]).DeviceKTTRingCountCheck;
+        end;
+        if KTTREMOTERINGCOUNTRCV = 'R' then KTTREMOTERINGCOUNTRCV := 'N'; //수신 하지 못한 경우 수신 할때 까지 Retry 하자.
+      end;  //원격경해시 링횟수
+      con_DeviceCmdKttCdmaUse: begin
+        KTTCDMAUSERCV := 'R';
+        nIndex := NodeDeviceList.IndexOf('00');
+        if nIndex > -1 then
+        begin
+          TDevice(NodeDeviceList.Objects[nIndex]).DeviceKTTCDMAUSECheck;
+        end;
+        if KTTCDMAUSERCV = 'R' then KTTCDMAUSERCV := 'Y'; //수신 하지 못한 경우 수신 하지 말자.
+      end; //CDMA 사용 유무 0.미사용,1.사용
+      con_DeviceCmdKttCDMADATA: begin
+        KTTCDMADATARCV := 'R';
+        nIndex := NodeDeviceList.IndexOf('00');
+        if nIndex > -1 then
+        begin
+          TDevice(NodeDeviceList.Objects[nIndex]).DeviceKTTCDMADATACheck;
+        end;
+        if KTTCDMADATARCV = 'R' then KTTCDMADATARCV := 'Y'; //CDMA 모듈이 없는 경우 아무런 메시지도 오지 않음
+      end;     //CDMA IP
+      con_DeivceCmdDVRUSE: begin
+        DVRUSERCV := 'R';
+        nIndex := NodeDeviceList.IndexOf('00');
+        if nIndex > -1 then
+        begin
+          TDevice(NodeDeviceList.Objects[nIndex]).DeviceDVRUseCheck;
+        end;
+        if DVRUSERCV = 'R' then DVRUSERCV := 'N'; //수신 하지 못한 경우 수신 할때 까지 Retry 하자.
+      end; //DVR 사용 유무 0.미사용,1.사용
+      con_DeviceCmdDVRIP: begin
+        DVRDATARCV := 'R';
+        nIndex := NodeDeviceList.IndexOf('00');
+        if nIndex > -1 then
+        begin
+          TDevice(NodeDeviceList.Objects[nIndex]).DeviceDVRDataCheck;
+        end;
+        if DVRDATARCV = 'R' then DVRDATARCV := 'N'; //수신 하지 못한 경우 수신 할때 까지 Retry 하자.
+      end; //DVR IP
+      con_DeviceCmdARMEXTENTIONMAINTOLOCAL : begin
+        if Not ARMEXTENTIONSKILL then
+        begin
+          ARMEXTENTIONMAINTOLOCALRCV := 'Y';
+          Exit;
+        end;
+        ARMEXTENTIONMAINTOLOCALRCV := 'R';
+        nIndex := NodeDeviceList.IndexOf('00');
+        if nIndex > -1 then
+        begin
+          TDevice(NodeDeviceList.Objects[nIndex]).DeviceARMEXTENTIONMAINTOLOCALCheck;
+        end;
+        if ARMEXTENTIONMAINTOLOCALRCV = 'R' then ARMEXTENTIONMAINTOLOCALRCV := 'Y'; //수신 하지 못한 경우 수신 하지 말자
+      end;
+      con_DeviceCmdARMEXTENTIONMAINFROMLOCAL : begin
+        if Not ARMEXTENTIONSKILL then
+        begin
+          ARMEXTENTIONMAINFROMLOCALRCV := 'Y';
+          Exit;
+        end;
+        ARMEXTENTIONMAINFROMLOCALRCV := 'R';
+        nIndex := NodeDeviceList.IndexOf('00');
+        if nIndex > -1 then
+        begin
+          TDevice(NodeDeviceList.Objects[nIndex]).DeviceARMEXTENTIONMAINFromLOCALCheck;
+        end;
+        if ARMEXTENTIONMAINFROMLOCALRCV = 'R' then ARMEXTENTIONMAINFROMLOCALRCV := 'Y'; //수신 하지 못한 경우 재수신 하지 말자
+      end;
+      con_DeviceCmdUseState : begin
+        ECUUSERCV := 'R';
+        nIndex := NodeDeviceList.IndexOf('00');
+        if nIndex > -1 then
+        begin
+          TDevice(NodeDeviceList.Objects[nIndex]).DeviceECUUseCheck;
+        end;
+        if ECUUSERCV = 'R' then ECUUSERCV := 'N'; //수신 하지 못한 경우 수신 할때 까지 Retry 하자.
+      end;
+    end;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.NodeInformationCheck');
+  End;
+end;
+
+procedure TNode.NodeInformationSend(aInformationType: integer);
+var
+  nIndex : integer;
+  stTemp : string;
+  i : integer;
+begin
+  Try
+    case aInformationType of
+      con_DeviceCmdKTTSystemID: begin
+        KTTSYSTEMIDRCV := 'S';
+        nIndex := NodeDeviceList.IndexOf('00');
+        if nIndex > -1 then
+        begin
+          TDevice(NodeDeviceList.Objects[nIndex]).RegistDeviceKTTSystemID(KTTSYSTEMID);
+        end;
+        if KTTSYSTEMIDRCV = 'S' then KTTSYSTEMIDRCV := 'U'; //수신 하지 못한 경우 수신 할때 까지 Retry 하자.
+      end;  //관제 시스템 아이디
+      con_DeviceCmdKTTTelNumber1: begin
+        KTTTELNUMBERRCV := 'S';
+        nIndex := NodeDeviceList.IndexOf('00');
+        if nIndex > -1 then
+        begin
+          TDevice(NodeDeviceList.Objects[nIndex]).RegistDeviceKTTTelNumber('0',KTTTELNUMBER1);
+          TDevice(NodeDeviceList.Objects[nIndex]).RegistDeviceKTTTelNumber('1',KTTTELNUMBER2);
+        end;
+        if KTTTELNUMBERRCV = 'S' then KTTTELNUMBERRCV := 'U'; //수신 하지 못한 경우 수신 할때 까지 Retry 하자.
+      end;  //관제 데코더 전화번호
+      con_DeviceCmdKTTREMOTEARMRINGCOUNT: begin
+        KTTREMOTERINGCOUNTRCV := 'S';
+        nIndex := NodeDeviceList.IndexOf('00');
+        if nIndex > -1 then
+        begin
+          TDevice(NodeDeviceList.Objects[nIndex]).RegistDeviceKTTRingCount(inttostr(KTTREMOTEARMRINGCOUNT),inttostr(KTTREMOTEDISARMRINGCOUNT));
+        end;
+        if KTTREMOTERINGCOUNTRCV = 'S' then KTTREMOTERINGCOUNTRCV := 'U'; //수신 하지 못한 경우 수신 할때 까지 Retry 하자.
+      end;  //원격경해시 링횟수
+      con_DeviceCmdKttCdmaUse: begin
+        KTTCDMAUSERCV := 'S';
+        nIndex := NodeDeviceList.IndexOf('00');
+        if nIndex > -1 then
+        begin
+          TDevice(NodeDeviceList.Objects[nIndex]).RegistDeviceKTTCDMAUSE(KTTCDMAUSE);
+        end;
+        if KTTCDMAUSERCV = 'S' then KTTCDMAUSERCV := 'U'; //수신 하지 못한 경우 수신 할때 까지 Retry 하자.
+      end; //CDMA 사용 유무 0.미사용,1.사용
+      con_DeviceCmdKttCDMADATA: begin
+        KTTCDMADATARCV := 'S';
+        nIndex := NodeDeviceList.IndexOf('00');
+        if nIndex > -1 then
+        begin
+          TDevice(NodeDeviceList.Objects[nIndex]).RegistDeviceKTTCDMADATA(KTTCDMAMIN,KTTCDMAMUX,KTTCDMAIP,KTTCDMAPORT,KTTCDMACHECKTIME,KTTCDMARSSI);
+        end;
+        if KTTCDMADATARCV = 'S' then KTTCDMADATARCV := 'U'; //CDMA 모듈이 없는 경우 아무런 메시지도 오지 않음
+      end;     //CDMA IP
+      con_DeivceCmdDVRUSE: begin
+        DVRUSERCV := 'S';
+        nIndex := NodeDeviceList.IndexOf('00');
+        if nIndex > -1 then
+        begin
+          TDevice(NodeDeviceList.Objects[nIndex]).RegistDeviceDVRUse(DVRUSE);
+        end;
+        if DVRUSERCV = 'S' then DVRUSERCV := 'U'; //수신 하지 못한 경우 수신 할때 까지 Retry 하자.
+      end; //DVR 사용 유무 0.미사용,1.사용
+      con_DeviceCmdDVRIP: begin
+        DVRDATARCV := 'S';
+        nIndex := NodeDeviceList.IndexOf('00');
+        if nIndex > -1 then
+        begin
+          TDevice(NodeDeviceList.Objects[nIndex]).RegistDeviceDVRData(DVRIP,DVRPORT);
+        end;
+        if DVRDATARCV = 'S' then DVRDATARCV := 'U'; //수신 하지 못한 경우 수신 할때 까지 Retry 하자.
+      end; //DVR IP
+      con_DeviceCmdARMEXTENTIONMAINTOLOCAL : begin
+        if Not ARMEXTENTIONSKILL then
+        begin
+          ARMEXTENTIONMAINTOLOCALRCV := 'Y';
+          Exit;
+        end;
+        ARMEXTENTIONMAINTOLOCALRCV := 'S';
+        nIndex := NodeDeviceList.IndexOf('00');
+        if nIndex > -1 then
+        begin
+          if ARMEXTENTIONGUBUN = '0' then
+          begin
+            stTemp := '';
+            for i := 0 to 63 do stTemp := stTemp + '0';
+          end else
+          begin
+            stTemp := ARMEXTENTIONMAINTOLOCAL;
+          end;
+          TDevice(NodeDeviceList.Objects[nIndex]).RegistDeviceARMEXTENTIONMAINTOLOCAL(stTemp);
+        end;
+        if ARMEXTENTIONMAINTOLOCALRCV = 'S' then ARMEXTENTIONMAINTOLOCALRCV := 'U'; //수신 하지 못한 경우 수신 할때 까지 Retry 하자.
+      end;
+      con_DeviceCmdARMEXTENTIONMAINFROMLOCAL : begin
+        if Not ARMEXTENTIONSKILL then
+        begin
+          ARMEXTENTIONMAINFROMLOCALRCV := 'Y';
+          Exit;
+        end;
+        ARMEXTENTIONMAINFROMLOCALRCV := 'S';
+        nIndex := NodeDeviceList.IndexOf('00');
+        if nIndex > -1 then
+        begin
+          if ARMEXTENTIONGUBUN = '0' then
+          begin
+            stTemp := '';
+            for i := 0 to 63 do stTemp := stTemp + '0';
+          end else
+          begin
+            stTemp := ARMEXTENTIONMAINFROMLOCAL;
+          end;
+          TDevice(NodeDeviceList.Objects[nIndex]).RegistDeviceARMEXTENTIONMAINFromLOCAL(stTemp);
+        end;
+        if ARMEXTENTIONMAINFROMLOCALRCV = 'S' then ARMEXTENTIONMAINFROMLOCALRCV := 'U'; //송신 하지 못한 경우 수신 할때 까지 Retry 하자.
+      end;
+      con_DeviceCmdUseState : begin
+        ECUUSERCV := 'S';
+        nIndex := NodeDeviceList.IndexOf('00');
+        if nIndex > -1 then
+        begin
+          TDevice(NodeDeviceList.Objects[nIndex]).RegistDeviceECUUse(GetRegEcuUseData);
+        end;
+        if ECUUSERCV = 'S' then ECUUSERCV := 'U'; //수신 하지 못한 경우 수신 할때 까지 Retry 하자.
+      end;
+    end;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.NodeInformationSend');
+  End;
+end;
+
+procedure TNode.NodeSendPacketTimerTimer(Sender: TObject);
+var
+  stPacket : string;
+  nCardDelayCount : integer;
+begin
+  if L_bSocketWriting then Exit; //전송 중에는 보내지 말자.  => 전송 완료 메시지 이벤트가 발생 안되어 무용지물
+
+  if NodeDestory then Exit;
+
+  Try
+    nCardDelayCount := 20;   //카드데이터 다운로드시 200ms 에 하나씩 전송 하기 위해서 400ms 안된 경우 전송 하지 말자.
+
+    L_nSendDelayCount := L_nSendDelayCount + 1;
+    stPacket := '';
+    if (Send1stDataList.Count > 0) and (L_n1stCount < 5) then
+    begin
+      if L_nSendDelayCount > nCardDelayCount then L_nSendDelayCount := 0;
+      stPacket := Send1stDataList.Strings[0];
+      Send1stDataList.Delete(0);
+      inc(L_n1stCount);
+    end else if (Send2ndDataList.Count > 0) and (L_n2ndCount < 5) then
+    begin
+      L_n1stCount := 0;
+      if L_nSendDelayCount > nCardDelayCount then L_nSendDelayCount := 0;
+      stPacket := Send2ndDataList.Strings[0];
+      Send2ndDataList.Delete(0);
+      inc(L_n2ndCount);
+    end else if (Send3rdDataList.Count > 0) and (L_n3rdCount < 5) then
+    begin
+      L_n1stCount := 0;
+      L_n2ndCount := 0;
+      if L_nSendDelayCount > nCardDelayCount then L_nSendDelayCount := 0;
+      stPacket := Send3rdDataList.Strings[0];
+      Send3rdDataList.Delete(0);
+      inc(L_n3rdCount);
+    end else if (Send4thDataList.Count > 0) and (L_n4thCount < 5) then
+    begin
+      L_n1stCount := 0;
+      L_n2ndCount := 0;
+      L_n3rdCount := 0;
+      if L_nSendDelayCount < nCardDelayCount then Exit;       //카드데이터 다운로드시 200ms 에 하나씩 전송 하기 위해서 400ms 안된 경우 전송 하지 말자.
+      L_nSendDelayCount := 0;
+      stPacket := Send4thDataList.Strings[0];
+      Send4thDataList.Delete(0);
+      inc(L_n4thCount);
+    end else
+    begin
+      L_n1stCount := 0;
+      L_n2ndCount := 0;
+      L_n3rdCount := 0;
+      L_n4thCount := 0;
+    end;
+    if stPacket <> '' then
+    begin
+      //L_bSocketWriting := True;   //Send 후 이벤트가 발생하지 않네...ㅠ.ㅠ
+      PutString(stPacket); //소켓에 전송
+    end;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.NodeSendPacketTimerTimer');
+  End;
+end;
+
+function TNode.PutString(aData: string): Boolean;
+var
+  l_result: Integer;
+  buf: TBytes;
+begin
+  Try
+    Try
+      FTCSDeviceSender.Enter;
+      result := False;
+      if Not (NodeConnected = csConnected) then Exit;
+
+      Try
+        Ascii2Bytes(aData,Length(aData),buf);
+        l_result:= Send(WinSocket,buf[0], Length(aData), 0);
+
+        if l_result < 0 then
+        begin
+          if l_result = wsaEWouldBlock  then
+          begin
+            L_bSocketWriting := True;  //Socket에 Full 나면 Write
+          end else
+          begin
+            TcpClientError(self,WSAGetLastError);
+          end;
+        end;
+      Except
+        LogSave(G_stLogDirectory + '\Err' + FormatDateTime('yyyymmdd',now) + '.log',LANIP + ':PutString');
+        Exit;
+      End;
+      result := True;
+    Finally
+      FTCSDeviceSender.Leave;
+    End;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.PutString');
+  End;
+end;
+
+procedure TNode.RcvCheckTimerTimer(Sender: TObject);
+var
+  i : integer;
+  bReciveStateCheck : Boolean;
+begin
+  if Not (NodeConnected = csConnected) then Exit; //노드가 연결되어 있지 않으면 빠져 나감
+
+  if L_bRcvChecking then Exit; //작업 중이면 일단 빠져 나감
+  if NodeDestory then Exit;
+
+  L_bRcvChecking := True;
+  Try
+    RcvCheckTimer.Enabled := False;
+    Try
+      for i := 0 to HIGH(L_cNodeRCVSTATE) do
+      begin
+        if L_cNodeRCVSTATE[i] = 'U' then  //변경된 건이 있으면 송신 하자....
+        begin
+          if NodeDestory then Exit;
+          NodeInformationSend(i);
+          Exit;
+        end;
+        Application.ProcessMessages;
+      end;
+      for i := 0 to HIGH(L_cNodeRCVSTATE) do
+      begin
+        if L_cNodeRCVSTATE[i] = 'N' then  //상태를 수신할 건이 있으면 수신 체크 하자....
+        begin
+          if NodeDestory then Exit;
+          NodeInformationCheck(i);
+          Exit;
+        end;
+        Application.ProcessMessages;
+      end;
+
+      for i := 0 to G_nDefaultECUCount do  //컨트롤러의 상태가 변경 또는 체크 할것이 있는지 확인하자
+      begin
+        if TDevice(NodeDeviceList.Objects[i]).DeviceConnected  = csConnected then
+        begin
+          if TDevice(NodeDeviceList.Objects[i]).ReciveStateChange then
+          begin
+            if NodeDestory then Exit;
+            TDevice(NodeDeviceList.Objects[i]).DeviceReciveCheck;
+            ReciveStateChange := True; //다음 장비의 상태를 체크 해야 하므로
+            Exit;
+          end;
+        end;
+        Application.ProcessMessages;
+      end;
+
+      //여기서는 수신상태 체크 하는 곳 ==> 수신이 안되면 여기서 멈춤 현상 발생
+      bReciveStateCheck := False;
+      for i := 0 to HIGH(L_cNodeRCVSTATE) do
+      begin
+        if NodeDestory then Exit;
+        if L_cNodeRCVSTATE[i] <> 'Y' then
+        begin
+          bReciveStateCheck := True;
+          break;
+        end;
+        Application.ProcessMessages;
+      end;
+      if Not bReciveStateCheck then
+      begin
+        for i := 0 to NodeDeviceList.Count - 1 do  //존의 상태가 변경 또는 체크 할것이 있는지 확인하자
+        begin
+          if NodeDestory then Exit;
+          if TDevice(NodeDeviceList.Objects[i]).DeviceConnected  = csConnected then
+          begin
+            if TDevice(NodeDeviceList.Objects[i]).ReciveStateChange then
+            begin
+              bReciveStateCheck := True;
+              break;
+            end;
+          end;
+          Application.ProcessMessages;
+        end;
+      end;
+      ReciveStateChange := bReciveStateCheck;
+    Except
+      LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.RcvCheckTimerTimer');
+    End;
+  Finally
+    L_bRcvChecking := False;
+    //RcvCheckTimer.Enabled := ReciveStateChange;  //수신상태를 변경 하면서 수행 됨
+  End;
+
+end;
+
+procedure TNode.ReceiveStateClear;
+begin
+  Try
+    if KTTSYSTEMIDRCV = 'R' then KTTSYSTEMIDRCV := 'N';
+    if KTTTELNUMBERRCV = 'R' then KTTTELNUMBERRCV := 'N';
+    if KTTREMOTERINGCOUNTRCV = 'R' then KTTREMOTERINGCOUNTRCV := 'N';
+    if KTTCDMAUSERCV = 'R' then KTTCDMAUSERCV := 'N';
+    if KTTCDMADATARCV = 'R' then KTTCDMADATARCV := 'N';
+    if DVRUSERCV = 'R' then DVRUSERCV := 'N';
+    if DVRDATARCV = 'R' then DVRDATARCV := 'N';
+
+    if KTTSYSTEMIDRCV = 'S' then KTTSYSTEMIDRCV := 'U';
+    if KTTTELNUMBERRCV = 'S' then KTTTELNUMBERRCV := 'U';
+    if KTTREMOTERINGCOUNTRCV = 'S' then KTTREMOTERINGCOUNTRCV := 'U';
+    if KTTCDMAUSERCV = 'S' then KTTCDMAUSERCV := 'U';
+    if KTTCDMADATARCV = 'S' then KTTCDMADATARCV := 'U';
+    if DVRUSERCV = 'S' then DVRUSERCV := 'U';
+    if DVRDATARCV = 'S' then DVRDATARCV := 'U';
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.ReceiveStateClear');
+  End;
+end;
+
+procedure TNode.SendPacket(aEcuId: String;aCmd: Char;aMsgNo:char;aDeviceVer,aData: String; aPriority: integer);
+var
+  stDeviceID : string;
+  nDataLength : integer;
+  stLen : string;
+  stPacket : string;
+  cKey : char;
+  stNormalPacket : string;
+begin
+  Try
+    if Not (NodeConnected = csConnected) then Exit;
+
+    if G_nEncrypt = 0 then cKey := #$20
+    else cKey := #$19;
+
+    stDeviceID := DeviceID ;
+    if Length(stDeviceID) < G_nIDLength then stDeviceID := FillZeroStrNum(stDeviceID,G_nIDLength);
+    stDeviceID := stDeviceID + aEcuID;
+    nDataLength := (G_nIDLength + 14) + Length(aData);
+    stLen := FillZeroNumber(nDataLength, 3);
+    if aCmd = 'a' then {응답 처리}
+       stPacket := dmDevicePacket.PacketCreate(G_nProgramType,stLen,aDeviceVer,stDeviceID,aCmd,aData,aMsgNo,cKey,stNormalPacket)
+    else {제어 or 등록 }
+    begin
+      stPacket := dmDevicePacket.PacketCreate(G_nProgramType,stLen,aDeviceVer,stDeviceID,aCmd,aData,aMsgNo,cKey,stNormalPacket);
+    end;
+    if aPriority = 0 then    //ack 와 같이 최우선 순위 데이터
+    begin
+      PutString(stPacket);
+    end else if aPriority = 1 then   //제어,조회 명령과 같이 우선 순위 데이터
+    begin
+      Send1stDataList.Add(stPacket);
+    end else if aPriority = 2 then   //AccessEvent 에서 권한 데이터 불일치
+    begin
+      Send2ndDataList.Add(stPacket);
+    end else if aPriority = 3 then
+    begin
+      Send3rdDataList.Add(stPacket);
+    end else if aPriority = 4 then   //Auto CardData DownLoad
+    begin
+      Send4thDataList.Add(stPacket);
+    end;
+
+    if Assigned(FOnNodePacket) then
+    begin
+      OnNodePacket(Self,No,NodeName,aEcuID,aCmd,aMsgNo,aDeviceVer,stNormalPacket,'TX');
+    end;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.SendPacket');
+  End;
+end;
+
+procedure TNode.ServerSocketClose;
+var
+  l_result : integer;
+begin
+  Try
+    if SocketType <> 2 then Exit; //PC 서버 소켓 타입이 아니면 이쪽을 타지 말자.
+
+    if WinSocket <> INVALID_SOCKET then
+    begin
+      shutdown(WinSocket,SD_BOTH);
+      l_result:= CloseSocket(WinSocket);
+      //if l_result = 0 then
+      WinSocket := INVALID_SOCKET;
+    end;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.ServerSocketClose');
+  End;
+end;
+
+procedure TNode.ServerSocketRead;
+var l_remaining: Integer;
+    l_pt_start_reception: Pointer;
+    l_packet_bytes: Integer;
+
+    l_eol_position: Integer;
+    l_file_name: String;
+begin
+  Try
+    if SocketType <> 2 then Exit; //PC 서버 소켓 타입이 아니면 이쪽을 타지 말자.
+
+    if l_c_reception_buffer = nil then Exit;
+    with l_c_reception_buffer do
+    begin
+      l_remaining:= m_buffer_size- m_write_index;
+      // -- if not at least a tcp-ip chunk, increase the room
+      if l_remaining < k_tcp_ip_chunk then
+      begin
+        // -- reallocate
+        double_the_capacity;
+        l_remaining:= m_buffer_size- m_write_index;
+      end;
+      l_pt_start_reception:= @ m_oa_byte_buffer[m_write_index];
+      l_packet_bytes:= Recv(WinSocket, l_pt_start_reception^, l_remaining, 0);
+      if l_packet_bytes < 0 then TcpClientError(self,WSAGetLastError)
+      else
+      begin
+        m_write_index:= m_write_index + l_packet_bytes;
+        TcpClientReceive(self, l_pt_start_reception, l_packet_bytes);
+      end;
+    end;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.ServerSocketRead');
+  End;
+end;
+
+procedure TNode.SetARMEXTENTIONGUBUN(const Value: string);
+begin
+  Try
+    if FARMEXTENTIONGUBUN = Value then Exit;
+    FARMEXTENTIONGUBUN := Value;
+
+    if InfoInitialize then Exit;
+
+    if Assigned(FOnDevicePacketChange) then
+    begin
+      OnDevicePacketChange(Self,con_DeviceCmdARMEXTENTIONGUBUN,NO,'00',Value);
+    end;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.SetARMEXTENTIONGUBUN');
+  End;
+end;
+
+procedure TNode.SetARMEXTENTIONMAINFROMLOCAL(const Value: string);
+var
+  bUsed : Boolean;
+  i : integer;
+begin
+  Try
+    if FARMEXTENTIONMAINFROMLOCAL = Value then Exit;
+    FARMEXTENTIONMAINFROMLOCAL := Value;
+    bUsed := False;
+    if Value <> '' then
+    begin
+      for i := 1 to Length(Value) - 1 do
+      begin
+        if Value[i+1] = '1' then
+        begin
+          bUsed := True;
+          break;
+        End;
+      end;
+    end;
+
+    if bUsed then
+    begin
+      ARMEXTENTIONGUBUN := '2';
+    end else
+    begin
+      bUsed := False;
+      for i := 1 to Length(ARMEXTENTIONMAINTOLOCAL) - 1 do
+      begin
+        if ARMEXTENTIONMAINTOLOCAL[i+1] = '1' then
+        begin
+          bUsed := True;
+          break;
+        end;
+      end;
+      if Not bUsed then ARMEXTENTIONGUBUN := '0';  //사용안함
+    end;
+
+    if InfoInitialize then Exit;
+
+    if Assigned(FOnDevicePacketChange) then
+    begin
+      OnDevicePacketChange(Self,con_DeviceCmdARMEXTENTIONMAINFROMLOCAL,NO,'00',Value);
+    end;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.SetARMEXTENTIONMAINFROMLOCAL');
+  End;
+end;
+
+procedure TNode.SetARMEXTENTIONMAINFROMLOCALRCV(const Value: string);
+begin
+  Try
+    L_cNodeRCVSTATE[con_DeviceCmdARMEXTENTIONMAINFROMLOCAL] := Value[1];
+    if FARMEXTENTIONMAINFROMLOCALRCV = Value then Exit;
+    FARMEXTENTIONMAINFROMLOCALRCV := Value;
+    ReciveStateChange:=True;
+
+    if InfoInitialize then Exit;
+
+    if Assigned(FOnReceiveTypeChage) then
+    begin
+      OnReceiveTypeChage(Self,NO,'NODE','00','0','0',con_DeviceCmdARMEXTENTIONMAINFROMLOCAL,Value);
+    end;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.SetARMEXTENTIONMAINFROMLOCALRCV');
+  End;
+end;
+
+procedure TNode.SetARMEXTENTIONMAINTOLOCAL(const Value: string);
+var
+  bUsed : Boolean;
+  i : integer;
+begin
+  Try
+    if FARMEXTENTIONMAINTOLOCAL = Value then Exit;
+    FARMEXTENTIONMAINTOLOCAL := Value;
+    bUsed := False;
+    if Value <> '' then
+    begin
+      for i := 1 to Length(Value) - 1 do
+      begin
+        if Value[i+1] = '1' then
+        begin
+          bUsed := True;
+          break;
+        End;
+      end;
+    end;
+
+    if bUsed then
+    begin
+      ARMEXTENTIONGUBUN := '1';
+    end else
+    begin
+      bUsed := False;
+      for i := 1 to Length(ARMEXTENTIONMAINFROMLOCAL) - 1 do
+      begin
+        if ARMEXTENTIONMAINFROMLOCAL[i+1] = '1' then
+        begin
+          bUsed := True;
+          break;
+        end;
+      end;
+      if Not bUsed then ARMEXTENTIONGUBUN := '0';  //사용안함
+    end;
+
+    if InfoInitialize then Exit;
+
+    if Assigned(FOnDevicePacketChange) then
+    begin
+      OnDevicePacketChange(Self,con_DeviceCmdARMEXTENTIONMAINTOLOCAL,NO,'00',Value);
+    end;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.SetARMEXTENTIONMAINTOLOCAL');
+  End;
+end;
+
+procedure TNode.SetARMEXTENTIONMAINTOLOCALRCV(const Value: string);
+begin
+  Try
+    L_cNodeRCVSTATE[con_DeviceCmdARMEXTENTIONMAINTOLOCAL] := Value[1];
+    if FARMEXTENTIONMAINTOLOCALRCV = Value then Exit;
+    FARMEXTENTIONMAINTOLOCALRCV := Value;
+    ReciveStateChange:=True;
+
+    if InfoInitialize then Exit;
+
+    if Assigned(FOnReceiveTypeChage) then
+    begin
+      OnReceiveTypeChage(Self,NO,'NODE','00','0','0',con_DeviceCmdARMEXTENTIONMAINTOLOCAL,Value);
+    end;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.SetARMEXTENTIONMAINFROMLOCALRCV');
+  End;
+end;
+
+procedure TNode.SetARMEXTENTIONSKILL(const Value: Boolean);
+begin
+  Try
+    if FARMEXTENTIONSKILL = Value then Exit;
+
+    FARMEXTENTIONSKILL := Value;
+    if Not Value then
+    begin
+      ARMEXTENTIONMAINTOLOCALRCV := 'Y';
+      ARMEXTENTIONMAINFROMLOCALRCV := 'Y';
+    end;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.SetARMEXTENTIONSKILL');
+  End;
+end;
+
+procedure TNode.SetCardDownLoadStart(const Value: Boolean);
+begin
+  Try
+    if FCardDownLoadStart = Value then Exit;
+
+    FCardDownLoadStart := Value;
+    CardDownLoadTimer.Enabled := Value;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.SetCardDownLoadStart');
+  End;
+end;
+
+function TNode.SetDeviceHoliday(aEcuID, aDay, aValue: string): Boolean;
+var
+  nIndex :integer;
+begin
+  Try
+    result := False;
+    nIndex := NodeDeviceList.IndexOf(aEcuID);
+    if nIndex < 0 then Exit;
+    result := TDevice(NodeDeviceList.Objects[nIndex]).setHoliday(aDay,aValue);
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.SetDeviceHoliday');
+  End;
+end;
+
+procedure TNode.SetDeviceID(const Value: string);
+begin
+  Try
+    if FDeviceID = Value then Exit;
+    FDeviceID := Value;
+
+    if InfoInitialize then Exit;
+
+    if Assigned(FOnDeviceNodeServerPacketChange) then
+    begin
+      OnDeviceNodeServerPacketChange(Self,con_NodeServerCmdDeviceID,WinSocket,NO,LANIP,'00',Value);
+    end;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.SetDeviceID');
+  End;
+end;
+
+function TNode.SetDeviceIDInformation(aCmd: integer; aEcuID, aValue: string): Boolean;
+var
+  nIndex :integer;
+begin
+  Try
+    result := False;
+    nIndex := NodeDeviceList.IndexOf(aEcuID);
+    if nIndex < 0 then Exit;
+    case aCmd of
+      con_DeviceCmdInfoInitialize : begin
+        if aValue = '1' then TDevice(NodeDeviceList.Objects[nIndex]).InfoInitialize := True
+        else TDevice(NodeDeviceList.Objects[nIndex]).InfoInitialize := False;
+      end;
+      con_DeviceCmdArmAreaUse : begin
+        TDevice(NodeDeviceList.Objects[nIndex]).ARMAREAUSE := aValue;
+      end;
+      con_DeviceCmdArmInDelay : begin
+        if isDigit(aValue) then
+          TDevice(NodeDeviceList.Objects[nIndex]).ARMINDELAY := strtoint(aValue);
+      end;
+      con_DeviceCmdArmOutDelay : begin
+        if isDigit(aValue) then
+          TDevice(NodeDeviceList.Objects[nIndex]).ARMOUTDELAY := strtoint(aValue);
+      end;
+      con_DeviceCmdArmRelay : begin
+        TDevice(NodeDeviceList.Objects[nIndex]).ARMRELAY := aValue;
+      end;
+      con_DeviceCmdCardReaderType : begin
+        TDevice(NodeDeviceList.Objects[nIndex]).CARDREADERTYPE := aValue;
+      end;
+      con_DeviceCmdDeviceCode : begin
+        TDevice(NodeDeviceList.Objects[nIndex]).DEVICECODE := aValue;
+      end;
+      con_DeviceCmdDeviceDoor2RelayType : begin
+        TDevice(NodeDeviceList.Objects[nIndex]).DOOR2RELAY := aValue;
+      end;
+      con_DeviceCmdDeviceUSE : begin
+        if aValue = '1' then
+          TDevice(NodeDeviceList.Objects[nIndex]).DeviceUse := True
+        else TDevice(NodeDeviceList.Objects[nIndex]).DeviceUse := False;
+      end;
+      con_DeviceCmdDeviceVersion : begin
+        TDevice(NodeDeviceList.Objects[nIndex]).DEVICEVER := aValue;
+      end;
+      con_DeviceCmdEMZONELAMP : begin
+        TDevice(NodeDeviceList.Objects[nIndex]).EMZONELAMP := aValue;
+      end;
+      con_DeviceCmdEMZONESIREN : begin
+        TDevice(NodeDeviceList.Objects[nIndex]).EMZONESIREN := aValue;
+      end;
+      con_DeviceCmdJaeJungDelayUse : begin
+        TDevice(NodeDeviceList.Objects[nIndex]).JAEJUNGDELAYUSE := aValue;
+      end;
+      con_DeviceCmdJAVARAARMCLOSE : begin
+        TDevice(NodeDeviceList.Objects[nIndex]).JAVARAARMCLOSE := aValue;
+      end;
+      con_DeviceCmdJAVARAAUTOCLOSE : begin
+        TDevice(NodeDeviceList.Objects[nIndex]).JAVARAAUTOCLOSE := aValue;
+      end;
+      con_DeviceCmdJAVARADISARMOPEN : begin
+        TDevice(NodeDeviceList.Objects[nIndex]).JAVARADISARMOPEN := aValue;
+      end;
+      con_DeviceCmdJAVARASERVERARMCLOSE : begin
+        TDevice(NodeDeviceList.Objects[nIndex]).JAVARASERVERARMCLOSE := aValue;
+      end;
+      con_DeviceCmdJAVARASERVERDISARMOPEN : begin
+        TDevice(NodeDeviceList.Objects[nIndex]).JAVARASERVERDISARMOPEN := aValue;
+      end;
+      con_DeviceCmdJAVARATYPEUSE : begin
+        TDevice(NodeDeviceList.Objects[nIndex]).JAVARATYPEUSE := aValue;
+      end;
+      con_DeviceCmdLAMPONTIME : begin
+        if isDigit(aValue) then
+          TDevice(NodeDeviceList.Objects[nIndex]).LAMPONTIME := strtoint(aValue);
+      end;
+      con_DeviceCmdSIRENONTIME : begin
+        if isDigit(aValue) then
+          TDevice(NodeDeviceList.Objects[nIndex]).SIRENONTIME := strtoint(aValue);
+      end;
+      con_DeviceCmdTimeCodeSend : begin
+        TDevice(NodeDeviceList.Objects[nIndex]).SetDeviceTimeCode(aValue);
+      end;
+      con_DeviceCmdTimeCodeSkill : begin
+        if aValue = '1' then TDevice(NodeDeviceList.Objects[nIndex]).TimeCodeSkill := True
+        else TDevice(NodeDeviceList.Objects[nIndex]).TimeCodeSkill := False;
+      end;
+      con_DeviceCmdWATCHACPOWER : begin
+        TDevice(NodeDeviceList.Objects[nIndex]).WATCHACPOWER := aValue;
+      end;
+    end;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.SetDeviceIDInformation');
+  End;
+end;
+
+function TNode.SetDeviceIDSubInformation(aSubType, aCmd: integer; aEcuID,
+  aSubNo, aValue:string): Boolean;
+var
+  nIndex :integer;
+begin
+  Try
+    result := false;
+    nIndex := NodeDeviceList.IndexOf(aEcuID);
+    if nIndex < 0 then Exit;
+    TDevice(NodeDeviceList.Objects[nIndex]).SetDeviceIDSubInformation(aSubType,aCmd,aSubNo, aValue);
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.SetDeviceIDSubInformation');
+  End;
+end;
+
+function TNode.SetDeviceRcvIDInformation(aCmd: integer; aEcuID,
+  aValue: string): Boolean;
+var
+  nIndex :integer;
+begin
+  Try
+    nIndex := NodeDeviceList.IndexOf(aEcuID);
+    if nIndex < 0 then Exit;
+    case aCmd of
+      con_DeviceCmdArmAreaUse : begin
+        TDevice(NodeDeviceList.Objects[nIndex]).DEVICEARMAREAUSERCV := aValue;
+      end;
+      con_DeviceCmdArmRelay : begin
+        TDevice(NodeDeviceList.Objects[nIndex]).DEVICEARMRELAYRCV := aValue;
+      end;
+      con_DeviceCmdCardReaderNetwork : begin
+        TDevice(NodeDeviceList.Objects[nIndex]).DEVICECARDREADERNETWORKRcv := aValue;
+      end;
+      con_DeviceCmdCardReaderType : begin
+        TDevice(NodeDeviceList.Objects[nIndex]).DEVICECARDREADERTYPERCV := aValue;
+      end;
+      con_DeviceCmdDeviceCode : begin
+        TDevice(NodeDeviceList.Objects[nIndex]).DEVICECODERCV := aValue;
+      end;
+      con_DeviceCmdDeviceDoor2RelayType : begin
+        TDevice(NodeDeviceList.Objects[nIndex]).DEVICEDOOR2RELAYRCV := aValue;
+      end;
+      con_DeviceCmdDeviceDoorArmArea : begin
+        TDevice(NodeDeviceList.Objects[nIndex]).DEVICEDOORARMAREARCV := aValue;
+      end;
+      con_DeviceCmdDeviceVersion : begin
+        TDevice(NodeDeviceList.Objects[nIndex]).DEVICEVERRCV := aValue;
+      end;
+      con_DeviceCmdEMZONELAMP : begin
+        TDevice(NodeDeviceList.Objects[nIndex]).DEVICEEMZONELAMPRCV := aValue;
+      end;
+      con_DeviceCmdExtentionNetwork : begin
+        TDevice(NodeDeviceList.Objects[nIndex]).DEVICEExtentionNetworkRCV := aValue;
+      end;
+      con_DeviceCmdExtentionUse : begin
+        TDevice(NodeDeviceList.Objects[nIndex]).DEVICEDEVICEEXTENTIONUSERCV := aValue;
+      end;
+      con_DeviceCmdJaeJungDelayUse : begin
+        TDevice(NodeDeviceList.Objects[nIndex]).DEVICEJAEJUNGDELAYUSERCV := aValue;
+      end;
+      con_DeviceCmdJAVARAARMCLOSE : begin
+        TDevice(NodeDeviceList.Objects[nIndex]).DEVICEJAVARAARMCLOSERCV := aValue;
+      end;
+      con_DeviceCmdJAVARAAUTOCLOSE : begin
+        TDevice(NodeDeviceList.Objects[nIndex]).DEVICEJAVARAAUTOCLOSERCV := aValue;
+      end;
+      con_DeviceCmdLAMPONTIME : begin
+        TDevice(NodeDeviceList.Objects[nIndex]).DEVICELAMPONTIMERCV := aValue;
+      end;
+      con_DeviceCmdSIRENONTIME : begin
+        TDevice(NodeDeviceList.Objects[nIndex]).DEVICESIRENONTIMERCV := aValue;
+      end;
+      con_DeviceCmdSystemInformation : begin
+        TDevice(NodeDeviceList.Objects[nIndex]).DEVICESYSTEMINFORMATIONRCV := aValue;
+      end;
+      con_DeviceCmdTimeCodeSend : begin
+        TDevice(NodeDeviceList.Objects[nIndex]).DEVICETIMECODERCV := aValue;
+      end;
+      con_DeviceCmdTimeCodeUse : begin
+        TDevice(NodeDeviceList.Objects[nIndex]).DEVICETIMECODEUSERCV := aValue;
+      end;
+      con_DeviceCmdWATCHACPOWER : begin
+        TDevice(NodeDeviceList.Objects[nIndex]).DEVICESYSTEMINFORMATIONRCV := aValue;
+      end;
+    end;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.SetDeviceRcvIDInformation');
+  End;
+end;
+
+function TNode.SetDeviceRcvIDSubInformation(aSubType, aCmd: integer; aEcuID,
+  aSubNo, aValue: string): Boolean;
+var
+  nIndex :integer;
+begin
+  Try
+    result := false;
+    nIndex := NodeDeviceList.IndexOf(aEcuID);
+    if nIndex < 0 then Exit;
+    TDevice(NodeDeviceList.Objects[nIndex]).SetDeviceRcvIDSubInformation(aSubType,aCmd,aSubNo, aValue);
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.SetDeviceRcvIDSubInformation');
+  End;
+end;
+
+procedure TNode.SetDoorArmAreaStateRCV(const Value: Boolean);
+begin
+  Try
+    if FDoorArmAreaStateRCV = Value then Exit;
+
+    FDoorArmAreaStateRCV := Value;
+    StateCheckTimer.Enabled := Not Value;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.SetDoorArmAreaStateRCV');
+  End;
+end;
+
+procedure TNode.SetDVRIP(const Value: string);
+begin
+  Try
+    if FDVRIP = Value then Exit;
+    FDVRIP := Value;
+
+    if InfoInitialize then Exit;
+
+    if Assigned(FOnDevicePacketChange) then
+    begin
+      OnDevicePacketChange(Self,con_DeviceCmdDVRIP,NO,'00',Value);
+    end;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.SetDVRIP');
+  End;
+end;
+
+procedure TNode.SetDVRDATARCV(const Value: string);
+begin
+  Try
+    L_cNodeRCVSTATE[con_DeviceCmdDVRIP] := Value[1];
+    if FDVRDATARCV = Value then Exit;
+    FDVRDATARCV := Value;
+    ReciveStateChange:=True;
+
+    if InfoInitialize then Exit;
+
+    if Assigned(FOnReceiveTypeChage) then
+    begin
+      OnReceiveTypeChage(Self,NO,'NODE','00','0','0',con_DeviceCmdDVRIP,Value);
+    end;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.SetDVRDATARCV');
+  End;
+end;
+
+procedure TNode.SetDVRPORT(const Value: string);
+begin
+  Try
+    if FDVRPORT = Value then Exit;
+    FDVRPORT := Value;
+    if InfoInitialize then Exit;
+    if Assigned(FOnDevicePacketChange) then
+    begin
+      OnDevicePacketChange(Self,con_DeviceCmdDVRPORT,NO,'00',Value);
+    end;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.SetDVRPORT');
+  End;
+end;
+
+procedure TNode.SetDVRSKILL(const Value: Boolean);
+begin
+  Try
+    if FDVRSKILL = Value then Exit;
+    FDVRSKILL := Value;
+    if Not Value then
+    begin
+      //DVR 기능이 없으면 DVR 상태를 체크 하지 말자.
+      DVRUSERCV :='Y'; //DVR 사용 유무 0.미사용,1.사용
+      DVRDATARCV :='Y'; //DVR IP
+    end;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.SetDVRSKILL');
+  End;
+end;
+
+procedure TNode.SetDVRUSE(const Value: string);
+begin
+  Try
+    if FDVRUSE = Value then Exit;
+    FDVRUSE := Value;
+    if InfoInitialize then Exit;
+    if Assigned(FOnDevicePacketChange) then
+    begin
+      OnDevicePacketChange(Self,con_DeivceCmdDVRUSE,NO,'00',Trim(Value));
+    end;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.SetDVRUSE');
+  End;
+end;
+
+procedure TNode.SetDVRUSERCV(const Value: string);
+begin
+  Try
+    L_cNodeRCVSTATE[con_DeivceCmdDVRUSE] := Value[1];
+    if FDVRUSERCV = Value then Exit;
+    FDVRUSERCV := Value;
+    ReciveStateChange:=True;
+
+    if InfoInitialize then Exit;
+
+    if Assigned(FOnReceiveTypeChage) then
+    begin
+      OnReceiveTypeChage(Self,NO,'NODE','00','0','0',con_DeivceCmdDVRUSE,Value);
+    end;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.SetDVRUSERCV');
+  End;
+end;
+
+procedure TNode.SetECUUSERCV(const Value: string);
+begin
+  Try
+    L_cNodeRCVSTATE[con_DeviceCmdUseState] := Value[1];
+    if FECUUSERCV = Value then Exit;
+    ReciveStateChange:=True;
+    FECUUSERCV := Value;
+
+    if InfoInitialize then Exit;
+
+    if Assigned(FOnReceiveTypeChage) then
+    begin
+      OnReceiveTypeChage(Self,NO,'NODE','00','0','0',con_DeviceCmdUseState,Value);
+    end;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.SetECUUSERCV');
+  End;
+end;
+
+procedure TNode.SetFireEvent(const Value: Boolean);
+var
+  i : integer;
+begin
+  Try
+    if FFireEvent = Value then Exit;
+
+    FFireEvent := Value;
+
+    if NodeDeviceList.Count < 1 then Exit;
+    if Not Value then Exit;
+
+    for i := 0 to NodeDeviceList.Count - 1 do
+    begin
+      if TDevice(NodeDeviceList.Objects[i]).DEVICECONNECTED = csConnected then
+         TDevice(NodeDeviceList.Objects[i]).FireEvent := Value;
+    end;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.SetFireEvent');
+  End;
+end;
+
+procedure TNode.SetFIREGUBUNCODE(const Value: string);
+begin
+  Try
+    FFIREGUBUNCODE := Value;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.SetFIREGUBUNCODE');
+  End;
+end;
+
+function TNode.SetHolidayClear: Boolean;
+var
+  i :integer;
+begin
+  Try
+    for i := 0 to NodeDeviceList.Count - 1 do
+    begin
+      TDevice(NodeDeviceList.Objects[i]).HolidayClear;
+    end;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.SetHolidayClear');
+  End;
+end;
+
+procedure TNode.SetKTTCDMACHECKTIME(const Value: string);
+begin
+  Try
+    if FKTTCDMACHECKTIME = Value then Exit;
+    FKTTCDMACHECKTIME := Value;
+    if InfoInitialize then Exit;
+    if Assigned(FOnDevicePacketChange) then
+    begin
+      OnDevicePacketChange(Self,con_DeviceCmdKttCDMACHECKTIME,NO,'00',Value);
+    end;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.SetKTTCDMACHECKTIME');
+  End;
+end;
+
+procedure TNode.SetKTTCDMADATARCV(const Value: string);
+begin
+  Try
+    L_cNodeRCVSTATE[con_DeviceCmdKttCDMADATA] := Value[1];
+    if FKTTCDMADATARCV = Value then Exit;
+    FKTTCDMADATARCV := Value;
+    ReciveStateChange:=True;
+
+    if InfoInitialize then Exit;
+
+    if Assigned(FOnReceiveTypeChage) then
+    begin
+      OnReceiveTypeChage(Self,NO,'NODE','00','0','0',con_DeviceCmdKttCDMADATA,Value);
+    end;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.SetKTTCDMADATARCV');
+  End;
+end;
+
+procedure TNode.SetKTTCDMAIP(const Value: string);
+begin
+  Try
+    if FKTTCDMAIP = Value then Exit;
+    FKTTCDMAIP := Value;
+    if InfoInitialize then Exit;
+    if Assigned(FOnDevicePacketChange) then
+    begin
+      OnDevicePacketChange(Self,con_DeviceCmdKttCDMAIP,NO,'00',Value);
+    end;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.SetKTTCDMAIP');
+  End;
+end;
+
+procedure TNode.SetKTTCDMAMIN(const Value: string);
+begin
+  Try
+    if FKTTCDMAMIN = Value then Exit;
+    FKTTCDMAMIN := Value;
+    if InfoInitialize then Exit;
+    if Assigned(FOnDevicePacketChange) then
+    begin
+      OnDevicePacketChange(Self,con_DeviceCmdKTTCDMAMIN,NO,'00',Value);
+    end;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.SetKTTCDMAMIN');
+  End;
+end;
+
+procedure TNode.SetKTTCDMAMUX(const Value: string);
+begin
+  Try
+    if FKTTCDMAMUX = Value then Exit;
+    FKTTCDMAMUX := Value;
+    if InfoInitialize then Exit;
+    if Assigned(FOnDevicePacketChange) then
+    begin
+      OnDevicePacketChange(Self,con_DeviceCmdKttCDMAMUX,NO,'00',Value);
+    end;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.SetKTTCDMAMUX');
+  End;
+end;
+
+procedure TNode.SetKTTCDMAPORT(const Value: string);
+begin
+  Try
+    if FKTTCDMAPORT = Value then Exit;
+    FKTTCDMAPORT := Value;
+    if InfoInitialize then Exit;
+    if Assigned(FOnDevicePacketChange) then
+    begin
+      OnDevicePacketChange(Self,con_DeviceCmdKttCDMAPORT,NO,'00',Value);
+    end;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.SetKTTCDMAPORT');
+  End;
+end;
+
+procedure TNode.SetKTTCDMARSSI(const Value: string);
+begin
+  Try
+    if FKTTCDMARSSI = Value then Exit;
+    FKTTCDMARSSI := Value;
+    if InfoInitialize then Exit;
+    if Assigned(FOnDevicePacketChange) then
+    begin
+      OnDevicePacketChange(Self,con_DeviceCmdKttCDMARSSI,NO,'00',Value);
+    end;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.SetKTTCDMARSSI');
+  End;
+end;
+
+procedure TNode.SetKTTCDMASKILL(const Value: Boolean);
+begin
+  Try
+    if FKTTCDMASKILL = Value then Exit;
+    FKTTCDMASKILL := Value;
+    if Not Value then
+    begin
+      //CDMA 기능이 없으면 CDMA 상태를 체크 하지 말자.
+      KTTCDMAUSERCV := 'Y'; //CDMA 사용 유무 0.미사용,1.사용
+      KTTCDMADATARCV := 'Y';     //CDMA IP
+    end;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.SetKTTCDMASKILL');
+  End;
+end;
+
+procedure TNode.SetKTTCDMAUSE(const Value: string);
+begin
+  Try
+    if FKTTCDMAUSE = Value then Exit;
+    FKTTCDMAUSE := Value;
+    if InfoInitialize then Exit;
+    if Assigned(FOnDevicePacketChange) then
+    begin
+      OnDevicePacketChange(Self,con_DeviceCmdKttCdmaUse,NO,'00',Value);
+    end;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.SetKTTCDMAUSE');
+  End;
+end;
+
+procedure TNode.SetKTTCDMAUSERCV(const Value: string);
+begin
+  Try
+    L_cNodeRCVSTATE[con_DeviceCmdKttCdmaUse] := Value[1];
+    if FKTTCDMAUSERCV = Value then Exit;
+    ReciveStateChange:=True;
+    FKTTCDMAUSERCV := Value;
+
+    if InfoInitialize then Exit;
+
+    if Assigned(FOnReceiveTypeChage) then
+    begin
+      OnReceiveTypeChage(Self,NO,'NODE','00','0','0',con_DeviceCmdKttCdmaUse,Value);
+    end;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.SetKTTCDMAUSERCV');
+  End;
+end;
+
+procedure TNode.SetKTTREMOTEARMRINGCOUNT(const Value: integer);
+begin
+  Try
+    if FKTTREMOTEARMRINGCOUNT = Value then Exit;
+    FKTTREMOTEARMRINGCOUNT := Value;
+    if InfoInitialize then Exit;
+    if Assigned(FOnDevicePacketChange) then
+    begin
+      OnDevicePacketChange(Self,con_DeviceCmdKTTREMOTEARMRINGCOUNT,NO,'00',inttostr(Value));
+    end;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.SetKTTREMOTEARMRINGCOUNT');
+  End;
+end;
+
+procedure TNode.SetKTTREMOTERINGCOUNTRCV(const Value: string);
+begin
+  Try
+    L_cNodeRCVSTATE[con_DeviceCmdKTTREMOTEARMRINGCOUNT] := Value[1];
+    if FKTTREMOTERINGCOUNTRCV = Value then Exit;
+    ReciveStateChange:=True;
+    FKTTREMOTERINGCOUNTRCV := Value;
+
+    if InfoInitialize then Exit;
+
+    if Assigned(FOnReceiveTypeChage) then
+    begin
+      OnReceiveTypeChage(Self,NO,'NODE','00','0','0',con_DeviceCmdKTTREMOTEARMRINGCOUNT,Value);
+    end;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.SetKTTREMOTERINGCOUNTRCV');
+  End;
+end;
+
+procedure TNode.SetKTTREMOTEDISARMRINGCOUNT(const Value: integer);
+begin
+  Try
+    if FKTTREMOTEDISARMRINGCOUNT = Value then Exit;
+    FKTTREMOTEDISARMRINGCOUNT := Value;
+    if InfoInitialize then Exit;
+    if Assigned(FOnDevicePacketChange) then
+    begin
+      OnDevicePacketChange(Self,con_DeviceCmdKTTREMOTEDisARMRINGCOUNT,NO,'00',inttostr(Value));
+    end;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.SetKTTREMOTEDISARMRINGCOUNT');
+  End;
+end;
+
+
+procedure TNode.SetKTTSYSTEMID(const Value: string);
+begin
+  Try
+    if Trim(FKTTSYSTEMID) = Trim(Value) then Exit;
+
+    FKTTSYSTEMID := Trim(Value);
+    if InfoInitialize then Exit;
+
+    if Assigned(FOnDevicePacketChange) then
+    begin
+      OnDevicePacketChange(Self,con_DeviceCmdKTTSystemID,NO,'00',Trim(Value));
+    end;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.SetKTTSYSTEMID');
+  End;
+end;
+
+procedure TNode.SetKTTSYSTEMIDRCV(const Value: string);
+begin
+  Try
+    L_cNodeRCVSTATE[con_DeviceCmdKTTSystemID] := Value[1];
+    if FKTTSYSTEMIDRCV = Value then Exit;
+    ReciveStateChange:=True;
+    FKTTSYSTEMIDRCV := Value;
+
+    if InfoInitialize then Exit;
+
+    if Assigned(FOnReceiveTypeChage) then
+    begin
+      OnReceiveTypeChage(Self,NO,'NODE','00','0','0',con_DeviceCmdKTTSystemID,Value);
+    end;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.SetKTTSYSTEMIDRCV');
+  End;
+end;
+
+procedure TNode.SetKTTTELNUMBER1(const Value: string);
+begin
+  Try
+    if FKTTTELNUMBER1 = Value then Exit;
+    FKTTTELNUMBER1 := Value;
+    if InfoInitialize then Exit;
+    if Assigned(FOnDevicePacketChange) then
+    begin
+      OnDevicePacketChange(Self,con_DeviceCmdKTTTelNumber1,NO,'00',Value);
+    end;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.SetKTTTELNUMBER1');
+  End;
+end;
+
+procedure TNode.SetKTTTELNUMBERRCV(const Value: string);
+begin
+  Try
+    L_cNodeRCVSTATE[con_DeviceCmdKTTTelNumber1] := Value[1];
+    if FKTTTELNUMBERRCV = Value then Exit;
+    ReciveStateChange:=True;
+    FKTTTELNUMBERRCV := Value;
+
+    if InfoInitialize then Exit;
+
+    if Assigned(FOnReceiveTypeChage) then
+    begin
+      OnReceiveTypeChage(Self,NO,'NODE','00','0','0',con_DeviceCmdKTTTelNumber1,Value);
+    end;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.SetKTTTELNUMBERRCV');
+  End;
+end;
+
+procedure TNode.SetKTTTELNUMBER2(const Value: string);
+begin
+  Try
+    if FKTTTELNUMBER2 = Value then Exit;
+    FKTTTELNUMBER2 := Value;
+    if InfoInitialize then Exit;
+    if Assigned(FOnDevicePacketChange) then
+    begin
+      OnDevicePacketChange(Self,con_DeviceCmdKTTTelNumber2,NO,'00',Value);
+    end;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.SetKTTTELNUMBER2');
+  End;
+end;
+
+
+procedure TNode.SetLanIP(const Value: string);
+begin
+  Try
+    FLanIP := Value;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.SetLanIP');
+  End;
+//  RemoteHost := Value;
+end;
+
+procedure TNode.SetLanPort(const Value: integer);
+begin
+  Try
+    FLanPort := Value;
+//  RemotePort := inttostr(Value);
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.SetLanPort');
+  End;
+end;
+
+procedure TNode.SetNo(const Value: Integer);
+begin
+  Try
+    FNo := Value;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.SetNo');
+  End;
+end;
+
+procedure TNode.SetNodeConnected(const Value: TConnectedState);
+var
+  i : integer;
+  nIndex : integer;
+begin
+  Try
+    if FNodeConnected = Value then Exit;
+    FNodeConnected := Value;
+    if G_bApplicationTerminate then Exit;
+
+    if Value = csConnected then
+    begin
+      nIndex := NodeDeviceList.IndexOf('00');
+      NodeSendPacketTimer.Enabled := True;
+      if nIndex > -1 then
+      begin
+        //***************** 이곳을 수행하고 있을때 프로그램 종료시 종료가 안됨
+        if Not G_bNodeFree then TDevice(NodeDeviceList.Objects[nIndex]).DeviceConnected := csConnected;
+        //컨트롤러 ID 조회
+        if Not G_bNodeFree then TDevice(NodeDeviceList.Objects[nIndex]).DeviceIDCheck;
+        //시간 동기화 날리자.
+        if Not G_bNodeFree then TDevice(NodeDeviceList.Objects[nIndex]).TimeSync;
+        //컨트롤러 통신상태 확인 전문 날리자.
+        if Not G_bNodeFree then TDevice(NodeDeviceList.Objects[nIndex]).DeviceNetworkCheck;
+        //메인 컨트롤러 기기코드를 확인 하자.
+        if Not G_bNodeFree then TDevice(NodeDeviceList.Objects[nIndex]).DEVICECODERCV := 'R';  //상태 변경 일어 나면서 체크 타이머 활성화 됨
+        if Not G_bNodeFree then TDevice(NodeDeviceList.Objects[nIndex]).DeviceCodeCheck;
+      end;
+      L_bSocketWriting := False;
+      DoorArmAreaStateRCV := False;
+      StateCheckTimer.Enabled := True;
+    end else
+    begin
+      for i := 0 to NodeDeviceList.Count - 1 do
+      begin
+        if Not G_bNodeFree then TDevice(NodeDeviceList.Objects[i]).DeviceConnected := csDisConnected;
+      end;
+      NodeSendPacketTimer.Enabled := False;
+      DoorArmAreaStateRCV := True;
+      StateCheckTimer.Enabled := False;
+    end;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.SetNodeConnected');
+  End;
+end;
+
+function TNode.SetNodeIndexInformation(aCmd,aIndex: integer; aValue: string): string;
+var
+  stTemp : string;
+begin
+  Try
+    case aCmd of
+      con_DeviceCmdARMEXTENTIONMAINFROMLOCAL : begin
+        stTemp := ARMEXTENTIONMAINTOLOCAL;
+        if Length(stTemp) < aIndex  then Exit;
+        stTemp[aIndex] := aValue[1];
+        ARMEXTENTIONMAINTOLOCAL := stTemp;
+      end;
+      con_DeviceCmdARMEXTENTIONMAINTOLOCAL : begin
+        stTemp := ARMEXTENTIONMAINFROMLOCAL;
+        if Length(stTemp) < aIndex  then Exit;
+        stTemp[aIndex] := aValue[1];
+        ARMEXTENTIONMAINFROMLOCAL := stTemp;
+      end;
+    end;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.SetNodeIndexInformation');
+  End;
+end;
+
+procedure TNode.SetNodeName(const Value: string);
+begin
+  Try
+    FNodeName := Value;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.SetNodeName');
+  End;
+end;
+
+procedure TNode.SetNodeToCardPermitExcute(aEcuID, aCardNo,aRcvAck: string);
+var
+  nIndex :integer;
+begin
+  Try
+    nIndex := NodeDeviceList.IndexOf(aEcuID);
+    if nIndex < 0 then Exit;
+    TDevice(NodeDeviceList.Objects[nIndex]).SetNodeToCardPermitExcute(aCardNo,aRcvAck);
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.SetNodeToCardPermitExcute');
+  End;
+end;
+
+procedure TNode.SetNodeToCardPermitInitialize(aEcuID, aExtendID, aCardNo,
+  aCardPermit,aCardState, aDoor1, aDoor2, aDoor3, aDoor4, aDoor5, aDoor6, aDoor7, aDoor8,
+  aArmArea0, aArmArea1, aArmArea2, aArmArea3, aArmArea4, aArmArea5, aArmArea6,
+  aArmArea7, aArmArea8, aRcvAck, aPositionNum, aTimeCodeUse, aTCGroup, aTime1, aTime2, aTime3,
+  aTime4, aTCWeekCode,aRegDate,aEndDate,aEmState: string);
+var
+  nIndex :integer;
+begin
+  Try
+    nIndex := NodeDeviceList.IndexOf(aEcuID);
+    if nIndex < 0 then Exit;
+    TDevice(NodeDeviceList.Objects[nIndex]).SetNodeToCardPermitInitialize(aCardNo,
+    aCardPermit,aCardState, aDoor1, aDoor2, aDoor3, aDoor4, aDoor5, aDoor6, aDoor7, aDoor8,
+    aArmArea0, aArmArea1, aArmArea2, aArmArea3, aArmArea4, aArmArea5, aArmArea6,
+    aArmArea7, aArmArea8, aRcvAck, aPositionNum, aTimeCodeUse, aTCGroup, aTime1, aTime2, aTime3,
+    aTime4, aTCWeekCode,aRegDate,aEndDate,aEmState);
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.SetNodeToCardPermitInitialize');
+  End;
+end;
+
+procedure TNode.SetNodeToCardPermitSetting(aEcuID, aExtendID, aCardNo, aPermit,
+  aCardState, aType, aNumber, aPositionNum, aTimeCodeUse, aTCGroup, aTime1, aTime2, aTime3,
+  aTime4, aWeekCode,aRegDate,aEndDate,aEmState: string);
+var
+  nIndex :integer;
+begin
+  Try
+    nIndex := NodeDeviceList.IndexOf(aEcuID);
+    if nIndex < 0 then Exit;
+    TDevice(NodeDeviceList.Objects[nIndex]).SetNodeToCardPermitSetting(aCardNo, aPermit,
+    aCardState, aType, aNumber, aPositionNum, aTimeCodeUse, aTCGroup, aTime1, aTime2, aTime3,
+    aTime4, aWeekCode,aRegDate,aEndDate,aEmState);
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.SetNodeToCardPermitSetting');
+  End;
+end;
+
+procedure TNode.SetReciveStateChange(const Value: Boolean);
+begin
+  Try
+    FReciveStateChange := Value;   //수신상태 변경 되었을때 이곳으로
+    if Value then
+       RcvCheckTimer.Enabled := True; //수신상태 체크
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.SetReciveStateChange');
+  End;
+end;
+
+procedure TNode.SetSocketOpen(const Value: Boolean);
+var
+  l_result : Integer;
+  l_error: Integer;
+  l_version : Word;
+  l_socket_address_in: tSockAddrIn;
+  l_ip_z: array[0..255] of char;
+  rset: TFDSet;
+  t: TTimeVal;
+  rslt: integer;
+begin
+  Try
+    if SocketType <> 1 then Exit; // Device Server Type 에서 타는 루틴
+
+    if FSocketOpen = Value then Exit;
+    FSocketOpen := Value;
+    if Value then
+    begin
+      l_version:= $0101;
+      l_result := wsaStartup(l_version, l_wsa_data);
+      if l_result <> 0 then
+      begin
+        SocketOpen := False;
+        Exit;  //소켓생성 실패 시에 Open False
+      end;
+      WinSocket:= Socket(PF_INET, SOCK_STREAM, IPPROTO_IP);
+      if WinSocket = INVALID_SOCKET then
+      begin
+        SocketOpen := False;
+        Exit;  //소켓생성 실패 시에 Open False
+      end;
+      l_result:= wsaAsyncSelect(WinSocket, Handle,
+          wm_asynch_select,
+          FD_CONNECT+ FD_READ+ FD_WRITE+ FD_CLOSE);
+
+      FillChar(l_socket_address_in, sizeof(l_socket_address_in), 0);
+      with l_socket_address_in do
+      begin
+        sin_family:= pf_Inet;
+        // -- the requested service
+        sin_port:= hToNs(LANPort);
+        // -- the server IP address
+        StrPCopy(l_ip_z, LANIP);
+        sin_addr.s_Addr:= inet_addr(PAnsichar(AnsiString(l_ip_z)));
+      end; // with m_socket_address_in
+      l_result:= Connect(WinSocket, l_socket_address_in,
+          sizeof(l_socket_address_in));
+      if l_result<> 0 then
+      begin
+        l_error:= WSAGetLastError;
+        if l_error <> wsaEWouldBlock then
+        begin
+          SocketOpen := False;
+          Exit;  //소켓생성 실패 시에 Open False
+        end else
+        begin
+        end;
+      end;
+  {    t.tv_sec:=5;
+      t.tv_usec:=0;
+      FD_Zero(rset);
+      FD_Set(l_client_socket_handle,rset);
+      rslt := select(-1, @rset, nil, nil, @t);
+      if (rslt = 0) then
+      begin
+        SocketOpen := False;
+        Exit;  //소켓생성 실패 시에 Open False
+      end; }
+
+  //    l_c_reception_buffer:= c_byte_buffer.create_byte_buffer('reception_buffer', k_buffer_max);
+    end else
+    begin
+      if WinSocket <> INVALID_SOCKET then
+      begin
+        shutdown(WinSocket,SD_BOTH);
+        l_result:= CloseSocket(WinSocket);
+        if l_result = 0 then
+        begin
+          WinSocket:= INVALID_SOCKET;
+  //        l_c_reception_buffer.Free;
+  //        l_c_reception_buffer:= Nil;
+        end else
+        begin
+          WinSocket:= INVALID_SOCKET;
+          LogSave(G_stLogDirectory + '\Err' + FormatDateTime('yyyymmdd',now) + '.log',LANIP + ':SocketCloseError');
+        end;
+        WSACleanup;
+      end;
+      TcpClientDisconnect(self);
+    end;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.SetSocketOpen');
+  End;
+end;
+
+
+procedure TNode.StateCheckTimerTimer(Sender: TObject);
+var
+  nIndex : integer;
+  i : integer;
+  bResult : Boolean;
+begin
+  Try
+    if L_bStateChecking then Exit;
+    if NodeDestory then Exit;
+    StateCheckTimer.Interval := 200;
+    L_bStateChecking := True;
+    Try
+      if L_nStateCheckEcuSeq < 0 then L_nStateCheckEcuSeq := 0;
+      if ConnectDeviceList.Count < 1 then Exit;
+      if L_nStateCheckEcuSeq > ConnectDeviceList.Count - 1  then L_nStateCheckEcuSeq := 0;
+
+      nIndex := NodeDeviceList.IndexOf(ConnectDeviceList.Strings[L_nStateCheckEcuSeq]);
+      if nIndex < 0 then Exit;
+      if TDevice(NodeDeviceList.Objects[nIndex]).CurrentArmDoorStateCheckRCV = 'Y' then
+      begin
+        bResult := True;
+        for i := 0 to NodeDeviceList.Count - 1 do
+        begin
+          if NodeDestory then Exit;
+          if TDevice(NodeDeviceList.Objects[i]).DEVICECONNECTED = csConnected then
+          begin
+            if TDevice(NodeDeviceList.Objects[i]).CurrentArmDoorStateCheckRCV <> 'Y' then
+            begin
+              bResult := False;
+              break;
+            end;
+          end;
+        end;
+        if bResult then DoorArmAreaStateRCV := True; //전체 상태를 모두 조회 한 상태면 타이머 종료 하자.
+      end else
+      begin
+        //여기서 출입문 상태와 방범 상태 조회 하자.
+        TDevice(NodeDeviceList.Objects[nIndex]).DeviceCurrentArmDoorStateCheck;
+      end;
+    Finally
+      L_nStateCheckEcuSeq := L_nStateCheckEcuSeq + 1;
+      L_bStateChecking := False;
+    End;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.StateCheckTimerTimer');
+  End;
+end;
+
+procedure TNode.TcpClientConnect(Sender: TObject);
+begin
+  Try
+    NodeConnected := csConnected;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.TcpClientConnect');
+  End;
+end;
+
+procedure TNode.TcpClientDisconnect(Sender: TObject);
+begin
+  Try
+    NodeConnected := csDisConnected;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.TcpClientDisconnect');
+  End;
+end;
+
+procedure TNode.TcpClientError(Sender: TObject; SocketError: Integer);
+begin
+  Try
+    if (SocketError = WSAEWOULDBLOCK) or (SocketError = 10038) then Tag := 0
+    else begin
+      NodeConnected := csDisConnected;
+      Tag := SocketError;
+    end;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.TcpClientError');
+  End;
+end;
+
+procedure TNode.TcpClientReceive(Sender: TObject; Buf: PAnsiChar;
+  var DataLen: Integer);
+var
+  pTemp : AnsiString;
+  stTemp : RawByteString;
+begin
+  Try
+    //GetMem(pTemp,DataLen);
+    stTemp := ByteCopy(Buf,DataLen);   //FD -> 3F 로 변하는 부분때문에...
+    pTemp := pCopy(Buf,DataLen);
+    LastReceiveTime := Now;
+    L_stComBuffer := L_stComBuffer + stTemp;
+    NodeDataReadingProcessing;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.TcpClientReceive');
+  End;
+end;
+
+procedure TNode.TcpClientSend(Sender: TObject; Buf: PAnsiChar;
+  var DataLen: Integer);
+begin
+
+end;
+
+
+procedure TNode.WndProc(var Message: TMessage);
+begin
+  Dispatch ( Message );
+end;
+
+procedure TNode.ZONEEXTENDTYPEChange(Sender: TObject; aNodeNo: integer; aEcuID,
+  aExtendID, aNumber, aData: string);
+begin
+  Try
+    if Assigned(FOnZONEEXTENDTYPEChange) then
+    begin
+      OnZONEEXTENDTYPEChange(Self,aNodeNo,aEcuID,aExtendID,aNumber,aData);
+    end;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.ZONEEXTENDTYPEChange');
+  End;
+end;
+
+procedure TNode.ZonePacketChange(Sender: TObject; aCmd, aNodeNo: integer;
+  aEcuID, aExtendID, aNumber, aData: string);
+begin
+  Try
+    if Assigned(FOnZonePacketChange) then
+    begin
+      OnZonePacketChange(Self,aCmd,aNodeNo,aEcuID,aExtendID,aNumber,aData);
+    end;
+  Except
+    LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.ZonePacketChange');
+  End;
+end;
+
+end.

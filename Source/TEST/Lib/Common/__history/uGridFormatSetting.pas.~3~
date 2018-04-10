@@ -1,0 +1,25 @@
+unit uGridFormatSetting;
+
+interface
+uses
+  AdvGrid;
+
+procedure AccessEventGridInitialize(aList:TAdvStringGrid);
+
+implementation
+uses
+  uFormVariable;
+
+procedure AccessEventGridInitialize(aList:TAdvStringGrid);
+var
+  i : integer;
+begin
+  for i:=0 to aList.ColCount - 1 do
+  begin
+    G_arrDoorIndexArray[i] := i;
+    G_arrRelDoorIndexArray[i] := i;
+  end;
+
+end;
+
+end.

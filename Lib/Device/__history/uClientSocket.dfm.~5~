@@ -1,0 +1,12 @@
+object dmClientSocket: TdmClientSocket
+  OldCreateOrder = False
+  OnCreate = DataModuleCreate
+  OnDestroy = DataModuleDestroy
+  Height = 150
+  Width = 215
+  object TcpClient1: TTcpClient
+    BlockMode = bmNonBlocking
+    Left = 24
+    Top = 8
+  end
+end

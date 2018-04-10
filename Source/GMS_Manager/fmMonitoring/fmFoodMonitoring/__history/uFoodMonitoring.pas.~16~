@@ -1,0 +1,133 @@
+unit uFoodMonitoring;
+
+interface
+
+uses
+  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
+  Vcl.Controls, Vcl.Forms, Vcl.Dialogs,uSubForm, CommandArray,
+  Vcl.Imaging.pngimage, Vcl.ExtCtrls, Vcl.Grids, AdvObj, BaseGrid, AdvGrid,
+  AdvOfficePager, AdvOfficePagerStylers, AdvOfficeTabSet,
+  AdvOfficeTabSetStylers, AdvAppStyler, AdvGlowButton, AdvSmoothPanel,
+  AdvSplitter, Vcl.StdCtrls;
+
+type
+  TfmFoodMonitoring = class(TfmASubForm)
+    AdvOfficePager1: TAdvOfficePager;
+    ap_Access: TAdvOfficePage;
+    AdvSplitter1: TAdvSplitter;
+    pan_Access: TAdvSmoothPanel;
+    AdvSplitter3: TAdvSplitter;
+    AdvSmoothPanel2: TAdvSmoothPanel;
+    btn_minimize: TAdvGlowButton;
+    btn_Close: TAdvGlowButton;
+    AdvFormStyler1: TAdvFormStyler;
+    AdvOfficeTabSetOfficeStyler1: TAdvOfficeTabSetOfficeStyler;
+    AdvOfficePagerOfficeStyler1: TAdvOfficePagerOfficeStyler;
+    sg_FoodEvent: TAdvStringGrid;
+    Label16: TLabel;
+    procedure FormResize(Sender: TObject);
+    procedure FormShow(Sender: TObject);
+    procedure FormClose(Sender: TObject; var Action: TCloseAction);
+  private
+    L_stMenuID : string;
+    { Private declarations }
+  public
+    { Public declarations }
+    procedure FoodEvent(aFoodDate,aAccessTime,aCardno,aCompanyCode, aCompanyName,aEmSeq,aEmCode,aEmName,aAccessResult,aAccessPermitName,aFoodType,aFoodTypeName,
+                                                  aFoodCode,aFoodCodeName,aFoodAmt:string);
+    procedure FormGradeRefresh;
+    procedure FormIDSetting(aID:string);
+  end;
+
+var
+  fmFoodMonitoring: TfmFoodMonitoring;
+
+implementation
+uses
+  uCommonFunction,
+  uFormVariable,
+  uMain;
+{$R *.dfm}
+
+{ TfmFoodMonitoring }
+
+procedure TfmFoodMonitoring.FoodEvent(aFoodDate, aAccessTime, aCardno,
+  aCompanyCode, aCompanyName, aEmSeq, aEmCode, aEmName, aAccessResult,aAccessPermitName,
+  aFoodType, aFoodTypeName, aFoodCode, aFoodCodeName, aFoodAmt: string);
+begin
+  with sg_FoodEvent do
+  begin
+    if Cells[0,1] <> '' then InsertRows(1,1);
+    Cells[0,1] := MakeDatetimeStr(aAccessTime);   //이벤트 발생 시간
+    Cells[1,1] := aCardno;                        //카드번호
+    Cells[2,1] := aCompanyName;                   //소속명
+    Cells[3,1] := aEmCode;                        //사번
+    Cells[4,1] := aEmName;                        //이름
+    Cells[5,1] := aFoodTypeName;                  //식수타입
+    Cells[6,1] := aFoodCodeName;                  //식수명
+    Cells[7,1] := aFoodAmt;                       //금액
+    Cells[8,1] := aAccessPermitName;              //승인여부
+    if Not isDigit(aAccessResult) then
+      RowColor[1] := clYellow;
+  end;
+
+end;
+
+procedure TfmFoodMonitoring.FormClose(Sender: TObject;
+  var Action: TCloseAction);
+begin
+  inherited;
+  fmMain.FORMENABLE(con_FormBMOSFOODMONITOR,'FALSE');
+  fmMain.FORMALARMCONFIRMExecute;
+
+  Action = caFree;
+end;
+
+procedure TfmFoodMonitoring.FormGradeRefresh;
+begin
+
+end;
+
+procedure TfmFoodMonitoring.FormIDSetting(aID: string);
+begin
+  L_stMenuID := aID;
+
+end;
+
+procedure TfmFoodMonitoring.FormResize(Sender: TObject);
+begin
+  inherited;
+  btn_Close.Left := AdvOfficePager1.Width - btn_Close.Width - 10;
+  btn_minimize.Left := btn_Close.Left - btn_minimize.Width - 2;
+
+  if Windowstate = wsMaximized then
+  begin
+    btn_minimize.Visible := True;
+    btn_Close.Visible := True;
+  end else
+  begin
+    btn_minimize.Visible := False;
+    btn_Close.Visible := False;
+  end;
+
+  sg_FoodEvent.Left := 10;
+  sg_FoodEvent.Width := width - (sg_FoodEvent.Left * 2);
+  sg_FoodEvent.Height := Height - sg_FoodEvent.Top - 10;
+end;
+
+procedure TfmFoodMonitoring.FormShow(Sender: TObject);
+begin
+  inherited;
+  fmMain.FORMENABLE(con_FormBMOSFOODMONITOR,'TRUE');
+  fmMain.FORMALARMCONFIRMExecute;
+  WindowState := wsMaximized;
+
+  GridInit(sg_FoodEvent,10);
+end;
+
+initialization
+  RegisterClass(TfmFoodMonitoring);
+Finalization
+  UnRegisterClass(TfmFoodMonitoring);
+
+end.

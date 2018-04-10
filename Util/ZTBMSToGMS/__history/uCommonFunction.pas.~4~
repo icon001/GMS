@@ -1,0 +1,93 @@
+unit uCommonFunction;
+
+interface
+
+uses System.SysUtils;
+
+function Dec2Hex(N: int64; A: Byte): string;
+function FillCharString(aNo:String;aChar:char; aLength:Integer;bFront:Boolean = False): string;
+Function FindCharCopy(SourceStr : String; Index : integer; aChar:Char) : String;
+function LogSave(aFileName,ast:string):Boolean;
+
+
+implementation
+
+function Dec2Hex(N: int64; A: Byte): string;
+begin
+  Result := IntToHex(N, A);
+end;
+
+function FillCharString(aNo:String;aChar:char; aLength:Integer;bFront:Boolean = False): string;
+var
+  I       : Integer;
+  st      : string;
+  strNo   : String;
+  StrCount: Integer;
+begin
+  Strno:= aNo;
+  StrCount:= Length(Strno);
+  St:= '';
+  StrCount:=  aLength - StrCount;
+  if StrCount > 0 then
+  begin
+    st:='';
+    for I:=1 to StrCount do St:=st+ aChar;
+    if bFront then  St:= St + StrNo
+    else St:= StrNo + St;
+
+    FillCharString := st;
+  end else FillCharString := copy(Strno,1,aLength);
+end;
+
+
+Function FindCharCopy(SourceStr : String; Index : integer; aChar:Char) : String;
+Var
+  a, b : Integer;
+  st   : String;
+begin
+  a := 0;
+  b := 1;
+  st := '';
+  if (Length(SourceStr) < 1) then begin result:= ''; exit;  end;
+  for b:=1 to Length(SourceStr) do
+  begin
+    if a = index then break;
+    if SourceStr[b] = aChar then Inc(a);
+  end;
+  if (a = Index) then
+  begin
+    while (b <= Length(SourceStr)) and (SourceStr[b] <> aChar) do
+    begin
+      st := st + SourceStr[b];
+      Inc(b);
+    end;
+  end;
+  Result := st;
+end;
+
+function LogSave(aFileName,ast:string):Boolean;
+Var
+  f: TextFile;
+  st: string;
+  stDir : string;
+begin
+  result := False;
+  Try
+    {$I-}
+    stDir := ExtractFilePath(aFileName);
+    if not DirectoryExists(stDir) then CreateDir(stDir);
+
+    AssignFile(f, aFileName);
+    Append(f);
+    if IOResult <> 0 then Rewrite(f);
+    st := FormatDateTIme('yyyy-mm-dd hh:nn:ss:zzz">"',Now) + ' ' + ast;
+    WriteLn(f,st);
+    System.Close(f);
+    result := True;
+    {$I+}
+  Except
+    Exit;
+  End;
+end;
+
+end.

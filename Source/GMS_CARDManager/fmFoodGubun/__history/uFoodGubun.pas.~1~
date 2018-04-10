@@ -1,0 +1,235 @@
+﻿unit uFoodGubun;
+
+interface
+
+uses
+  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
+  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, AdvOfficeTabSet, Vcl.StdCtrls, AdvEdit,
+  AdvGlassButton, Vcl.Grids, AdvObj, BaseGrid, AdvGrid, AdvSmoothLabel,
+  AdvSmoothPanel,ADODB,ActiveX,uSubForm, CommandArray, Vcl.Menus,
+  Vcl.Imaging.pngimage, Vcl.ExtCtrls;
+
+type
+  TfmFoodType = class(TfmASubForm)
+    List: TAdvSmoothPanel;
+    AdvSmoothLabel1: TAdvSmoothLabel;
+    sg_List: TAdvStringGrid;
+    btn_Add: TAdvGlassButton;
+    btn_Delete: TAdvGlassButton;
+    ed_FoodTypeName: TAdvEdit;
+    ed_Code: TAdvEdit;
+    menuTab: TAdvOfficeTabSet;
+    PopupMenu3: TPopupMenu;
+    pm_codeAdd: TMenuItem;
+    Label73: TLabel;
+    ed_FoodYesterdayHH: TEdit;
+    Label74: TLabel;
+    ed_FoodYesterdayMM: TEdit;
+    Label75: TLabel;
+    procedure menuTabChange(Sender: TObject);
+    procedure btn_AddClick(Sender: TObject);
+    procedure sg_ListClick(Sender: TObject);
+    procedure btn_DeleteClick(Sender: TObject);
+    procedure FormShow(Sender: TObject);
+    procedure sg_ListKeyDown(Sender: TObject; var Key: Word;
+      Shift: TShiftState);
+    procedure pm_codeAddClick(Sender: TObject);
+  private
+    { Private declarations }
+    function SearchFoodType(aCode:string):Boolean;
+  public
+    { Public declarations }
+  end;
+
+var
+  fmFoodType: TfmFoodType;
+
+implementation
+
+uses
+  uCommonFunction,
+  uCommonVariable,
+  uDataBase,
+  uDBDelete,
+  uDBInsert,
+  uDBUpdate,
+  uDBSelect,
+  uDBFunction;
+
+{$R *.dfm}
+
+procedure TfmFoodType.btn_AddClick(Sender: TObject);
+var
+  stFoodType : string;
+  stFoodYesterTime : string;
+begin
+  inherited;
+  stFoodType := ed_Code.Text;
+  stFoodYesterTime := FillZeroStrNum(ed_FoodYesterdayHH.Text,2) + FillZeroStrNum(ed_FoodYesterdayMM.Text,2);
+  if Not isDigit(ed_Code.Text) then
+  begin
+    stFoodType := dmDBFunction.GetNextTB_FOODTYPE_ID;
+    dmDBInsert.InsertIntoTB_FOODTYPE_Value(stFoodType,ed_FoodTypeName.text,stFoodYesterTime);
+    dmDBInsert.InsertIntoTB_FOODCODE_Value(stFoodType,'1','조식','0600','0959','0','0959');
+    dmDBInsert.InsertIntoTB_FOODCODE_Value(stFoodType,'2','중식','1000','1559','0','1559');
+    dmDBInsert.InsertIntoTB_FOODCODE_Value(stFoodType,'3','석식','6600','1959','0','1959');
+    dmDBInsert.InsertIntoTB_FOODCODE_Value(stFoodType,'4','야식','2000','2359','0','2359');
+  end else
+  begin
+    dmDBUpdate.UpdateTB_FOODTYPE_Field_StringValue(stFoodType,'RE_FDTYPENAME',ed_FoodTypeName.text);
+    dmDBUpdate.UpdateTB_FOODTYPE_Field_StringValue(stFoodType,'FT_YESTERDAYTIME',stFoodYesterTime);
+  end;
+  SearchFoodType(stFoodType);
+end;
+
+procedure TfmFoodType.btn_DeleteClick(Sender: TObject);
+begin
+  inherited;
+  if Not isDigit(ed_Code.Text) then
+  begin
+    SearchFoodType('');
+    Exit;
+  end;
+  dmDBDelete.DeleteTB_FOODTYPE_Value(ed_Code.Text);
+  dmDBDelete.DeleteTB_FoodCode_FDType(ed_Code.Text);
+  SearchFoodType('');
+
+end;
+
+procedure TfmFoodType.FormShow(Sender: TObject);
+begin
+  inherited;
+  menuTab.ActiveTabIndex := 1;
+  menuTabChange(self);
+  SearchFoodType('');
+end;
+
+procedure TfmFoodType.menuTabChange(Sender: TObject);
+begin
+  if menuTab.ActiveTabIndex = 0 then //Ȩ
+  begin
+    if menuTab.AdvOfficeTabs.Items[0].Caption = '닫기' then Close
+    else
+    begin
+      menuTab.ActiveTabIndex := 1;
+      menuTabChange(self);
+    end;
+  end else if menuTab.ActiveTabIndex = 1 then
+  begin
+    menuTab.AdvOfficeTabs.Items[0].Caption := '닫기';
+    List.Visible := True;
+    List.Align := alClient;
+  end;
+
+end;
+
+procedure TfmFoodType.pm_codeAddClick(Sender: TObject);
+begin
+  inherited;
+    if sg_List.Cells[0,sg_List.RowCount - 1] <> '' then
+    begin
+      sg_List.AddRow;
+      sg_List.SelectRows(sg_List.RowCount - 1,1);
+    end else
+    begin
+      sg_List.SelectRows(sg_List.RowCount - 1,1);
+    end;
+    sg_ListClick(sg_List);
+end;
+
+function TfmFoodType.SearchFoodType(aCode: string): Boolean;
+var
+  stSql : string;
+  TempAdoQuery : TADOQuery;
+  nRow : integer;
+begin
+  GridInit(sg_List,1,3);
+
+  stSql := dmDBSelect.SelectTB_FOODTYPE_Name('');
+
+  Try
+    CoInitialize(nil);
+    TempAdoQuery := TADOQuery.Create(nil);
+    TempAdoQuery.Connection := dmDataBase.ADOConnection;
+    TempAdoQuery.DisableControls;
+    with TempAdoQuery  do
+    begin
+      Close;
+      SQL.Text := stSql;
+
+      Try
+        Open;
+      Except
+        Exit;
+      End;
+      if recordCount < 1 then
+      begin
+        Exit;
+      end;
+
+      sg_List.RowCount := recordCount + 1;
+      nRow := 1;
+
+      While Not Eof do
+      begin
+        if G_bApplicationTerminate then Exit;
+        with sg_List do
+        begin
+          Cells[0,nRow] := FindField('RE_FDTYPENAME').AsString;
+          Cells[1,nRow] := FindField('RE_FDTYPE').AsString;
+          Cells[2,nRow] := FindField('FT_YESTERDAYTIME').AsString;
+
+          if FindField('RE_FDTYPE').AsString  = aCode then
+          begin
+            SelectRows(nRow,1);
+          end;
+
+        end;
+        Application.ProcessMessages;
+        inc(nRow);
+        Next;
+      end;
+      sg_ListClick(self);
+    end;
+  Finally
+    TempAdoQuery.EnableControls;
+    TempAdoQuery.Free;
+    CoUninitialize;
+  End;
+end;
+
+procedure TfmFoodType.sg_ListClick(Sender: TObject);
+begin
+  inherited;
+  with sg_List do
+  begin
+    ed_FoodTypeName.Text := cells[0,Row];
+    ed_Code.Text := cells[1,Row];
+    ed_FoodYesterdayHH.Text := copy(cells[2,Row],1,2);
+    ed_FoodYesterdayMM.Text := copy(cells[2,Row],3,2);
+
+  end;
+
+end;
+
+procedure TfmFoodType.sg_ListKeyDown(Sender: TObject; var Key: Word;
+  Shift: TShiftState);
+begin
+  if (Key = 40) or (Key = 13) then
+  begin
+    if sg_List.Row = sg_List.RowCount - 1 then
+    begin
+      if sg_List.Cells[1,sg_List.Row] <> '' then
+      begin
+        sg_List.AddRow;
+        sg_List.SelectRows(sg_List.RowCount - 1,1);
+        sg_ListClick(sg_List);
+      end;
+    end;
+  end;
+
+end;
+
+end.
+
+

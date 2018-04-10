@@ -1,0 +1,9 @@
+object dmClientSocket: TdmClientSocket
+  OldCreateOrder = False
+  Height = 150
+  Width = 215
+  object TcpClient1: TTcpClient
+    Left = 24
+    Top = 8
+  end
+end

@@ -1,0 +1,346 @@
+unit uWinSockClient;
+
+interface
+
+uses
+  System.SysUtils, System.Classes,System.SyncObjs,Winapi.WinSock,Winapi.Messages,
+  u_c_byte_buffer,uCommonVariable;
+
+const wm_asynch_select= wm_User;
+const k_buffer_max= 4096; //k_buffer_max= 4096, 65536;
+      k_tcp_ip_chunk= 1500;
+
+type
+  TdmWinSockClient = class(TDataModule)
+    procedure DataModuleCreate(Sender: TObject);
+    procedure DataModuleDestroy(Sender: TObject);
+  private
+    procedure SocketReceive(Sender: TObject; Buf: PAnsiChar;var DataLen: Integer);
+  private
+    L_bSocketWriting : Boolean;  //소켓 전송 중
+    l_c_reception_buffer: c_byte_buffer;
+    l_wsa_data: twsaData;
+    FHandle : THandle;
+    FWinSocket: tSocket;
+    FSocketOpen: Boolean;
+    FSocketConnected: Boolean;
+    FServerPort: integer;
+    FServerIP: String;
+    FOnSocketRead: TSocketPacket;
+    FOnConnected: TSocketConnected;
+    procedure SetSocketOpen(const Value: Boolean);
+    function GetHandle: THandle;
+    procedure SetSocketConnected(const Value: Boolean);
+    { Private declarations }
+  protected
+    procedure WndProc ( var Message : TMessage ); virtual;
+  public
+    { Public declarations }
+    function HandleAllocated : Boolean;
+    procedure HandleNeeded;
+    procedure handle_fd_close_notification(p_socket: Integer);
+    procedure handle_fd_connect_notification(p_socket: Integer);
+    procedure handle_fd_read_notification(p_socket: tSocket);
+    procedure handle_fd_write_notification(p_socket: Integer);
+    procedure handle_wm_async_select(var Msg: TMessage); message wm_asynch_select;
+    procedure SocketError(Sender: TObject; SocketError: Integer);
+    function PutString(aData:string):integer;
+  published
+    property Handle : THandle read GetHandle;
+    property ServerIP : String read FServerIP write FServerIP;
+    property ServerPort : integer read FServerPort write FServerPort;
+    property SocketConnected : Boolean read FSocketConnected write SetSocketConnected;
+    property SocketOpen : Boolean read FSocketOpen write SetSocketOpen;
+    property WinSocket : tSocket read FWinSocket write FWinSocket;
+  published
+    property OnConnected : TSocketConnected read FOnConnected write FOnConnected;
+    property OnSocketRead : TSocketPacket read FOnSocketRead write FOnSocketRead;
+  end;
+
+var
+  dmWinSockClient: TdmWinSockClient;
+
+implementation
+uses
+  uCommonFunction;
+
+{%CLASSGROUP 'Vcl.Controls.TControl'}
+
+{$R *.dfm}
+
+{ TdmWinSockClient }
+
+procedure TdmWinSockClient.DataModuleCreate(Sender: TObject);
+begin
+  WinSocket:= INVALID_SOCKET;
+  l_c_reception_buffer:= c_byte_buffer.create_byte_buffer('reception_buffer', k_buffer_max);
+//
+end;
+
+procedure TdmWinSockClient.DataModuleDestroy(Sender: TObject);
+begin
+  l_c_reception_buffer.Free;
+//
+end;
+
+function TdmWinSockClient.GetHandle: THandle;
+begin
+  HandleNeeded;
+  Result := FHandle;
+end;
+
+function TdmWinSockClient.HandleAllocated: Boolean;
+begin
+  Result := ( FHandle <> 0 );
+end;
+
+procedure TdmWinSockClient.HandleNeeded;
+begin
+  if not HandleAllocated
+   then FHandle := AllocateHWND ( WndProc );
+end;
+
+procedure TdmWinSockClient.handle_fd_close_notification(p_socket: Integer);
+var l_status: Integer;
+          l_linger: TLinger;
+          l_absolute_linger: array[0..3] of char absolute l_linger;
+begin
+  if WSAIsBlocking
+    then
+      begin
+        WSACancelBlockingCall;
+      end;
+
+  SocketOpen := False;
+(*  ShutDown(p_socket, 2);
+  l_linger.l_onoff:= 1;
+  l_linger.l_linger:= 0;
+
+  SetSockOpt(p_socket, Sol_Socket, So_Linger, pAnsichar(AnsiString(l_absolute_linger)), sizeof(l_linger));  //l_absolute_linger[0] -> AnsiString(l_absolute_linger) 으로 변경
+
+  l_status:= CloseSocket(p_socket);
+  //if l_status <> 0 then
+  SocketConnected := False;
+*)
+end;
+
+procedure TdmWinSockClient.handle_fd_connect_notification(p_socket: Integer);
+begin
+  SocketConnected := True;
+end;
+
+procedure TdmWinSockClient.handle_fd_read_notification(p_socket: tSocket);
+var
+  l_remaining: Integer;
+  l_pt_start_reception: Pointer;
+  l_packet_bytes: Integer;
+  l_eol_position: Integer;
+begin
+  if l_c_reception_buffer = nil then Exit;
+
+  with l_c_reception_buffer do
+  begin
+    l_remaining:= m_buffer_size- m_write_index;
+
+    // -- if not at least a tcp-ip chunk, increase the room
+    if l_remaining < k_tcp_ip_chunk then
+    begin
+      // -- reallocate
+      double_the_capacity;
+      l_remaining:= m_buffer_size- m_write_index;
+    end;
+
+    // -- add the received data to the current buffer
+    l_pt_start_reception:= @ m_oa_byte_buffer[m_write_index];
+
+    // -- get the data from the client socket
+    l_packet_bytes:= Recv(WinSocket, l_pt_start_reception^, l_remaining, 0);
+    if l_packet_bytes < 0 then SocketError(self,WSAGetLastError)
+    else
+    begin
+      m_write_index:= m_write_index+ l_packet_bytes;
+      SocketReceive(self, l_pt_start_reception, l_packet_bytes);
+    end;
+  end;
+end;
+
+procedure TdmWinSockClient.handle_fd_write_notification(p_socket: Integer);
+begin
+  L_bSocketWriting := False; //전송 완료
+end;
+
+procedure TdmWinSockClient.handle_wm_async_select(var Msg: TMessage);
+var
+  l_param: Integer;
+  l_error, l_notification: Integer;
+  l_socket_handle: Integer;
+begin
+  l_param:= Msg.lParam;
+  l_socket_handle:= Msg.wParam;
+
+  // -- extract the error and the notification code from l_param
+  l_error:= wsaGetSelectError(l_param);
+  l_notification:= wsaGetSelectEvent(l_param);
+
+  if l_error <= wsaBaseErr then
+  begin
+      case l_notification of
+        FD_CONNECT: handle_fd_connect_notification(l_socket_handle);
+        FD_ACCEPT: {display_bug_stop('no_client_accept')} ;
+        FD_WRITE: handle_fd_write_notification(l_socket_handle);
+        FD_READ: handle_fd_read_notification(l_socket_handle);
+        FD_CLOSE: handle_fd_close_notification(l_socket_handle);
+      end // case
+  end else
+  begin
+    if l_notification= FD_CLOSE then handle_fd_close_notification(l_socket_handle)
+    else SocketError(self,l_error) ;//TcpClientError(self,WSAGetLastError);
+  end;
+end;
+
+function TdmWinSockClient.PutString(aData: string): integer;
+var
+  l_result: Integer;
+  buf: TBytes;
+begin
+  result := -1;
+  if Not SocketConnected then Exit;
+  result := 0;
+  Try
+    Ascii2Bytes(aData,Length(aData),buf);
+    l_result:= Send(WinSocket,buf[0], Length(aData), 0);
+
+    if l_result < 0 then
+    begin
+      if l_result = wsaEWouldBlock  then
+      begin
+        L_bSocketWriting := True;  //Socket에 Full 나면 Write
+      end else
+      begin
+        SocketOpen := False;
+        Exit;
+      end;
+    end;
+  Except
+    Exit;
+  End;
+  result := 1;
+end;
+
+procedure TdmWinSockClient.SetSocketConnected(const Value: Boolean);
+begin
+  if FSocketConnected = Value then Exit;
+  if Value <> SocketOpen then SocketOpen := Value;
+
+
+  FSocketConnected := Value;
+  L_bSocketWriting := False;  //소켓 전송 완료.
+  if Assigned(FOnConnected) then
+  begin
+    OnConnected(Self,Value);
+  end;
+
+end;
+
+procedure TdmWinSockClient.SetSocketOpen(const Value: Boolean);
+var
+  l_result : Integer;
+  l_error: Integer;
+  l_version : Word;
+  l_socket_address_in: tSockAddrIn;
+  l_ip_z: array[0..255] of char;
+  rset: TFDSet;
+  t: TTimeVal;
+  rslt: integer;
+begin
+  if FSocketOpen = Value then Exit;
+  FSocketOpen := Value;
+  if Value then
+  begin
+    l_version:= $0101;
+    l_result := wsaStartup(l_version, l_wsa_data);
+    if l_result <> 0 then
+    begin
+      SocketOpen := False;
+      Exit;  //소켓생성 실패 시에 Open False
+    end;
+    WinSocket:= Socket(PF_INET, SOCK_STREAM, IPPROTO_IP);
+    if WinSocket = INVALID_SOCKET then
+    begin
+      SocketOpen := False;
+      Exit;  //소켓생성 실패 시에 Open False
+    end;
+    l_result:= wsaAsyncSelect(WinSocket, Handle,
+        wm_asynch_select,
+        FD_CONNECT+ FD_READ+ FD_WRITE+ FD_CLOSE);
+
+    FillChar(l_socket_address_in, sizeof(l_socket_address_in), 0);
+    with l_socket_address_in do
+    begin
+      sin_family:= pf_Inet;
+      // -- the requested service
+      sin_port:= hToNs(ServerPort);
+      // -- the server IP address
+      StrPCopy(l_ip_z, ServerIP);
+      sin_addr.s_Addr:= inet_addr(PAnsichar(AnsiString(l_ip_z)));
+    end; // with m_socket_address_in
+    l_result:= Connect(WinSocket, l_socket_address_in,
+        sizeof(l_socket_address_in));
+    if l_result<> 0 then
+    begin
+      l_error:= WSAGetLastError;
+      if l_error <> wsaEWouldBlock then
+      begin
+        SocketOpen := False;
+        Exit;  //소켓생성 실패 시에 Open False
+      end else
+      begin
+      end;
+    end;
+  end else
+  begin
+    SocketConnected := False;
+    if WinSocket <> INVALID_SOCKET then
+    begin
+      shutdown(WinSocket,SD_BOTH);
+      l_result:= CloseSocket(WinSocket);
+      if l_result = 0 then
+      begin
+        WinSocket:= INVALID_SOCKET;
+      end else
+      begin
+        WinSocket:= INVALID_SOCKET;
+      end;
+      WSACleanup;
+    end;
+  end;
+end;
+
+procedure TdmWinSockClient.SocketError(Sender: TObject; SocketError: Integer);
+begin
+  if (SocketError = WSAEWOULDBLOCK) or (SocketError = 10038) then Tag := 0
+  else begin
+    SocketConnected := False;
+    Tag := SocketError;
+  end;
+end;
+
+procedure TdmWinSockClient.SocketReceive(Sender: TObject; Buf: PAnsiChar;
+  var DataLen: Integer);
+var
+  stTemp : RawByteString;
+begin
+  stTemp := ByteCopy(Buf,DataLen);   //FD -> 3F 로 변하는 부분때문에...
+
+  if Assigned(FOnSocketRead) then
+  begin
+    OnSocketRead(Self,stTemp,DataLen);
+  end;
+end;
+
+procedure TdmWinSockClient.WndProc(var Message: TMessage);
+begin
+  Dispatch ( Message );
+end;
+
+end.

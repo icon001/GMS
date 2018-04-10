@@ -1,0 +1,800 @@
+unit uDeviceReader;
+
+interface
+
+uses
+  System.SysUtils, System.Classes,Windows,Forms,
+  uNode,uDevice,uDeviceVariable;
+
+  const MAXREADERRCVCOUNT = 100;
+
+type
+  TDeviceReader = Class(TComponent)
+  private
+    procedure ReaderInformationSend(aInformationType: integer);
+    procedure ReaderInformationCheck(aInformationType: integer);
+    function  ReaderResponseCheck(aIndex,aDelay:integer):Boolean;
+    procedure SendPacket(aCmd:Char;aMsgNo:char;aDeviceVer, aData: String;aPriority:integer=0);
+  private
+    function RegistReaderSettingInformation(aUse,aDoorNo,aDoorLocate,aBuildingLocate,aArmArea,aLocate:string;aDelay:Boolean=True):Boolean;
+    function RegistReaderTelNumberSetting(aCmd,aNo:integer;aTelNumber:string;aDelay:Boolean=True):Boolean;
+  private
+    L_cReaderRCVSTATE: Array [0..MAXREADERRCVCOUNT] of char;     //수신상태
+    L_bReaderResponse: Array [0..100] of Boolean;              //기기 설정 정보 응답 여부
+    FReaderUse: Boolean;
+    FReaderNo: integer;
+    FDevice: TDevice;
+    FDoorNo: string;
+    FTelNumber4: string;
+    FTelNumber5: string;
+    FREADERVERSION: string;
+    FArmAreaNo: integer;
+    FCardReaderTelSkill: Boolean;
+    FFDTYPE: string;
+    FBuildingPositionCode: string;
+    FReaderCallTime: string;
+    FDoorPositionCode: string;
+    FTelNumber8: string;
+    FTelNumber9: string;
+    FReaderType: integer;
+    FTelNumber2: string;
+    FTelNumber3: string;
+    FTelNumber0: string;
+    FATTYPE: string;
+    FTelNumber1: string;
+    FTelNumber6: string;
+    FTelNumber7: string;
+    FReaderCallTimeRcv: string;
+    FTelNumber8Rcv: string;
+    FTelNumber9Rcv: string;
+    FTelNumber2Rcv: string;
+    FTelNumber3Rcv: string;
+    FTelNumber0Rcv: string;
+    FTelNumber1Rcv: string;
+    FTelNumber6Rcv: string;
+    FTelNumber7Rcv: string;
+    FTelNumber4Rcv: string;
+    FTelNumber5Rcv: string;
+    FREADERVERSIONRcv: string;
+    FReciveStateChange: Boolean;
+    FOnReceiveTypeChage: TReceiveTypeChange;
+    FReaderSETTINGINFORcv: string;
+    FReaderConnected: Boolean;
+    FOnCardReaderPacketChange: TCardReaderPacket;
+    FInfoInitialize: Boolean;
+    procedure SetArmAreaNo(const Value: integer);
+    procedure SetBuildingPositionCode(const Value: string);
+    procedure SetDoorNo(const Value: string);
+    procedure SetDoorPositionCode(const Value: string);
+    procedure SetReaderUse(const Value: Boolean);
+    procedure SetREADERVERSION(const Value: string);
+    procedure SetReaderCallTimeRcv(const Value: string);
+    procedure SetREADERVERSIONRcv(const Value: string);
+    procedure SetTelNumber0Rcv(const Value: string);
+    procedure SetTelNumber1Rcv(const Value: string);
+    procedure SetTelNumber2Rcv(const Value: string);
+    procedure SetTelNumber3Rcv(const Value: string);
+    procedure SetTelNumber4Rcv(const Value: string);
+    procedure SetTelNumber5Rcv(const Value: string);
+    procedure SetTelNumber6Rcv(const Value: string);
+    procedure SetTelNumber7Rcv(const Value: string);
+    procedure SetTelNumber8Rcv(const Value: string);
+    procedure SetTelNumber9Rcv(const Value: string);
+    procedure SetReciveStateChange(const Value: Boolean);
+    procedure SetReaderType(const Value: integer);
+    procedure SetReaderSETTINGINFORcv(const Value: string);
+    { Private declarations }
+  published
+    property ReciveStateChange : Boolean read FReciveStateChange write SetReciveStateChange; //수신 상태 변경 여부
+  published
+    //설정값
+    property InfoInitialize : Boolean Read FInfoInitialize write FInfoInitialize;
+    property Device : TDevice read FDevice write FDevice;
+    property ReaderNo : integer read FReaderNo write FReaderNo;
+    property ReaderConnected : Boolean read FReaderConnected write FReaderConnected;
+
+    property BuildingPositionCode : string read FBuildingPositionCode write SetBuildingPositionCode; //건물기준설치위치
+    property DoorNo : string read FDoorNo write SetDoorNo; //출입문연결번호
+    property DoorPositionCode : string read FDoorPositionCode write SetDoorPositionCode; //출입문기준설치위치
+    property ReaderType : integer read FReaderType write SetReaderType; //리더타입(0.일반,1.지문)
+    property ReaderUse : Boolean read FReaderUse write SetReaderUse; //리더사용유무
+
+    property ArmAreaNo : integer read FArmAreaNo write SetArmAreaNo; //방범구역변경
+    property CardReaderTelSkill : Boolean read FCardReaderTelSkill write FCardReaderTelSkill; //리더사용유무
+    property TelNumber0 : string read FTelNumber0 write FTelNumber0; //
+    property TelNumber1 : string read FTelNumber1 write FTelNumber1; //
+    property TelNumber2 : string read FTelNumber2 write FTelNumber2; //
+    property TelNumber3 : string read FTelNumber3 write FTelNumber3; //
+    property TelNumber4 : string read FTelNumber4 write FTelNumber4; //
+    property TelNumber5 : string read FTelNumber5 write FTelNumber5; //
+    property TelNumber6 : string read FTelNumber6 write FTelNumber6; //
+    property TelNumber7 : string read FTelNumber7 write FTelNumber7; //
+    property TelNumber8 : string read FTelNumber8 write FTelNumber8; //
+    property TelNumber9 : string read FTelNumber9 write FTelNumber9; //
+    property ReaderCallTime : string read FReaderCallTime write FReaderCallTime; //
+    property READERVERSION : string read FREADERVERSION write SetREADERVERSION; //
+    property ATTYPE : string read FATTYPE write FATTYPE; //
+    property FDTYPE : string read FFDTYPE write FFDTYPE; //
+  published
+    //수신값
+    property ReaderSETTINGINFORcv : string read FReaderSETTINGINFORcv write SetReaderSETTINGINFORcv;
+
+    property READERVERSIONRcv : string read FREADERVERSIONRcv write SetREADERVERSIONRcv; //
+
+    property TelNumber0Rcv : string read FTelNumber0Rcv write SetTelNumber0Rcv; //
+    property TelNumber1Rcv : string read FTelNumber1Rcv write SetTelNumber1Rcv; //
+    property TelNumber2Rcv : string read FTelNumber2Rcv write SetTelNumber2Rcv; //
+    property TelNumber3Rcv : string read FTelNumber3Rcv write SetTelNumber3Rcv; //
+    property TelNumber4Rcv : string read FTelNumber4Rcv write SetTelNumber4Rcv; //
+    property TelNumber5Rcv : string read FTelNumber5Rcv write SetTelNumber5Rcv; //
+    property TelNumber6Rcv : string read FTelNumber6Rcv write SetTelNumber6Rcv; //
+    property TelNumber7Rcv : string read FTelNumber7Rcv write SetTelNumber7Rcv; //
+    property TelNumber8Rcv : string read FTelNumber8Rcv write SetTelNumber8Rcv; //
+    property TelNumber9Rcv : string read FTelNumber9Rcv write SetTelNumber9Rcv; //
+    property ReaderCallTimeRcv : string read FReaderCallTimeRcv write SetReaderCallTimeRcv; //
+  published
+    //이벤트 발생
+    property OnCardReaderPacketChange : TCardReaderPacket read FOnCardReaderPacketChange write FOnCardReaderPacketChange;
+
+    property OnReceiveTypeChage : TReceiveTypeChange read FOnReceiveTypeChage write FOnReceiveTypeChage;
+  public
+    { Public declarations }
+    constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
+    procedure ReaderReciveCheck;
+  public
+    procedure ReceiveReaderSettingInformation(aECUID,aDeviceVer,aMsgNo,aRealData:string);
+    procedure ReceiveReaderTelNumberSetting(aECUID,aDeviceVer,aMsgNo,aRealData:string);
+    procedure ReceiveReaderVersion(aECUID,aDeviceVer,aMsgNo,aRealData:string);
+  public
+    function ReaderSettingInformationCheck(aDelay:Boolean=True):Boolean;
+    function ReaderVersionCheck(aDelay:Boolean= True):Boolean;
+  end;
+
+  TdmDeviceReader = class(TDataModule)
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+  end;
+
+var
+  dmDeviceReader: TdmDeviceReader;
+
+implementation
+
+uses
+  uCommonFunction;
+
+{%CLASSGROUP 'System.Classes.TPersistent'}
+
+{$R *.dfm}
+
+{ TDeviceReader }
+
+constructor TDeviceReader.Create(AOwner: TComponent);
+var
+  i : integer;
+begin
+  inherited;
+  for i := 0 to HIGH(L_cReaderRCVSTATE) do
+  begin
+    L_cReaderRCVSTATE[i] := 'Y';
+  end;
+end;
+
+destructor TDeviceReader.Destroy;
+begin
+
+  inherited;
+end;
+
+procedure TDeviceReader.ReaderInformationCheck(aInformationType: integer);
+begin
+  case aInformationType of
+    con_CardReaderCmdSettingInfo : begin
+      ReaderSETTINGINFORcv :='R';
+      ReaderSettingInformationCheck;
+      if ReaderSETTINGINFORcv = 'R' then ReaderSETTINGINFORcv := 'N';
+    end; //출입문연결번호
+    con_CardReaderCmdTelNumber0 : begin
+      TelNumber0RCV :='R';
+    end; //
+    con_CardReaderCmdTelNumber1 : begin
+      TelNumber1RCV :='R';
+    end; //
+    con_CardReaderCmdTelNumber2 : begin
+      TelNumber2RCV :='R';
+    end; //
+    con_CardReaderCmdTelNumber3 : begin
+      TelNumber3RCV :='R';
+    end; //
+    con_CardReaderCmdTelNumber4 : begin
+      TelNumber4RCV :='R';
+    end; //
+    con_CardReaderCmdTelNumber5 : begin
+      TelNumber5RCV :='R';
+    end; //
+    con_CardReaderCmdTelNumber6 : begin
+      TelNumber6RCV :='R';
+    end; //
+    con_CardReaderCmdTelNumber7 : begin
+      TelNumber7RCV :='R';
+    end; //
+    con_CardReaderCmdTelNumber8 : begin
+      TelNumber8RCV :='R';
+    end; //
+    con_CardReaderCmdTelNumber9 : begin
+      TelNumber9RCV :='R';
+    end; //
+    con_CardReaderCmdCallTime : begin
+      ReaderCallTimeRCV :='R';
+    end; //
+    con_CardReaderCmdVERSION : begin
+      ReaderVERSIONRCV :='R';
+      ReaderVersionCheck;
+      if ReaderVERSIONRCV = 'R' then
+      begin
+        ReaderConnected := False; //버젼 조회가 안되면 Connect Fail
+        ReaderVERSIONRCV := 'N';
+      end;
+    end; //
+  end;
+end;
+
+procedure TDeviceReader.ReaderInformationSend(aInformationType: integer);
+var
+  stTemp : string;
+begin
+  case aInformationType of
+    con_CardReaderCmdSettingInfo : begin
+      ReaderSETTINGINFORcv :='S';
+      if ReaderUse then stTemp := '1'
+      else stTemp := '0';
+      RegistReaderSettingInformation(stTemp,DoorNo,DoorPositionCode,BuildingPositionCode,inttostr(ArmAreaNo),'');
+      if ReaderSETTINGINFORcv = 'S' then ReaderSETTINGINFORcv := 'U';
+    end; //출입문연결번호
+    con_CardReaderCmdTelNumber0 : begin
+      TelNumber0RCV :='S';
+      RegistReaderTelNumberSetting(con_CardReaderCmdTelNumber0,0,TelNumber0);
+      if TelNumber0RCV = 'S' then TelNumber0RCV := 'U';
+    end; //
+    con_CardReaderCmdTelNumber1 : begin
+      TelNumber1RCV :='S';
+      RegistReaderTelNumberSetting(con_CardReaderCmdTelNumber1,1,TelNumber1);
+      if TelNumber1RCV = 'S' then TelNumber1RCV := 'U';
+    end; //
+    con_CardReaderCmdTelNumber2 : begin
+      TelNumber2RCV :='S';
+      RegistReaderTelNumberSetting(con_CardReaderCmdTelNumber2,2,TelNumber2);
+      if TelNumber2RCV = 'S' then TelNumber2RCV := 'U';
+    end; //
+    con_CardReaderCmdTelNumber3 : begin
+      TelNumber3RCV :='S';
+      RegistReaderTelNumberSetting(con_CardReaderCmdTelNumber3,3,TelNumber3);
+      if TelNumber3RCV = 'S' then TelNumber3RCV := 'U';
+    end; //
+    con_CardReaderCmdTelNumber4 : begin
+      TelNumber4RCV :='S';
+      RegistReaderTelNumberSetting(con_CardReaderCmdTelNumber4,4,TelNumber4);
+      if TelNumber4RCV = 'S' then TelNumber4RCV := 'U';
+    end; //
+    con_CardReaderCmdTelNumber5 : begin
+      TelNumber5RCV :='S';
+      RegistReaderTelNumberSetting(con_CardReaderCmdTelNumber5,5,TelNumber5);
+      if TelNumber5RCV = 'S' then TelNumber5RCV := 'U';
+    end; //
+    con_CardReaderCmdTelNumber6 : begin
+      TelNumber6RCV :='S';
+      RegistReaderTelNumberSetting(con_CardReaderCmdTelNumber6,6,TelNumber6);
+      if TelNumber6RCV = 'S' then TelNumber6RCV := 'U';
+    end; //
+    con_CardReaderCmdTelNumber7 : begin
+      TelNumber7RCV :='S';
+      RegistReaderTelNumberSetting(con_CardReaderCmdTelNumber7,7,TelNumber7);
+      if TelNumber7RCV = 'S' then TelNumber7RCV := 'U';
+    end; //
+    con_CardReaderCmdTelNumber8 : begin
+      TelNumber8RCV :='S';
+      RegistReaderTelNumberSetting(con_CardReaderCmdTelNumber8,8,TelNumber8);
+      if TelNumber8RCV = 'S' then TelNumber8RCV := 'U';
+    end; //
+    con_CardReaderCmdTelNumber9 : begin
+      TelNumber9RCV :='S';
+      RegistReaderTelNumberSetting(con_CardReaderCmdTelNumber9,9,TelNumber9);
+      if TelNumber9RCV = 'S' then TelNumber9RCV := 'U';
+    end; //
+    con_CardReaderCmdCallTime : begin
+      ReaderCallTimeRCV :='S';
+    end; //
+    con_CardReaderCmdVERSION : begin
+      ReaderVERSIONRCV :='S';
+    end; //
+
+  end;
+end;
+
+procedure TDeviceReader.ReaderReciveCheck;
+var
+  i : integer;
+  bReciveStateCheck : Boolean;
+begin
+  Try
+    for i := 0 to HIGH(L_cReaderRCVSTATE) do
+    begin
+      if (L_cReaderRCVSTATE[i] = 'U') or (L_cReaderRCVSTATE[i] = 'S') then  //변경된 건이 있으면 송신 하자....
+      begin
+        ReaderInformationSend(i);
+        Exit;
+      end;
+    end;
+    for i := 0 to HIGH(L_cReaderRCVSTATE) do
+    begin
+      if L_cReaderRCVSTATE[i] = 'N' then  //상태를 수신할 건이 있으면 수신 체크 하자....
+      begin
+        ReaderInformationCheck(i);
+        Exit;
+      end;
+    end;
+    //여기서는 수신상태 체크 하는 곳 ==> 수신이 안되면 여기서 멈춤 현상 발생
+    bReciveStateCheck := False;
+    for i := 0 to HIGH(L_cReaderRCVSTATE) do
+    begin
+      if L_cReaderRCVSTATE[i] <> 'Y' then
+      begin
+        bReciveStateCheck := True;
+        break;
+      end;
+    end;
+    ReciveStateChange := bReciveStateCheck;  //전체 송신 했으면 False로 하자
+  Finally
+    //RcvCheckTimer.Enabled := ReciveStateChange;  //수신상태를 변경 하면서 수행 됨
+  End;
+end;
+
+function TDeviceReader.ReaderResponseCheck(aIndex, aDelay: integer): Boolean;
+var
+  FirstTickCount : double;
+begin
+  FirstTickCount := GetTickCount + aDelay;
+  While Not L_bReaderResponse[aIndex] do
+  begin
+    sleep(1);
+    Application.ProcessMessages;
+    if GetTickCount > FirstTickCount then Break;
+  end;
+  result := L_bReaderResponse[aIndex];
+end;
+
+function TDeviceReader.ReaderSettingInformationCheck(aDelay:Boolean):Boolean;
+var
+  stData : string;
+begin
+  L_bReaderResponse[con_CardReaderCmdSettingInfo] := False;
+  stData := 'CD' +                             //MSG Code
+            FillZeroNumber(ReaderNo, 2);               //리더번호
+  SendPacket('Q',TNode(Device.DeviceNode).GetSendMsgNo,TNode(Device.DeviceNode).GetDeviceVer, stData,0);
+  if aDelay then
+    result := ReaderResponseCheck(con_CardReaderCmdSettingInfo,con_DelayTime);
+end;
+
+function TDeviceReader.ReaderVersionCheck(aDelay: Boolean): Boolean;
+var
+  stData : string;
+begin
+  L_bReaderResponse[con_CardReaderCmdVERSION] := False;
+  stData := 'CV' +                             //MSG Code
+            FillZeroNumber(ReaderNo, 2);               //리더번호
+  SendPacket('R',TNode(Device.DeviceNode).GetSendMsgNo,TNode(Device.DeviceNode).GetDeviceVer, stData,0);
+  if aDelay then
+    result := ReaderResponseCheck(con_CardReaderCmdVERSION,con_DelayTime);
+end;
+
+procedure TDeviceReader.ReceiveReaderSettingInformation(aECUID, aDeviceVer,
+  aMsgNo, aRealData: string);
+begin
+  L_bReaderResponse[con_CardReaderCmdSettingInfo] := True;
+  if (ReaderSETTINGINFORcv = 'R') or (ReaderSETTINGINFORcv = 'S') then ReaderSETTINGINFORcv := 'Y';
+  Delete(aRealData,1,4);
+  if aRealData[1] = '1' then ReaderUse := True
+  else ReaderUse := False;
+  DoorPositionCode := aRealData[2];
+  DoorNo := aRealData[3];
+  if isDigit(Copy(aRealData, 4, 2)) then
+    ArmAreaNo := strtoint(Copy(aRealData, 4, 2));
+  BuildingPositionCode := aRealData[22];
+end;
+
+procedure TDeviceReader.ReceiveReaderTelNumberSetting(aECUID, aDeviceVer,
+  aMsgNo, aRealData: string);
+var
+  nCmd : integer;
+  chTelNo : char;
+  stTelNumber : string;
+begin
+  Delete(aRealData,1,4);
+  chTelNo := aRealData[2];
+  Delete(aRealData,1,2);
+  stTelNumber := Trim(aRealData);
+
+  case chTelNo of
+    '0' : begin
+      if (TelNumber0Rcv = 'R') or (TelNumber0Rcv = 'S') then TelNumber0Rcv := 'Y';
+      L_bReaderResponse[con_CardReaderCmdTelNumber0] := True;
+      TelNumber0 := stTelNumber;
+    end;
+    '1' : begin
+      if (TelNumber1Rcv = 'R') or (TelNumber1Rcv = 'S') then TelNumber1Rcv := 'Y';
+      L_bReaderResponse[con_CardReaderCmdTelNumber1] := True;
+      TelNumber1 := stTelNumber;
+    end;
+    '2' : begin
+      if (TelNumber2Rcv = 'R') or (TelNumber2Rcv = 'S') then TelNumber2Rcv := 'Y';
+      L_bReaderResponse[con_CardReaderCmdTelNumber2] := True;
+      TelNumber2 := stTelNumber;
+    end;
+    '3' : begin
+      if (TelNumber3Rcv = 'R') or (TelNumber3Rcv = 'S') then TelNumber3Rcv := 'Y';
+      L_bReaderResponse[con_CardReaderCmdTelNumber3] := True;
+      TelNumber3 := stTelNumber;
+    end;
+    '4' : begin
+      if (TelNumber4Rcv = 'R') or (TelNumber4Rcv = 'S') then TelNumber4Rcv := 'Y';
+      L_bReaderResponse[con_CardReaderCmdTelNumber4] := True;
+      TelNumber4 := stTelNumber;
+    end;
+    '5' : begin
+      if (TelNumber5Rcv = 'R') or (TelNumber5Rcv = 'S') then TelNumber5Rcv := 'Y';
+      L_bReaderResponse[con_CardReaderCmdTelNumber5] := True;
+      TelNumber5 := stTelNumber;
+    end;
+    '6' : begin
+      if (TelNumber6Rcv = 'R') or (TelNumber6Rcv = 'S') then TelNumber6Rcv := 'Y';
+      L_bReaderResponse[con_CardReaderCmdTelNumber6] := True;
+      TelNumber0 := stTelNumber;
+    end;
+    '7' : begin
+      if (TelNumber7Rcv = 'R') or (TelNumber7Rcv = 'S') then TelNumber7Rcv := 'Y';
+      L_bReaderResponse[con_CardReaderCmdTelNumber7] := True;
+      TelNumber7 := stTelNumber;
+    end;
+    '8' : begin
+      if (TelNumber8Rcv = 'R') or (TelNumber8Rcv = 'S') then TelNumber8Rcv := 'Y';
+      L_bReaderResponse[con_CardReaderCmdTelNumber8] := True;
+      TelNumber8 := stTelNumber;
+    end;
+    '9' : begin
+      if (TelNumber9Rcv = 'R') or (TelNumber9Rcv = 'S') then TelNumber9Rcv := 'Y';
+      L_bReaderResponse[con_CardReaderCmdTelNumber9] := True;
+      TelNumber9 := stTelNumber;
+    end;
+
+  end;
+
+end;
+
+procedure TDeviceReader.ReceiveReaderVersion(aECUID, aDeviceVer, aMsgNo,
+  aRealData: string);
+begin
+  L_bReaderResponse[con_CardReaderCmdVERSION] := True;
+  Delete(aRealData,1,4);
+  READERVERSION := aRealData;
+end;
+
+function TDeviceReader.RegistReaderSettingInformation(aUse,
+  aDoorNo, aDoorLocate, aBuildingLocate, aArmArea, aLocate: string;aDelay:Boolean=True): Boolean;
+var
+  stData : string;
+begin
+  L_bReaderResponse[con_CardReaderCmdSettingInfo] := False;
+
+  if Not isDigit(aArmArea)  then aArmArea := '0';
+  if Not isDigit(aUse) then aUse := '0';
+  if Not isDigit(aDoorLocate) then aDoorLocate := '0';
+  if Not isDigit(aDoorNo) then aDoorNo := '0';
+  if Not isDigit(aArmArea) then aArmArea := '0';
+  if Not isDigit(aBuildingLocate) then aBuildingLocate := '0';
+
+  stData := 'CD' +                                      //COMMAND
+    FillZeroNumber(ReaderNo, 2) +                       //리더 번호
+    aUse[1] +                                           //리더 사용 유무
+    aDoorLocate[1] +                                    //리더 위치
+    aDoorNo[1] +                                        //Door No
+    FillZeroNumber(strtoint(aArmArea),2) +              //방범구역
+    SetSpacelength(aLocate, 16) +                           //위치명
+    aBuildingLocate[1];                      //건물설치위치
+
+
+  SendPacket('I',TNode(Device.DeviceNode).GetSendMsgNo,TNode(Device.DeviceNode).GetDeviceVer, stData,0);
+  if aDelay then
+    result := ReaderResponseCheck(con_CardReaderCmdSettingInfo,con_DelayTime);
+
+end;
+
+function TDeviceReader.RegistReaderTelNumberSetting(aCmd, aNo: integer;
+  aTelNumber: string;aDelay:Boolean=True): Boolean;
+var
+  stData : string;
+begin
+  L_bReaderResponse[aCmd] := False;
+
+  stData := 'TN' +                                      //COMMAND
+    FillZeroNumber(ReaderNo, 2) +                       //리더 번호
+    FillZeroNumber(aNo, 2) +                            //등록번지
+    aTelNumber;                                         //전화번호
+
+
+  SendPacket('I',TNode(Device.DeviceNode).GetSendMsgNo,TNode(Device.DeviceNode).GetDeviceVer, stData,0);
+
+  if aDelay then
+    result := ReaderResponseCheck(aCmd,con_DelayTime);
+end;
+
+procedure TDeviceReader.SendPacket(aCmd, aMsgNo: char; aDeviceVer,
+  aData: String; aPriority: integer);
+begin
+  if Device.DeviceNode <> nil then
+     Device.DeviceNode.SendPacket(TDevice(Device).EcuID,aCmd,aMsgNo,aDeviceVer,aData,aPriority);
+end;
+
+procedure TDeviceReader.SetArmAreaNo(const Value: integer);
+begin
+  if FArmAreaNo = Value then Exit;
+  FArmAreaNo := Value;
+
+  if InfoInitialize then Exit;
+
+  if Assigned(FOnCardReaderPacketChange) then
+  begin
+    OnCardReaderPacketChange(Self,con_CardReaderCmdArmAreaNo,TNode(Device.DeviceNode).NO,TDevice(Device).EcuID,'0',inttostr(ReaderNo),inttostr(Value));
+  end;
+end;
+
+procedure TDeviceReader.SetBuildingPositionCode(const Value: string);
+begin
+  if FBuildingPositionCode = Value then Exit;
+  FBuildingPositionCode := Value;
+
+  if InfoInitialize then Exit;
+
+  if Assigned(FOnCardReaderPacketChange) then
+  begin
+    OnCardReaderPacketChange(Self,con_CardReaderCmdBuildingPositionCode,TNode(Device.DeviceNode).NO,TDevice(Device).EcuID,'0',inttostr(ReaderNo),Value);
+  end;
+end;
+
+procedure TDeviceReader.SetDoorNo(const Value: string);
+begin
+  if FDoorNo = Value then Exit;
+  FDoorNo := Value;
+
+  if InfoInitialize then Exit;
+
+  if Assigned(FOnCardReaderPacketChange) then
+  begin
+    OnCardReaderPacketChange(Self,con_CardReaderCmdDoorNo,TNode(Device.DeviceNode).NO,TDevice(Device).EcuID,'0',inttostr(ReaderNo),Value);
+  end;
+end;
+
+procedure TDeviceReader.SetDoorPositionCode(const Value: string);
+begin
+  if FDoorPositionCode = Value then Exit;
+  FDoorPositionCode := Value;
+
+  if InfoInitialize then Exit;
+
+  if Assigned(FOnCardReaderPacketChange) then
+  begin
+    OnCardReaderPacketChange(Self,con_CardReaderCmdDoorPosition,TNode(Device.DeviceNode).NO,TDevice(Device).EcuID,'0',inttostr(ReaderNo),Value);
+  end;
+end;
+
+procedure TDeviceReader.SetReaderCallTimeRcv(const Value: string);
+begin
+  L_cReaderRCVSTATE[con_CardReaderCmdCallTime] := Value[1];
+  if FReaderCallTimeRcv = Value then Exit;
+  ReciveStateChange := True;
+  FReaderCallTimeRcv := Value;
+  if Assigned(FOnReceiveTypeChage) then
+  begin
+    OnReceiveTypeChage(Self,TNode(Device.DeviceNode).NO,'READER',TDevice(Device).EcuID,'0',inttostr(ReaderNo),con_CardReaderCmdCallTime,Value);
+  end;
+end;
+
+procedure TDeviceReader.SetReaderSETTINGINFORcv(const Value: string);
+begin
+  L_cReaderRCVSTATE[con_CardReaderCmdSettingInfo] := Value[1];
+  if FReaderSETTINGINFORcv = Value then Exit;
+  ReciveStateChange := True;
+  FReaderSETTINGINFORcv := Value;
+  if Assigned(FOnReceiveTypeChage) then
+  begin
+    OnReceiveTypeChage(Self,TNode(Device.DeviceNode).NO,'READER',TDevice(Device).EcuID,'0',inttostr(ReaderNo),con_CardReaderCmdSettingInfo,Value);
+  end;
+end;
+
+procedure TDeviceReader.SetReaderType(const Value: integer);
+begin
+  if FReaderType = Value then Exit;
+  FReaderType := Value;
+
+  if InfoInitialize then Exit;
+
+  if Assigned(FOnCardReaderPacketChange) then
+  begin
+    OnCardReaderPacketChange(Self,con_CardReaderCmdType,TNode(Device.DeviceNode).NO,TDevice(Device).EcuID,'0',inttostr(ReaderNo),inttostr(Value));
+  end;
+end;
+
+procedure TDeviceReader.SetReaderUse(const Value: Boolean);
+var
+  stValue : string;
+begin
+  if FReaderUse = Value then Exit;
+  FReaderUse := Value;
+  if Value then stValue := '1'
+  else stValue := '0';
+
+  if InfoInitialize then Exit;
+
+  if Assigned(FOnCardReaderPacketChange) then
+  begin
+    OnCardReaderPacketChange(Self,con_CardReaderCmdUse,TNode(Device.DeviceNode).NO,TDevice(Device).EcuID,'0',inttostr(ReaderNo),stValue);
+  end;
+
+end;
+
+procedure TDeviceReader.SetREADERVERSION(const Value: string);
+begin
+  if FREADERVERSION = Value then Exit;
+  FREADERVERSION := Value;
+
+  if InfoInitialize then Exit;
+
+  if Assigned(FOnCardReaderPacketChange) then
+  begin
+    OnCardReaderPacketChange(Self,con_CardReaderCmdVERSION,TNode(Device.DeviceNode).NO,TDevice(Device).EcuID,'0',inttostr(ReaderNo),Value);
+  end;
+end;
+
+procedure TDeviceReader.SetREADERVERSIONRcv(const Value: string);
+begin
+  //L_cReaderRCVSTATE[con_CardReaderCmdVERSION] := Value[1];  //카드리더 버젼 체크는 하지 말자.
+  if FREADERVERSIONRcv = Value then Exit;
+  ReciveStateChange := True;
+  FREADERVERSIONRcv := Value;
+  if Assigned(FOnReceiveTypeChage) then
+  begin
+    OnReceiveTypeChage(Self,TNode(Device.DeviceNode).NO,'READER',TDevice(Device).EcuID,'0',inttostr(ReaderNo),con_CardReaderCmdVERSION,Value);
+  end;
+end;
+
+procedure TDeviceReader.SetReciveStateChange(const Value: Boolean);
+begin
+  if FReciveStateChange = Value then Exit;
+  FReciveStateChange := Value;
+  if Value then
+     TDevice(Device).ReciveStateChange := True;
+end;
+
+procedure TDeviceReader.SetTelNumber0Rcv(const Value: string);
+begin
+  L_cReaderRCVSTATE[con_CardReaderCmdTelNumber0] := Value[1];
+  if FTelNumber0Rcv = Value then Exit;
+  ReciveStateChange := True;
+  FTelNumber0Rcv := Value;
+  if Assigned(FOnReceiveTypeChage) then
+  begin
+    OnReceiveTypeChage(Self,TNode(Device.DeviceNode).NO,'READER',TDevice(Device).EcuID,'0',inttostr(ReaderNo),con_CardReaderCmdTelNumber0,Value);
+  end;
+end;
+
+procedure TDeviceReader.SetTelNumber1Rcv(const Value: string);
+begin
+  L_cReaderRCVSTATE[con_CardReaderCmdTelNumber1] := Value[1];
+  if FTelNumber1Rcv = Value then Exit;
+  ReciveStateChange := True;
+  FTelNumber1Rcv := Value;
+  if Assigned(FOnReceiveTypeChage) then
+  begin
+    OnReceiveTypeChage(Self,TNode(Device.DeviceNode).NO,'READER',TDevice(Device).EcuID,'0',inttostr(ReaderNo),con_CardReaderCmdTelNumber1,Value);
+  end;
+end;
+
+procedure TDeviceReader.SetTelNumber2Rcv(const Value: string);
+begin
+  L_cReaderRCVSTATE[con_CardReaderCmdTelNumber2] := Value[1];
+  if FTelNumber2Rcv = Value then Exit;
+  ReciveStateChange := True;
+  FTelNumber2Rcv := Value;
+  if Assigned(FOnReceiveTypeChage) then
+  begin
+    OnReceiveTypeChage(Self,TNode(Device.DeviceNode).NO,'READER',TDevice(Device).EcuID,'0',inttostr(ReaderNo),con_CardReaderCmdTelNumber2,Value);
+  end;
+end;
+
+procedure TDeviceReader.SetTelNumber3Rcv(const Value: string);
+begin
+  L_cReaderRCVSTATE[con_CardReaderCmdTelNumber3] := Value[1];
+  if FTelNumber3Rcv = Value then Exit;
+  ReciveStateChange := True;
+  FTelNumber3Rcv := Value;
+  if Assigned(FOnReceiveTypeChage) then
+  begin
+    OnReceiveTypeChage(Self,TNode(Device.DeviceNode).NO,'READER',TDevice(Device).EcuID,'0',inttostr(ReaderNo),con_CardReaderCmdTelNumber3,Value);
+  end;
+end;
+
+procedure TDeviceReader.SetTelNumber4Rcv(const Value: string);
+begin
+  L_cReaderRCVSTATE[con_CardReaderCmdTelNumber4] := Value[1];
+  if FTelNumber4Rcv = Value then Exit;
+  ReciveStateChange := True;
+  FTelNumber4Rcv := Value;
+  if Assigned(FOnReceiveTypeChage) then
+  begin
+    OnReceiveTypeChage(Self,TNode(Device.DeviceNode).NO,'READER',TDevice(Device).EcuID,'0',inttostr(ReaderNo),con_CardReaderCmdTelNumber4,Value);
+  end;
+end;
+
+procedure TDeviceReader.SetTelNumber5Rcv(const Value: string);
+begin
+  L_cReaderRCVSTATE[con_CardReaderCmdTelNumber5] := Value[1];
+  if FTelNumber5Rcv = Value then Exit;
+  ReciveStateChange := True;
+  FTelNumber5Rcv := Value;
+  if Assigned(FOnReceiveTypeChage) then
+  begin
+    OnReceiveTypeChage(Self,TNode(Device.DeviceNode).NO,'READER',TDevice(Device).EcuID,'0',inttostr(ReaderNo),con_CardReaderCmdTelNumber5,Value);
+  end;
+end;
+
+procedure TDeviceReader.SetTelNumber6Rcv(const Value: string);
+begin
+  L_cReaderRCVSTATE[con_CardReaderCmdTelNumber6] := Value[1];
+  if FTelNumber6Rcv = Value then Exit;
+  ReciveStateChange := True;
+  FTelNumber6Rcv := Value;
+  if Assigned(FOnReceiveTypeChage) then
+  begin
+    OnReceiveTypeChage(Self,TNode(Device.DeviceNode).NO,'READER',TDevice(Device).EcuID,'0',inttostr(ReaderNo),con_CardReaderCmdTelNumber6,Value);
+  end;
+end;
+
+procedure TDeviceReader.SetTelNumber7Rcv(const Value: string);
+begin
+  L_cReaderRCVSTATE[con_CardReaderCmdTelNumber7] := Value[1];
+  if FTelNumber7Rcv = Value then Exit;
+  ReciveStateChange := True;
+  FTelNumber7Rcv := Value;
+  if Assigned(FOnReceiveTypeChage) then
+  begin
+    OnReceiveTypeChage(Self,TNode(Device.DeviceNode).NO,'READER',TDevice(Device).EcuID,'0',inttostr(ReaderNo),con_CardReaderCmdTelNumber7,Value);
+  end;
+end;
+
+procedure TDeviceReader.SetTelNumber8Rcv(const Value: string);
+begin
+  L_cReaderRCVSTATE[con_CardReaderCmdTelNumber8] := Value[1];
+  if FTelNumber8Rcv = Value then Exit;
+  ReciveStateChange := True;
+  FTelNumber8Rcv := Value;
+  if Assigned(FOnReceiveTypeChage) then
+  begin
+    OnReceiveTypeChage(Self,TNode(Device.DeviceNode).NO,'READER',TDevice(Device).EcuID,'0',inttostr(ReaderNo),con_CardReaderCmdTelNumber8,Value);
+  end;
+end;
+
+procedure TDeviceReader.SetTelNumber9Rcv(const Value: string);
+begin
+  L_cReaderRCVSTATE[con_CardReaderCmdTelNumber9] := Value[1];
+  if FTelNumber9Rcv = Value then Exit;
+  ReciveStateChange := True;
+  FTelNumber9Rcv := Value;
+  if Assigned(FOnReceiveTypeChage) then
+  begin
+    OnReceiveTypeChage(Self,TNode(Device.DeviceNode).NO,'READER',TDevice(Device).EcuID,'0',inttostr(ReaderNo),con_CardReaderCmdTelNumber9,Value);
+  end;
+end;
+
+end.

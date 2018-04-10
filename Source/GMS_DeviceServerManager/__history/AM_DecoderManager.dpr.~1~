@@ -1,0 +1,14 @@
+program AM_DecoderManager;
+
+uses
+  Vcl.Forms,
+  uMain in 'fmMain\uMain.pas' {AMS_DecoderManager};
+
+{$R *.res}
+
+begin
+  Application.Initialize;
+  Application.MainFormOnTaskbar := True;
+  Application.CreateForm(TAMS_DecoderManager, AMS_DecoderManager);
+  Application.Run;
+end.

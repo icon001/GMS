@@ -1,0 +1,62 @@
+unit uDoorMemo;
+
+interface
+
+uses
+  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
+  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls, Vcl.Buttons;
+
+type
+  TfmDoorMemo = class(TForm)
+    Label1: TLabel;
+    ed_DoorName: TEdit;
+    Label2: TLabel;
+    mem_doorMemo: TMemo;
+    btn_Save: TSpeedButton;
+    btn_Cancel: TSpeedButton;
+    procedure btn_SaveClick(Sender: TObject);
+    procedure btn_CancelClick(Sender: TObject);
+  private
+    FEcuID: string;
+    FNodeNo: integer;
+    FSave: Boolean;
+    FDoorName: string;
+    FDoorNo: integer;
+    procedure SetDoorName(const Value: string);
+    { Private declarations }
+  public
+    { Public declarations }
+    property NodeNo : integer read FNodeNo write FNodeNo;
+    property EcuID : string read FEcuID write FEcuID;
+    property DoorNo : integer read FDoorNo write FDoorNo;
+    property DoorName : string read FDoorName write SetDoorName;
+    property Save : Boolean read FSave write FSave;
+  end;
+
+var
+  fmDoorMemo: TfmDoorMemo;
+
+implementation
+
+{$R *.dfm}
+
+{ TfmDoorMemo }
+
+procedure TfmDoorMemo.btn_CancelClick(Sender: TObject);
+begin
+  Save := False;
+  Close;
+end;
+
+procedure TfmDoorMemo.btn_SaveClick(Sender: TObject);
+begin
+  Save := True;
+end;
+
+procedure TfmDoorMemo.SetDoorName(const Value: string);
+begin
+  FDoorName := Value;
+  ed_DoorName.Text := Value;
+end;
+
+end.

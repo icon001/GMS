@@ -1,0 +1,47 @@
+unit uWinsockDeviceRcv;
+
+interface
+
+uses
+  System.SysUtils, System.Classes;
+
+type
+  TNodeRcv = Class(TComponent)
+  public
+    constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
+  private
+  end;
+
+  TdmDeviceRcv = class(TDataModule)
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+  end;
+
+var
+  dmDeviceRcv: TdmDeviceRcv;
+  NodeRcvList : TStringList;
+
+implementation
+
+{%CLASSGROUP 'System.Classes.TPersistent'}
+
+{$R *.dfm}
+
+{ TNodeRcv }
+
+constructor TNodeRcv.Create(AOwner: TComponent);
+begin
+  inherited;
+
+end;
+
+destructor TNodeRcv.Destroy;
+begin
+
+  inherited;
+end;
+
+end.

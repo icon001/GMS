@@ -1,0 +1,587 @@
+﻿unit uEmployeeGubunCode;
+
+interface
+
+uses
+  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
+  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, uSubForm, CommandArray, AdvGlassButton,
+  Vcl.Grids, AdvObj, BaseGrid, AdvGrid, Vcl.StdCtrls, AdvEdit, AdvSmoothLabel,
+  AdvSmoothPanel, AdvOfficeTabSet, W7Classes, W7Panels,ActiveX,ADODB,
+  Vcl.ComCtrls, Vcl.Menus, Vcl.ImgList, AdvOfficeTabSetStylers, AdvToolBar,
+  AdvToolBarStylers, AdvGlowButton, AdvOfficePager, AdvAppStyler,
+  AdvOfficePagerStylers;
+
+const
+  con_LocalCompanyImageIndex = 0;
+  con_LocalPosiImageIndex = 1;
+
+type
+  TfmEmployeeGubunCode = class(TfmASubForm)
+    BodyPanel: TW7Panel;
+    List: TAdvSmoothPanel;
+    tv_List: TTreeView;
+    tv_Code: TTreeView;
+    pm_Work: TPopupMenu;
+    pm_UpdateCode: TMenuItem;
+    Pan_Workcode: TAdvSmoothPanel;
+    btn_Save: TAdvGlassButton;
+    btn_Cancel: TAdvGlassButton;
+    ed_Name: TAdvEdit;
+    ed_SelectEmGubunCode: TAdvEdit;
+    pm_DeleteCode: TMenuItem;
+    pmAddCode: TMenuItem;
+    MenuImageList16: TImageList;
+    AdvOfficePager1: TAdvOfficePager;
+    AdvOfficePage1: TAdvOfficePage;
+    btn_minimize: TAdvGlowButton;
+    btn_Close: TAdvGlowButton;
+    lb_List: TLabel;
+    btn_Add: TAdvGlowButton;
+    btn_Update: TAdvGlowButton;
+    btn_Delete: TAdvGlowButton;
+    AdvOfficePagerOfficeStyler1: TAdvOfficePagerOfficeStyler;
+    AdvFormStyler1: TAdvFormStyler;
+    AdvOfficeTabSetOfficeStyler1: TAdvOfficeTabSetOfficeStyler;
+    lb_WorkType: TLabel;
+    lb_Name: TAdvSmoothLabel;
+    procedure FormClose(Sender: TObject; var Action: TCloseAction);
+    procedure FormResize(Sender: TObject);
+    procedure FormShow(Sender: TObject);
+    procedure tv_ListClick(Sender: TObject);
+    procedure btn_CancelClick(Sender: TObject);
+    procedure pm_UpdateCodeClick(Sender: TObject);
+    procedure btn_SaveClick(Sender: TObject);
+    procedure ed_NameKeyPress(Sender: TObject; var Key: Char);
+    procedure pm_DeleteCodeClick(Sender: TObject);
+    procedure tv_ListDragDrop(Sender, Source: TObject; X, Y: Integer);
+    procedure tv_ListDragOver(Sender, Source: TObject; X, Y: Integer;
+      State: TDragState; var Accept: Boolean);
+    procedure tv_ListDblClick(Sender: TObject);
+    procedure FormCreate(Sender: TObject);
+    procedure pmAddCodeClick(Sender: TObject);
+    procedure btn_minimizeClick(Sender: TObject);
+    procedure btn_CloseClick(Sender: TObject);
+    procedure FormActivate(Sender: TObject);
+    procedure btn_AddClick(Sender: TObject);
+    procedure btn_UpdateClick(Sender: TObject);
+    procedure btn_DeleteClick(Sender: TObject);
+  private
+    L_stMenuID : string;
+    L_stButtonCloseCaption : string;
+    L_stWork : string;
+    L_stEmployeeGubunCaption : string;
+    procedure FormNameSetting;
+    procedure FontSetting;
+    procedure SearchList(aCode:string);
+  private
+    { Private declarations }
+    function GetNextEmployeeGubunCode:string;
+  public
+    { Public declarations }
+    procedure Form_Close;
+    procedure FormChangeEvent(aNumber:integer);
+    procedure FormGradeRefresh;
+    procedure FormIDSetting(aID:string);
+  end;
+
+var
+  fmEmployeeGubunCode: TfmEmployeeGubunCode;
+
+implementation
+uses
+  uCommonFunction,
+  uCommonVariable,
+  uFormFunction,
+  uFormVariable,
+  uDataBase,
+  uDBVariable,
+  uDBFormMessage,
+  uDBFunction,
+  uDBInsert,
+  uDBUpdate,
+  uDBDelete,
+  uFormUtil,
+  uMain;
+{$R *.dfm}
+
+procedure TfmEmployeeGubunCode.btn_AddClick(Sender: TObject);
+begin
+  inherited;
+  pmAddCodeClick(pmAddCode);
+end;
+
+procedure TfmEmployeeGubunCode.btn_CancelClick(Sender: TObject);
+begin
+  inherited;
+  Pan_Workcode.Visible := False;
+end;
+
+procedure TfmEmployeeGubunCode.btn_CloseClick(Sender: TObject);
+begin
+  inherited;
+  Close;
+end;
+
+procedure TfmEmployeeGubunCode.btn_DeleteClick(Sender: TObject);
+begin
+  inherited;
+  pm_DeleteCodeClick(pm_DeleteCode);
+end;
+
+procedure TfmEmployeeGubunCode.btn_minimizeClick(Sender: TObject);
+begin
+  inherited;
+  windowState := wsNormal;
+end;
+
+procedure TfmEmployeeGubunCode.btn_SaveClick(Sender: TObject);
+var
+  stMessage : string;
+  stParentCode : string;
+  stCode : string;
+  stNodeNo,stEcuID,stExtendID,stDoorNo: string;
+  stTime : string;
+  stClientIP : string;
+begin
+  inherited;
+  stClientIP:= GetLocalIPAddr;
+  stTime := FormatDateTime('yyyymmddhhnnsszzz',now);
+  if Trim(ed_Name.Text) = '' then
+  begin
+    stMessage := dmFormMessage.GetMessage('BLANKFIELD');
+    stMessage := StringReplace(stMessage,'$WORK',lb_Name.Caption.Text,[rfReplaceAll]);
+    showmessage(stMessage);
+    Exit;
+  end;
+  if L_stWork = 'SELECTCODEUPDATE' then
+  begin
+    stCode := ed_SelectEmGubunCode.Text;
+    Delete(stCode,1,1); //코드 추출
+    dmDBUpdate.UpdateTB_EMPLOYEEGUBUN_Field_StringValue(stCode,'EM_GUBUNCODENAME',ed_Name.Text);
+    dmDBInsert.InsertIntoTB_SYSTEMLOG_All(copy(stTime,1,8),copy(stTime,9,6),stClientIP,G_stAdminUserID,'0', '00', '', '0', con_ComLogTYPE_PROGRAM, L_stMenuID + '(' + Caption + '): Change');
+    tv_List.Items.Item[tv_List.Selected.AbsoluteIndex].Text := ed_Name.Text;
+    tv_List.SetFocus;
+    fmMain.FORMCHANGE(con_FormBMOSEMPLOYEEGUBUN,'');
+    //SearchList(ed_SelectCode.Text);
+  end else if L_stWork = 'EMGUBUNCODEADD' then
+  begin
+    if dmDBFunction.CheckTB_EMPLOYEEGUBUN_Name(ed_Name.Text) = 1 then
+    begin
+      stMessage := dmFormMessage.GetMessage('DBDATADUP');
+      stMessage := StringReplace(stMessage,'$WORK',lb_Name.Caption.Text,[rfReplaceAll]);
+      showmessage(stMessage);
+      Exit;
+    end;
+    stCode := GetNextEmployeeGubunCode;
+    dmDBInsert.InsertIntoTB_EMPLOYEEGUBUN_Value(stCode,ed_Name.Text,stCode);
+    fmMain.FORMCHANGE(con_FormBMOSEMPLOYEEGUBUN,'');
+    SearchList('E' + stCode);
+  end;
+  Pan_Workcode.Visible := False;
+end;
+
+procedure TfmEmployeeGubunCode.btn_UpdateClick(Sender: TObject);
+begin
+  inherited;
+  pm_UpdateCodeClick(pm_UpdateCode);
+end;
+
+procedure TfmEmployeeGubunCode.ed_NameKeyPress(Sender: TObject; var Key: Char);
+begin
+  inherited;
+  if Key = #13 then
+  begin
+    Key := #0;
+    btn_SaveClick(self);
+  end;
+end;
+
+procedure TfmEmployeeGubunCode.FontSetting;
+begin
+(*  dmFormUtil.TravelFormFontSetting(self,G_stFontName,inttostr(G_nFontSize));
+  dmFormUtil.TravelAdvOfficeTabSetOfficeStylerFontSetting(AdvOfficeTabSetOfficeStyler1, G_stFontName,inttostr(G_nFontSize));
+  dmFormUtil.FormAdvOfficeTabSetOfficeStylerSetting(AdvOfficeTabSetOfficeStyler1,G_stFormStyle);
+  dmFormUtil.FormAdvToolBarOfficeStylerSetting(AdvToolBarOfficeStyler1,G_stFormStyle);
+  dmFormUtil.FormStyleSetting(self,AdvToolBarOfficeStyler1);
+  *)
+end;
+
+procedure TfmEmployeeGubunCode.FormActivate(Sender: TObject);
+begin
+  inherited;
+  WindowState := wsNormal;
+end;
+
+procedure TfmEmployeeGubunCode.FormChangeEvent(aNumber: integer);
+begin
+
+end;
+
+procedure TfmEmployeeGubunCode.FormClose(Sender: TObject; var Action: TCloseAction);
+begin
+  inherited;
+  fmMain.FORMENABLE(con_FormBMOSEMPLOYEEGUBUN,'FALSE');
+
+  Action := caFree;
+end;
+
+procedure TfmEmployeeGubunCode.FormCreate(Sender: TObject);
+begin
+  inherited;
+  if G_nFormLanguageType = 1 then
+  begin
+    ed_name.ImeMode := imSHanguel; // imHanguel;
+    ed_name.ImeName := '';
+  end else if G_nFormLanguageType = 2 then
+  begin
+    ed_name.ImeMode := imAlpha;
+    ed_name.ImeName := '';
+  end;
+  tv_Code.Left := -400;
+  FontSetting;
+end;
+
+procedure TfmEmployeeGubunCode.FormGradeRefresh;
+begin
+  if IsInsertGrade or IsUpdateGrade or IsDeleteGrade then PopupMenu := pm_Work;
+  pmAddCode.Enabled := IsInsertGrade;
+  btn_add.Enabled := False;
+  pm_DeleteCode.Enabled := IsDeleteGrade;
+  btn_Delete.Enabled := False;
+  pm_UpdateCode.Enabled := IsUpdateGrade;
+  btn_Update.Enabled := False;
+end;
+
+procedure TfmEmployeeGubunCode.FormIDSetting(aID: string);
+begin
+  L_stMenuID := aID;
+end;
+
+procedure TfmEmployeeGubunCode.FormNameSetting;
+begin
+  AdvOfficePage1.Caption := dmFormFunction.GetFormName('0','2','BUTTONMENU002');
+  lb_List.Caption := dmFormFunction.GetFormName('2','1','BM2_016');//dmFormFunction.GetFormName('0','2','COMMONLIST01');
+  pmAddCode.Caption := dmFormFunction.GetFormName('2','2','BM2_016pm001');
+  btn_Add.Caption := dmFormFunction.GetFormName('2','2','BM2_016pm001');
+  pm_DeleteCode.Caption := dmFormFunction.GetFormName('0','2','BUTTONDEL001');
+  btn_Delete.Caption := dmFormFunction.GetFormName('0','2','BUTTONDEL001');
+  pm_UpdateCode.Caption := dmFormFunction.GetFormName('0','2','BUTTONUPDATE001');
+  btn_Update.Caption := dmFormFunction.GetFormName('0','2','BUTTONUPDATE001');
+  btn_Save.Caption := dmFormFunction.GetFormName('0','2','BUTTONSAVE001');
+  btn_Cancel.Caption := dmFormFunction.GetFormName('0','2','BUTTONCANCEL001');
+
+  lb_Name.Caption.Text := dmFormFunction.GetFormName('0','2','COMMONEMPLOYEEGUBUN');
+  L_stEmployeeGubunCaption := dmFormFunction.GetFormName('0','2','COMMONEMPLOYEEGUBUN');
+end;
+
+procedure TfmEmployeeGubunCode.FormResize(Sender: TObject);
+begin
+  inherited;
+  btn_Close.Left := AdvOfficePager1.Width - btn_Close.Width - 10;
+  btn_minimize.Left := btn_Close.Left - btn_minimize.Width - 2;
+
+  tv_List.Height := List.Height - tv_List.Top - 30;
+  tv_List.Width := List.Width - (tv_List.Left * 2);
+
+  Pan_Workcode.Left := (Width div 2) - (Pan_Workcode.Width div 2);
+  Pan_Workcode.top := (Height div 2) - (Pan_Workcode.Height div 2);
+
+  if Windowstate = wsMaximized then
+  begin
+    btn_minimize.Visible := True;
+    btn_Close.Visible := True;
+  end else
+  begin
+    btn_minimize.Visible := False;
+    btn_Close.Visible := False;
+  end;
+end;
+
+procedure TfmEmployeeGubunCode.FormShow(Sender: TObject);
+begin
+  inherited;
+  WindowState := wsMaximized;
+
+  FormNameSetting;
+  fmMain.FORMENABLE(con_FormBMOSEMPLOYEEGUBUN,'TRUE');
+
+  SearchList('');
+//  FormResize(self);
+  Left := 0;
+  Top := 0;
+end;
+
+procedure TfmEmployeeGubunCode.Form_Close;
+begin
+  Close;
+end;
+
+function TfmEmployeeGubunCode.GetNextEmployeeGubunCode: string;
+var
+  stSql : string;
+  TempAdoQuery : TADOQuery;
+begin
+  result := inttostr(1);
+  stSql := 'Select Max(EM_GUBUNCODE) as EM_GUBUNCODE from TB_EMPLOYEEGUBUN ';
+  stSql := stSql + ' Where GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  Try
+    CoInitialize(nil);
+    TempAdoQuery := TADOQuery.Create(nil);
+    TempAdoQuery.Connection := dmDataBase.ADOConnection;
+    TempAdoQuery.DisableControls;
+
+    with TempAdoQuery do
+    begin
+      Close;
+      sql.Text := stSql;
+      Try
+        Open;
+      Except
+        Exit;
+      End;
+      if recordCount < 1 then Exit;
+      result := inttostr(FindField('EM_GUBUNCODE').AsInteger + 1);
+    end;
+  Finally
+    TempAdoQuery.EnableControls;
+    TempAdoQuery.Free;
+    CoUninitialize;
+  End;
+end;
+
+procedure TfmEmployeeGubunCode.pmAddCodeClick(Sender: TObject);
+var
+  stMessage : string;
+begin
+  inherited;
+  if tv_List.Selected = nil then
+  begin
+    stMessage := dmFormMessage.GetMessage('SELECTERROR');
+    stMessage := stringReplace(stMessage,'$WORK',pmAddCode.Caption,[rfReplaceAll]);
+    showmessage(stMessage);
+    Exit;
+  end;
+  Pan_Workcode.Visible := True;
+  Pan_Workcode.Caption.Text := pmAddCode.Caption;
+  ed_SelectEmGubunCode.Text := '';
+  ed_Name.Text := '';
+  ed_Name.SetFocus;
+  L_stWork := 'EMGUBUNCODEADD';
+
+end;
+
+procedure TfmEmployeeGubunCode.pm_DeleteCodeClick(Sender: TObject);
+var
+  stMessage : string;
+  stCode : string;
+  stSql : string;
+  stNodeNo : string;
+  stEcuID : string;
+  stExtendID : string;
+  stDoorNo : string;
+  stTime : string;
+  stClientIP : string;
+  stEmGubunCode : string;
+begin
+  inherited;
+  stClientIP:= GetLocalIPAddr;
+  stTime := FormatDateTime('yyyymmddhhnnsszzz',now);
+  if tv_List.Selected = nil then
+  begin
+    stMessage := dmFormMessage.GetMessage('SELECTERROR');
+//    stMessage := stringReplace(stMessage,'$WORK',pm_DeleteCode.Caption,[rfReplaceAll]);
+    showmessage(stMessage);
+    Exit;
+  end;
+
+  if (Application.MessageBox(PChar(stMessage),'Information',MB_OKCANCEL) = IDCANCEL)  then Exit;
+  stCode := tv_Code.Items.Item[tv_List.Selected.AbsoluteIndex].Text;
+  stEmGubunCode := stCode;
+  Delete(stEmGubunCode,1,1);
+
+  dmDBDelete.DeleteTB_EMPLOYEEGUBUN(stEmGubunCode);
+  dmDBInsert.InsertIntoTB_SYSTEMLOG_All(copy(stTime,1,8),copy(stTime,9,6),stClientIP,G_stAdminUserID,'0', '00', '', '0', con_ComLogTYPE_PROGRAM, L_stMenuID + '(' + Caption + '-' + stEmGubunCode +'): Delete');
+  SearchList(stCode);
+end;
+
+procedure TfmEmployeeGubunCode.pm_UpdateCodeClick(Sender: TObject);
+var
+  stMessage : string;
+begin
+  inherited;
+  if tv_List.Selected = nil then
+  begin
+    stMessage := dmFormMessage.GetMessage('SELECTERROR');
+    stMessage := stringReplace(stMessage,'$WORK',pm_UpdateCode.Caption,[rfReplaceAll]);
+    showmessage(stMessage);
+    Exit;
+  end;
+  ed_SelectEmGubunCode.Text := tv_Code.Items.Item[tv_List.Selected.AbsoluteIndex].Text;
+  if copy(ed_SelectEmGubunCode.Text,1,1) <> 'E' then Exit;
+
+  Pan_Workcode.Visible := True;
+  Pan_Workcode.Caption.Text := pm_UpdateCode.Caption;
+  ed_Name.Text := tv_List.Items.Item[tv_List.Selected.AbsoluteIndex].Text;
+  L_stWork := 'SELECTCODEUPDATE';
+  ed_Name.SetFocus;
+end;
+
+procedure TfmEmployeeGubunCode.SearchList(aCode: string);
+var
+  aTreeView : TTreeview;
+  vTreeView : TTreeview;
+  aNode,bNode,cNode,dNode : TTreeNode;
+  vNode1,vNode2,vNode3 : TTreeNode;
+  stSql : string;
+  TempAdoQuery : TADOQuery;
+  stParentCode : string;
+  nDeepSeq : integer;
+  stEmGubunAllCode : string;
+begin
+  aTreeView := tv_List;
+  aTreeView.ReadOnly:= True;
+  aTreeView.Items.Clear;
+  vTreeView := tv_Code;
+  vTreeView.ReadOnly := True;
+  vTreeView.Items.Clear;
+
+  aNode := aTreeView.Items.Add(nil,L_stEmployeeGubunCaption);
+  vTreeView.Items.AddChild(nil,'0');
+  aNode.Expanded := True;
+
+  Try
+    CoInitialize(nil);
+    TempAdoQuery := TADOQuery.Create(nil);
+    TempAdoQuery.Connection := dmDataBase.ADOConnection;
+    TempAdoQuery.DisableControls;
+
+    stSql := ' Select * from TB_EMPLOYEEGUBUN  ';
+    stSql := stSql + ' Order by EM_VIEWSEQ ';
+
+    with TempAdoQuery do
+    begin
+      Close;
+      sql.Text := stSql;
+      Try
+        Open;
+      Except
+        Exit;
+      End;
+      if RecordCount < 1 then Exit;
+      While Not Eof do
+      begin
+        stParentCode := '0';
+        vNode1:= GetNodeByText(vTreeView,stParentCode,True);
+        if vNode1 <> nil then
+        begin
+          bNode := aTreeView.Items.Item[vNode1.AbsoluteIndex];
+          if bNode <> nil then
+          begin
+            cNode:= aTreeView.Items.AddChild(bNode,FindField('EM_GUBUNCODENAME').AsString);
+            cNode.ImageIndex := con_LocalPosiImageIndex;
+            cNode.SelectedIndex := con_LocalPosiImageIndex;
+          end;
+          vNode2:= vTreeView.Items.Item[vNode1.AbsoluteIndex];
+          if vNode2 <> nil then
+          begin
+            stEmGubunAllCode := 'E' + FindField('EM_GUBUNCODE').AsString;
+            vNode3:= vTreeView.Items.AddChild(vNode2,stEmGubunAllCode);
+          end;
+          bNode.Expanded := True;
+          vNode1.Expanded := True;
+          if aCode = stEmGubunAllCode  then
+          begin
+            if cNode <> nil then cNode.Selected := True;
+          end;
+        end;
+        Next;
+      end;
+
+    end;
+  Finally
+    TempAdoQuery.EnableControls;
+    TempAdoQuery.Free;
+    CoUninitialize;
+  End;
+  tv_List.SetFocus;
+end;
+
+procedure TfmEmployeeGubunCode.tv_ListClick(Sender: TObject);
+var
+  stCode : string;
+begin
+  inherited;
+  popupmenu := nil;
+  if tv_List.Selected = nil then Exit;
+
+  popupmenu := pm_Work;
+  stCode := tv_Code.Items.Item[tv_List.Selected.AbsoluteIndex].Text;
+
+  if copy(stCode,1,1) = 'E' then
+  begin
+    pmAddCode.Visible := False;
+    btn_Add.Enabled := False;
+    pm_UpdateCode.Visible := IsUpdateGrade;
+    btn_Update.Enabled := IsUpdateGrade;
+    pm_DeleteCode.Visible := IsDeleteGrade;
+    btn_Delete.Enabled := IsDeleteGrade;
+  end else
+  begin
+    pmAddCode.Visible := IsInsertGrade;
+    btn_Add.Enabled := IsInsertGrade;
+    pm_UpdateCode.Visible := False;
+    btn_Update.Enabled := False;
+    pm_DeleteCode.Visible := False;
+    btn_Delete.Enabled := False;
+  end;
+end;
+
+procedure TfmEmployeeGubunCode.tv_ListDblClick(Sender: TObject);
+begin
+  inherited;
+  pm_UpdateCodeClick(self);
+end;
+
+procedure TfmEmployeeGubunCode.tv_ListDragDrop(Sender, Source: TObject; X, Y: Integer);
+var
+  currentItem, dropItem : TTreeNode;
+  stOrgCode : string;
+  stTargetCode : string;
+  stCode : string;
+  stDeepSeq,stViewSeq : string;
+  stSql : string;
+begin
+  inherited;
+  if Sender = Source then
+  begin
+    with TTreeView(Sender) do
+    begin
+      dropItem :=GetNodeAt(X,Y);
+      currentItem := Selected;
+      if currentItem.AbsoluteIndex = 0 then Exit;   //루트디렉토리가 움직일수는 없다
+      stTargetCode := tv_Code.Items[dropItem.AbsoluteIndex].Text;
+      if copy(stTargetCode,1,1) <> 'E' then Exit; //옮기려는 Top 이면
+      stOrgCode := tv_Code.Items[currentItem.AbsoluteIndex].Text;
+      Delete(stTargetCode,1,1);
+      Delete(stOrgCode,1,1); //'E' 삭제
+      stViewSeq := dmDBFunction.GetTB_EMPLOYEEGUBUN_ViewSeq(stTargetCode);
+      dmDBUpdate.UpdateTB_EMPLOYEEGUBUN_ViewSeqInc(stViewSeq);
+      dmDBUpdate.UpdateTB_EMPLOYEEGUBUN_Field_IntValue(stOrgCode,'EM_VIEWSEQ',stViewSeq);
+    end;
+  end;
+  SearchList(stCode);
+end;
+
+procedure TfmEmployeeGubunCode.tv_ListDragOver(Sender, Source: TObject; X, Y: Integer;
+  State: TDragState; var Accept: Boolean);
+begin
+  inherited;
+  Accept := Sender = tv_List;
+end;
+
+initialization
+  RegisterClass(TfmEmployeeGubunCode);
+Finalization
+  UnRegisterClass(TfmEmployeeGubunCode);
+
+end.

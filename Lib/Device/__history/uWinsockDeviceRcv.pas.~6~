@@ -1,0 +1,274 @@
+unit uWinsockDeviceRcv;
+
+interface
+
+uses
+  System.SysUtils, System.Classes;
+
+type
+  TNodeRcv = Class(TComponent)
+  public
+    constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
+  private
+    NodeDeviceRcvList : TStringList;
+
+  private
+    FDVRUSE: string;
+    FDVRSKILL: string;
+    FKTTCDMAUSE: string;
+    FKTTCDMASKILL: string;
+    FLanPort: string;
+    FNodeName: string;
+    FGETDEVICE: string;
+    FNo: Integer;
+    FKTTCDMARSSI: string;
+    FKTTCDMAMIN: string;
+    FFIREGUBUNCODE: string;
+    FKTTREMOTEARMRINGCOUNT: string;
+    FLanIP: string;
+    FDVRPORT: string;
+    FKTTCDMAPORT: string;
+    FKTTCDMACHECKTIME: string;
+    FKTTCDMAUMUX: string;
+    FKTTREMOTEDISARMRINGCOUNT: string;
+    FKTTTELNUMBER2: string;
+    FKTTTELNUMBER1: string;
+    FDVRIP: string;
+    FKTTCDMAIP: string;
+    FKTTSYSTEMID: string;
+    FDeviceID: string;
+    procedure SetDeviceID(const Value: string);
+    procedure SetDVRIP(const Value: string);
+    procedure SetDVRPORT(const Value: string);
+    procedure SetDVRSKILL(const Value: string);
+    procedure SetDVRUSE(const Value: string);
+    procedure SetFIREGUBUNCODE(const Value: string);
+    procedure SetGETDEVICE(const Value: string);
+    procedure SetKTTCDMACHECKTIME(const Value: string);
+    procedure SetKTTCDMAIP(const Value: string);
+    procedure SetKTTCDMAMIN(const Value: string);
+    procedure SetKTTCDMAPORT(const Value: string);
+    procedure SetKTTCDMARSSI(const Value: string);
+    procedure SetKTTCDMASKILL(const Value: string);
+    procedure SetKTTCDMAUMUX(const Value: string);
+    procedure SetKTTCDMAUSE(const Value: string);
+    procedure SetKTTREMOTEARMRINGCOUNT(const Value: string);
+    procedure SetKTTREMOTEDISARMRINGCOUNT(const Value: string);
+    procedure SetKTTSYSTEMID(const Value: string);
+    procedure SetKTTTELNUMBER1(const Value: string);
+    procedure SetKTTTELNUMBER2(const Value: string);
+    procedure SetLanIP(const Value: string);
+    procedure SetLanPort(const Value: string);
+    procedure SetNo(const Value: Integer);
+    procedure SetNodeName(const Value: string);
+  public
+    Property No: Integer Read FNo write SetNo;
+    Property DeviceID:string Read FDeviceID write SetDeviceID;   //노드 아이디 7자리
+    Property NodeName:string Read FNodeName write SetNodeName;   //노드 명
+    property LANIP : string read FLanIP write SetLanIP;
+    property LANPort : string read FLanPort write SetLanPort;
+    property KTTSYSTEMID : string read FKTTSYSTEMID write SetKTTSYSTEMID;  //관제 시스템 아이디
+    property KTTTELNUMBER1 : string read FKTTTELNUMBER1 write SetKTTTELNUMBER1;  //관제 데코더 전화번호1
+    property KTTTELNUMBER2 : string read FKTTTELNUMBER2 write SetKTTTELNUMBER2;  //관제 데코더 전화번호2
+    property KTTREMOTEARMRINGCOUNT : string read FKTTREMOTEARMRINGCOUNT write SetKTTREMOTEARMRINGCOUNT;  //원격경계시 링횟수
+    property KTTREMOTEDISARMRINGCOUNT : string read FKTTREMOTEDISARMRINGCOUNT write SetKTTREMOTEDISARMRINGCOUNT;  //원격해제시 링횟수
+    property KTTCDMASKILL : string read FKTTCDMASKILL write SetKTTCDMASKILL;   //CDMA 기능 유무
+    property KTTCDMAUSE : string read FKTTCDMAUSE write SetKTTCDMAUSE; //CDMA 사용 유무 0.미사용,1.사용
+    property KTTCDMAIP : string read FKTTCDMAIP write SetKTTCDMAIP;     //CDMA IP
+    property KTTCDMAPORT : string read FKTTCDMAPORT write SetKTTCDMAPORT; //CDMA Port
+    property KTTCDMACHECKTIME : string read FKTTCDMACHECKTIME write SetKTTCDMACHECKTIME; //CDMA check time
+    property KTTCDMARSSI : string read FKTTCDMARSSI write SetKTTCDMARSSI; //CDMA rssi
+    property KTTCDMAMIN : string read FKTTCDMAMIN write SetKTTCDMAMIN;
+    property KTTCDMAUMUX : string read FKTTCDMAUMUX write SetKTTCDMAUMUX;
+    property DVRSKILL : string read FDVRSKILL write SetDVRSKILL;   //DVR 기능 유무
+    property DVRUSE : string read FDVRUSE write SetDVRUSE; //DVR 사용 유무 0.미사용,1.사용
+    property DVRIP : string read FDVRIP write SetDVRIP; //DVR IP
+    property DVRPORT : string read FDVRPORT write SetDVRPORT; //DVR Port
+    property FIREGUBUNCODE : string read FFIREGUBUNCODE write SetFIREGUBUNCODE; //화재그룹코드
+    property GETDEVICE : string read FGETDEVICE write SetGETDEVICE;   //확장기 갯수 가져왔는지 여부 0.안가져옴
+  end;
+
+  TDeviceRcv = Class(TComponent)
+  private
+    FDeviceNodeRCV: TNodeRCV;
+    FDeviceID: string;
+    procedure SetDeviceNodeRCV(const Value: TNodeRCV);
+    { Private declarations }
+  public
+    { Public declarations }
+    Property DeviceNodeRCV: TNodeRCV Read FDeviceNodeRCV write SetDeviceNodeRCV;
+    property DeviceID : string read FDeviceID write FDeviceID;
+  end;
+
+  TdmDeviceRcv = class(TDataModule)
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+  end;
+
+var
+  dmDeviceRcv: TdmDeviceRcv;
+  NodeRcvList : TStringList;
+
+implementation
+uses
+  uCommonFunction,
+  uCommonVariable;
+{%CLASSGROUP 'System.Classes.TPersistent'}
+
+{$R *.dfm}
+
+{ TNodeRcv }
+
+constructor TNodeRcv.Create(AOwner: TComponent);
+var
+  i : integer;
+  oDeviceRcv : TDeviceRcv;
+begin
+  inherited;
+  NodeDeviceRcvList := TStringList.Create;
+  for i := 0 to G_nMaxECUCount do
+  begin
+    oDeviceRcv := TDeviceRcv.Create(nil);
+    oDeviceRcv.DeviceID := FillZeroNumber(i,2);
+    oDeviceRcv.DeviceNodeRCV := self;
+    NodeDeviceRcvList.AddObject(FillZeroNumber(i,2),oDeviceRcv);
+  end;
+end;
+
+destructor TNodeRcv.Destroy;
+begin
+
+  inherited;
+end;
+
+procedure TNodeRcv.SetDeviceID(const Value: string);
+begin
+  FDeviceID := Value;
+end;
+
+procedure TNodeRcv.SetDVRIP(const Value: string);
+begin
+  FDVRIP := Value;
+end;
+
+procedure TNodeRcv.SetDVRPORT(const Value: string);
+begin
+  FDVRPORT := Value;
+end;
+
+procedure TNodeRcv.SetDVRSKILL(const Value: string);
+begin
+  FDVRSKILL := Value;
+end;
+
+procedure TNodeRcv.SetDVRUSE(const Value: string);
+begin
+  FDVRUSE := Value;
+end;
+
+procedure TNodeRcv.SetFIREGUBUNCODE(const Value: string);
+begin
+  FFIREGUBUNCODE := Value;
+end;
+
+procedure TNodeRcv.SetGETDEVICE(const Value: string);
+begin
+  FGETDEVICE := Value;
+end;
+
+procedure TNodeRcv.SetKTTCDMACHECKTIME(const Value: string);
+begin
+  FKTTCDMACHECKTIME := Value;
+end;
+
+procedure TNodeRcv.SetKTTCDMAIP(const Value: string);
+begin
+  FKTTCDMAIP := Value;
+end;
+
+procedure TNodeRcv.SetKTTCDMAMIN(const Value: string);
+begin
+  FKTTCDMAMIN := Value;
+end;
+
+procedure TNodeRcv.SetKTTCDMAPORT(const Value: string);
+begin
+  FKTTCDMAPORT := Value;
+end;
+
+procedure TNodeRcv.SetKTTCDMARSSI(const Value: string);
+begin
+  FKTTCDMARSSI := Value;
+end;
+
+procedure TNodeRcv.SetKTTCDMASKILL(const Value: string);
+begin
+  FKTTCDMASKILL := Value;
+end;
+
+procedure TNodeRcv.SetKTTCDMAUMUX(const Value: string);
+begin
+  FKTTCDMAUMUX := Value;
+end;
+
+procedure TNodeRcv.SetKTTCDMAUSE(const Value: string);
+begin
+  FKTTCDMAUSE := Value;
+end;
+
+procedure TNodeRcv.SetKTTREMOTEARMRINGCOUNT(const Value: string);
+begin
+  FKTTREMOTEARMRINGCOUNT := Value;
+end;
+
+procedure TNodeRcv.SetKTTREMOTEDISARMRINGCOUNT(const Value: string);
+begin
+  FKTTREMOTEDISARMRINGCOUNT := Value;
+end;
+
+procedure TNodeRcv.SetKTTSYSTEMID(const Value: string);
+begin
+  FKTTSYSTEMID := Value;
+end;
+
+procedure TNodeRcv.SetKTTTELNUMBER1(const Value: string);
+begin
+  FKTTTELNUMBER1 := Value;
+end;
+
+procedure TNodeRcv.SetKTTTELNUMBER2(const Value: string);
+begin
+  FKTTTELNUMBER2 := Value;
+end;
+
+procedure TNodeRcv.SetLanIP(const Value: string);
+begin
+  FLanIP := Value;
+end;
+
+procedure TNodeRcv.SetLanPort(const Value: string);
+begin
+  FLanPort := Value;
+end;
+
+procedure TNodeRcv.SetNo(const Value: Integer);
+begin
+  FNo := Value;
+end;
+
+procedure TNodeRcv.SetNodeName(const Value: string);
+begin
+  FNodeName := Value;
+end;
+
+{ TDeviceRcv }
+
+procedure TDeviceRcv.SetDeviceNodeRCV(const Value: TNodeRCV);
+begin
+  FDeviceNodeRCV := Value;
+end;
+
+end.

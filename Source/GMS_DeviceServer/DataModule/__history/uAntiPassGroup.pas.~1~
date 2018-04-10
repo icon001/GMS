@@ -1,0 +1,25 @@
+unit uAntiPassGroup;
+
+interface
+
+uses
+  System.SysUtils, System.Classes;
+
+type
+  TdmAntiPassGroupCode = class(TDataModule)
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+  end;
+
+var
+  dmAntiPassGroupCode: TdmAntiPassGroupCode;
+
+implementation
+
+{%CLASSGROUP 'Vcl.Controls.TControl'}
+
+{$R *.dfm}
+
+end.

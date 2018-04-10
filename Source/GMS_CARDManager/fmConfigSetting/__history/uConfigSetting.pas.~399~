@@ -1,0 +1,506 @@
+﻿unit uConfigSetting;
+
+interface
+
+uses
+  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
+  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, W7Classes, W7Panels, AdvOfficeTabSet,
+  AdvOfficeTabSetStylers, AdvSmoothPanel, Vcl.ExtCtrls, AdvSmoothLabel,
+  Vcl.StdCtrls, AdvEdit, Vcl.Buttons, Vcl.Grids, AdvObj, BaseGrid, AdvGrid,
+  AdvToolBtn,ADODB,ActiveX, uSubForm, CommandArray,Winapi.WinSpool,System.iniFiles,
+  AdvGroupBox, FolderDialog, AdvGlassButton, AdvGlowButton, ToolPanels, AdvCombo,
+  Vcl.Menus, AdvTabSet, AdvPageControl, Vcl.ComCtrls, AdvOfficeButtons,
+  Vcl.Imaging.pngimage, AdvOfficePager, AdvOfficePagerStylers, AdvAppStyler,
+  AdvPanel, Vcl.ImgList;
+
+type
+  TfmConfigSetting = class(TfmASubForm)
+    AdvOfficeTabSetOfficeStyler1: TAdvOfficeTabSetOfficeStyler;
+    Image1: TImage;
+    BodyPanel: TW7Panel;
+    menuTab: TAdvOfficeTabSet;
+    Config: TAdvSmoothPanel;
+    CompanyConfig: TAdvSmoothPanel;
+    AdvOfficePager1: TAdvOfficePager;
+    btn_minimize: TAdvGlowButton;
+    btn_Close: TAdvGlowButton;
+    tab_Company: TAdvOfficePage;
+    AdvFormStyler1: TAdvFormStyler;
+    AdvOfficePagerOfficeStyler1: TAdvOfficePagerOfficeStyler;
+    MenuImageList16: TImageList;
+    List: TAdvSmoothPanel;
+    lb_List: TLabel;
+    tv_CompanyList: TTreeView;
+    tv_CompanyCode: TTreeView;
+    Panel1: TPanel;
+    btn_Save: TSpeedButton;
+    btn_Close1: TSpeedButton;
+    tab_Group: TAdvOfficePage;
+    AdvToolPanel2: TAdvToolPanel;
+    rb_CompanyNotUse: TRadioButton;
+    rb_CompanyUse: TRadioButton;
+    AdvSmoothPanel1: TAdvSmoothPanel;
+    Label3: TLabel;
+    tv_EmGroupList: TTreeView;
+    tv_EmGroupCode: TTreeView;
+    AdvSmoothPanel2: TAdvSmoothPanel;
+    Splitter1: TSplitter;
+    Splitter2: TSplitter;
+    tab_Basic: TAdvOfficePage;
+    AdvSmoothPanel3: TAdvSmoothPanel;
+    AdvToolPanel7: TAdvToolPanel;
+    Label15: TLabel;
+    cmb_Type: TComboBox;
+    AdvToolPanel8: TAdvToolPanel;
+    Label16: TLabel;
+    Label17: TLabel;
+    Label18: TLabel;
+    lb_day: TLabel;
+    Label20: TLabel;
+    lb_Count1: TLabel;
+    lb_Count2: TLabel;
+    gb_WeekSchedule: TAdvOfficeCheckGroup;
+    ed_WorkTime: TEdit;
+    ed_DayTerm: TEdit;
+    ed_DeleteCount: TEdit;
+    AdvToolPanel1: TAdvToolPanel;
+    rb_GroupNotUse: TRadioButton;
+    rb_GroupUse: TRadioButton;
+    AdvToolPanel3: TAdvToolPanel;
+    Label1: TLabel;
+    cmb_ApplyType: TComboBox;
+    procedure FormClose(Sender: TObject; var Action: TCloseAction);
+    procedure FormCreate(Sender: TObject);
+    procedure FormShow(Sender: TObject);
+    procedure FormResize(Sender: TObject);
+    procedure btn_CardRegistportSaveClick(Sender: TObject);
+    procedure btn_CloseClick(Sender: TObject);
+    procedure btn_minimizeClick(Sender: TObject);
+    procedure cmb_TypeChange(Sender: TObject);
+    procedure cmb_ApplyTypeChange(Sender: TObject);
+    procedure btn_SaveClick(Sender: TObject);
+    procedure tv_CompanyListClick(Sender: TObject);
+    procedure tv_EmGroupListClick(Sender: TObject);
+    procedure ListResize(Sender: TObject);
+    procedure AdvSmoothPanel1Resize(Sender: TObject);
+  private
+    L_stSelectCompanyCode : string;
+    L_stSelectGroupCode : string;
+    { Private declarations }
+    Function FormClear:Boolean;
+    Function CreateComboTime:Boolean;
+    Function BasicConfigSetting:Boolean;
+    Function CompanySave:Boolean;
+    Function GroupSave : Boolean;
+  private
+    { Private declarations }
+    function GetSerialPortList(List : TStringList; const doOpenTest : Boolean = True) : LongWord;
+    function EncodeCommportName(PortNum : WORD) : String;
+    function DecodeCommportName(PortName : String) : WORD;
+  public
+    { Public declarations }
+    procedure Form_Close;
+  end;
+
+var
+  fmConfigSetting: TfmConfigSetting;
+
+implementation
+uses
+  uComboBoxCodeLoad,
+  uCommonFunction,
+  uCommonVariable,
+  uDataBase,
+  uDBDelete,
+  uDBFunction,
+  uDBInsert,
+  uDBRelay,
+  uDBUpdate,
+  uFormVariable,
+  uMain;
+
+{$R *.dfm}
+
+
+procedure TfmConfigSetting.AdvSmoothPanel1Resize(Sender: TObject);
+begin
+  inherited;
+  tv_EmGroupList.Width := AdvSmoothPanel1.Width - (tv_EmGroupList.Left * 2);
+
+end;
+
+function TfmConfigSetting.BasicConfigSetting: Boolean;
+var
+  i : integer;
+begin
+  G_stCardDeleteApplyType := inttostr(cmb_ApplyType.ItemIndex + 1);
+  G_stCardDeleteType := inttostr( cmb_Type.ItemIndex + 1);
+  for i := 1 to 7 do
+  begin
+    if gb_WeekSchedule.Checked[i-1] then G_stCardDeleteWorkSchedule[i] := '1'
+    else G_stCardDeleteWorkSchedule[i] := '0'
+  end;
+  G_stCardDeleteWorkTime := ed_WorkTime.Text;
+  G_stCardDeleteDayTerm := ed_DayTerm.Text;
+  G_stCardDeleteCount := ed_DeleteCount.Text;
+
+  dmDBUpdate.UpdateTB_CONFIG_Field_StringValue('CARDDELETE','APPLYTYPE','CO_CONFIGVALUE',G_stCardDeleteApplyType);
+  dmDBUpdate.UpdateTB_CONFIG_Field_StringValue('CARDDELETE','DELETETYPE','CO_CONFIGVALUE',G_stCardDeleteType);
+  dmDBUpdate.UpdateTB_CONFIG_Field_StringValue('CARDDELETE','WORKSCHEDULE','CO_CONFIGVALUE',G_stCardDeleteWorkSchedule);
+  dmDBUpdate.UpdateTB_CONFIG_Field_StringValue('CARDDELETE','WORKTIME','CO_CONFIGVALUE',G_stCardDeleteWorkTime);
+  dmDBUpdate.UpdateTB_CONFIG_Field_StringValue('CARDDELETE','DAYTERM','CO_CONFIGVALUE',G_stCardDeleteDayTerm);
+  dmDBUpdate.UpdateTB_CONFIG_Field_StringValue('CARDDELETE','COUNT','CO_CONFIGVALUE',G_stCardDeleteCount);
+
+end;
+
+procedure TfmConfigSetting.btn_CardRegistportSaveClick(Sender: TObject);
+begin
+  inherited;
+  self.FindSubForm('Main').FindCommand('ACTION').Params.Values['VALUE'] := 'CRADREGISTERPORTREFRESH';
+  self.FindSubForm('Main').FindCommand('ACTION').Execute;
+  showmessage('설정되었습니다.');
+end;
+
+
+procedure TfmConfigSetting.btn_CloseClick(Sender: TObject);
+begin
+  inherited;
+  Close;
+end;
+
+function TfmConfigSetting.CompanySave: Boolean;
+var
+  stData : string;
+  nIndex : integer;
+begin
+  if L_stSelectCompanyCode = '' then
+  begin
+    showmessage('작업할 소속을 선택 해 주세요.');
+    Exit;
+  end;
+  if rb_CompanyUse.Checked then stData := '1'
+  else stData := '0';
+
+  dmDBUpdate.UpdateTB_COMPANYCODE_Field_IntValue(L_stSelectCompanyCode,'CO_AutoPermitDelete',stData);
+
+  nIndex := TTreeNode(GetNodeByText(tv_CompanyCode,L_stSelectCompanyCode,False)).AbsoluteIndex;
+  if rb_CompanyUse.Checked then
+  begin
+    tv_CompanyList.Items.Item[nIndex].ImageIndex := 1;
+    tv_CompanyList.Items.Item[nIndex].SelectedIndex := 1;
+  end else
+  begin
+    tv_CompanyList.Items.Item[nIndex].ImageIndex := 0;
+    tv_CompanyList.Items.Item[nIndex].SelectedIndex := 0;
+  end;
+end;
+
+function TfmConfigSetting.CreateComboTime: Boolean;
+begin
+end;
+
+function TfmConfigSetting.DecodeCommportName(PortName: String): WORD;
+var
+ Pt : Integer;
+begin
+ PortName := UpperCase(PortName);
+ if (Copy(PortName, 1, 3) = 'COM') then begin
+    Delete(PortName, 1, 3);
+    Pt := Pos(':', PortName);
+    if Pt = 0 then Result := 0
+       else Result := StrToInt(Copy(PortName, 1, Pt-1));
+ end
+ else if (Copy(PortName, 1, 7) = '\\.\COM') then begin
+    Delete(PortName, 1, 7);
+    Result := StrToInt(PortName);
+ end
+ else Result := 0;
+
+end;
+
+function TfmConfigSetting.EncodeCommportName(PortNum: WORD): String;
+begin
+ if PortNum < 10
+    then Result := 'COM' + IntToStr(PortNum) + ':'
+    else Result := '\\.\COM'+IntToStr(PortNum);
+
+end;
+
+function TfmConfigSetting.FormClear: Boolean;
+begin
+end;
+
+procedure TfmConfigSetting.FormClose(Sender: TObject;
+  var Action: TCloseAction);
+begin
+  self.FindSubForm('Main').FindCommand('FORMENABLE').Params.Values['NAME'] := inttostr(con_FormAFSConfig);
+  self.FindSubForm('Main').FindCommand('FORMENABLE').Params.Values['VALUE'] := 'FALSE';
+  self.FindSubForm('Main').FindCommand('FORMENABLE').Execute;
+
+  Action := caFree;
+end;
+
+procedure TfmConfigSetting.FormCreate(Sender: TObject);
+var
+  i : integer;
+begin
+  //Height := 420;
+
+  if isDigit(G_stCardDeleteApplyType) then cmb_ApplyType.ItemIndex := strtoint(G_stCardDeleteApplyType) - 1;
+  cmb_ApplyTypeChange(cmb_ApplyType);
+  if isDigit(G_stCardDeleteType) then cmb_Type.ItemIndex := strtoint(G_stCardDeleteType) - 1;
+  cmb_TypeChange(cmb_Type);
+  for i := 1 to 7 do
+  begin
+    if G_stCardDeleteWorkSchedule[i] = '1' then
+    begin
+      gb_WeekSchedule.Checked[i-1] := True;
+    end else
+    begin
+      gb_WeekSchedule.Checked[i-1] := False;
+    end;
+  end;
+  ed_WorkTime.Text := G_stCardDeleteWorkTime;
+  ed_DayTerm.Text := G_stCardDeleteDayTerm;
+  ed_DeleteCount.Text := G_stCardDeleteCount;
+
+  AdvOfficePager1.ActivePage := tab_Basic;
+end;
+
+
+procedure TfmConfigSetting.FormResize(Sender: TObject);
+begin
+  btn_Close.Left := AdvOfficePager1.Width - btn_Close.Width - 10;
+  btn_minimize.Left := btn_Close.Left - btn_minimize.Width - 2;
+
+  if Windowstate = wsMaximized then
+  begin
+    btn_minimize.Visible := True;
+    btn_Close.Visible := True;
+  end else
+  begin
+    btn_minimize.Visible := False;
+    btn_Close.Visible := False;
+  end;
+
+  tv_CompanyList.Height := List.Height - tv_CompanyList.Top - 30;
+  tv_CompanyList.Width := List.Width - (tv_CompanyList.Left * 2);
+
+  tv_EmGroupList.Height := AdvSmoothPanel1.Height - tv_EmGroupList.Top - 30;
+  tv_EmGroupList.Width := AdvSmoothPanel1.Width - (tv_EmGroupList.Left * 2);
+
+end;
+
+procedure TfmConfigSetting.FormShow(Sender: TObject);
+var
+  stComPort : string;
+  nIndex : integer;
+begin
+  top := 0;
+  Left := 0;
+  //Width := BodyPanel.Width;
+
+  LoadCompanyTreeView('',tv_CompanyList,tv_CompanyCode,0,1);
+  LoadEmployeeGroupTreeView('',tv_EmGroupList,tv_EmGroupCode,2,3);
+
+  self.FindSubForm('Main').FindCommand('FORMENABLE').Params.Values['NAME'] := inttostr(con_FormAFSConfig);
+  self.FindSubForm('Main').FindCommand('FORMENABLE').Params.Values['VALUE'] := 'TRUE';
+  self.FindSubForm('Main').FindCommand('FORMENABLE').Execute;
+  FormResize(self);
+end;
+
+procedure TfmConfigSetting.Form_Close;
+begin
+  Close;
+end;
+
+function TfmConfigSetting.GetSerialPortList(List: TStringList;
+  const doOpenTest: Boolean): LongWord;
+type
+ TArrayPORT_INFO_1 = array[0..0] Of PORT_INFO_1;
+ PArrayPORT_INFO_1 = ^TArrayPORT_INFO_1;
+var
+{$IF USE_ENUMPORTS_API}
+ PL : PArrayPORT_INFO_1;
+ TotalSize, ReturnCount : LongWord;
+ Buf : String;
+ CommNum : WORD;
+{$IFEND}
+ I : LongWord;
+ CHandle : THandle;
+begin
+ List.Clear;
+{$IF USE_ENUMPORTS_API}
+ EnumPorts(nil, 1, nil, 0, TotalSize, ReturnCount);
+ if TotalSize < 1 then begin
+    Result := 0;
+    Exit;
+    end;
+ GetMem(PL, TotalSize);
+ EnumPorts(nil, 1, PL, TotalSize, TotalSize, Result);
+
+ if Result < 1 then begin
+    FreeMem(PL);
+    Exit;
+    end;
+
+ for I:=0 to Result-1 do begin
+    Buf := UpperCase(PL^[I].pName);
+    CommNum := DecodeCommportName(PL^[I].pName);
+    if CommNum = 0 then Continue;
+    List.AddObject(EncodeCommportName(CommNum), Pointer(CommNum));
+    end;
+{$ELSE}
+ for I:=1 to G_nMaxComPort do List.AddObject(EncodeCommportName(I), Pointer(I));
+{$IFEND}
+ // Open Test
+ if List.Count > 0 then
+   for I := List.Count-1 downto 0 do
+   begin
+      CHandle := CreateFile(PChar(List[I]), GENERIC_WRITE or GENERIC_READ,
+        0, nil, OPEN_EXISTING,
+        FILE_ATTRIBUTE_NORMAL,
+        0);
+      if CHandle = INVALID_HANDLE_VALUE then
+      begin
+        if doOpenTest or (GetLastError() <> ERROR_ACCESS_DENIED) then
+            List.Delete(I);
+        Continue;
+      end;
+      CloseHandle(CHandle);
+   end;
+
+ Result := List.Count;
+{$IF USE_ENUMPORTS_API}
+ if Assigned(PL) then FreeMem(PL);
+{$IFEND}
+
+end;
+
+
+function TfmConfigSetting.GroupSave: Boolean;
+var
+  stData : string;
+  nIndex : integer;
+begin
+  if L_stSelectGroupCode = '' then
+  begin
+    showmessage('작업할 그룹을 선택 해 주세요.');
+    Exit;
+  end;
+
+  if rb_GroupUse.Checked then stData := '1'
+  else stData := '0';
+
+  dmDBUpdate.UpdateTB_EMPLOYEEGROUPCODE_Field_IntValue(L_stSelectGroupCode,'EM_AutoPermitDelete',stData);
+
+  nIndex := TTreeNode(GetNodeByText(tv_EmGroupCode,L_stSelectGroupCode,False)).AbsoluteIndex;
+  if rb_GroupUse.Checked then
+  begin
+    tv_EmGroupList.Items.Item[nIndex].ImageIndex := 3;
+    tv_EmGroupList.Items.Item[nIndex].SelectedIndex := 3;
+  end else
+  begin
+    tv_EmGroupList.Items.Item[nIndex].ImageIndex := 2;
+    tv_EmGroupList.Items.Item[nIndex].SelectedIndex := 2;
+  end;
+
+end;
+
+procedure TfmConfigSetting.ListResize(Sender: TObject);
+begin
+  inherited;
+  tv_CompanyList.Width := List.Width - (tv_CompanyList.Left * 2);
+
+end;
+
+procedure TfmConfigSetting.tv_CompanyListClick(Sender: TObject);
+begin
+  inherited;
+  L_stSelectCompanyCode := tv_CompanyCode.Items.Item[tv_CompanyList.Selected.AbsoluteIndex].Text;
+  if dmDBFunction.GetTB_COMPANYCODE_AutoPermitDelete(L_stSelectCompanyCode) = '1' then rb_CompanyUse.Checked := True
+  else rb_CompanyNotUse.Checked := True;
+end;
+
+procedure TfmConfigSetting.tv_EmGroupListClick(Sender: TObject);
+begin
+  inherited;
+  L_stSelectGroupCode := tv_EmGroupCode.Items.Item[tv_EmGroupList.Selected.AbsoluteIndex].Text;
+  if dmDBFunction.GetTB_EMPLOYEEGROUPCODE_AutoPermitDelete(L_stSelectGroupCode) = '1' then rb_GroupUse.Checked := True
+  else rb_GroupNotUse.Checked := True;
+end;
+
+procedure TfmConfigSetting.btn_minimizeClick(Sender: TObject);
+begin
+  inherited;
+  windowState := wsNormal;
+
+end;
+
+procedure TfmConfigSetting.btn_SaveClick(Sender: TObject);
+begin
+  inherited;
+  if AdvOfficePager1.ActivePage = tab_Basic then
+  begin
+    BasicConfigSetting;
+  end else if AdvOfficePager1.ActivePage = tab_Company then
+  begin
+    BasicConfigSetting;
+    CompanySave;
+    tv_CompanyList.SetFocus;
+  end else if AdvOfficePager1.ActivePage = tab_Group then
+  begin
+    BasicConfigSetting;
+    GroupSave;
+    tv_EmGroupList.SetFocus;
+  end;
+  showmessage('저장되었습니다.');
+
+end;
+
+procedure TfmConfigSetting.cmb_ApplyTypeChange(Sender: TObject);
+begin
+  inherited;
+  if cmb_ApplyType.ItemIndex = 0 then
+  begin
+    tab_Company.TabVisible := False;
+    tab_Group.TabVisible := False;
+  end else if cmb_ApplyType.ItemIndex = 1 then
+  begin
+    tab_Company.TabVisible := True;
+    tab_Group.TabVisible := False;
+  end else if cmb_ApplyType.ItemIndex = 2 then
+  begin
+    tab_Company.TabVisible := False;
+    tab_Group.TabVisible := True;
+  end else if cmb_ApplyType.ItemIndex = 3 then
+  begin
+    tab_Company.TabVisible := True;
+    tab_Group.TabVisible := True;
+  end;
+end;
+
+procedure TfmConfigSetting.cmb_TypeChange(Sender: TObject);
+begin
+  inherited;
+  if cmb_Type.ItemIndex = 0 then
+  begin
+    lb_day.Caption := '통계기간';
+    lb_Count1.Visible := True;
+    lb_Count2.Visible := True;
+    ed_DeleteCount.Visible := True;
+  end else if cmb_Type.ItemIndex = 1 then
+  begin
+    lb_day.Caption := '최종작업기간';
+    lb_Count1.Visible := False;
+    lb_Count2.Visible := False;
+    ed_DeleteCount.Visible := False;
+  end;
+end;
+
+initialization
+  RegisterClass(TfmConfigSetting);
+Finalization
+  UnRegisterClass(TfmConfigSetting);
+
+end.

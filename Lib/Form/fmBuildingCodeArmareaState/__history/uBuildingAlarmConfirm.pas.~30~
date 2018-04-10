@@ -1,0 +1,221 @@
+unit uBuildingAlarmConfirm;
+
+interface
+
+uses
+  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
+  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.Grids, AdvObj, BaseGrid, AdvGrid,
+  AdvGlassButton, Vcl.StdCtrls, AdvSmoothPanel, AdvGroupBox, uSubForm,
+  CommandArray, Vcl.ComCtrls, AdvProgr,ActiveX,ADODB;
+
+type
+  TfmBuildingAlarmConfirm = class(TfmASubForm)
+    Pan_Workcode: TAdvSmoothPanel;
+    Label3: TLabel;
+    Memo1: TMemo;
+    btn_Save: TAdvGlassButton;
+    btn_Cancel: TAdvGlassButton;
+    sg_AlarmEvent: TAdvStringGrid;
+    AdvProgress1: TAdvProgress;
+    procedure FormShow(Sender: TObject);
+    procedure btn_CancelClick(Sender: TObject);
+    procedure btn_SaveClick(Sender: TObject);
+    procedure sg_AlarmEventCheckBoxClick(Sender: TObject; ACol, ARow: Integer;
+      State: Boolean);
+  private
+    FFormTYPE: String;
+    FSearchID: String;
+    FSave: Boolean;
+    { Private declarations }
+    procedure LoadAlarmEvent;
+    procedure AdvStrinGridSetAllCheck(Sender: TObject;bchkState:Boolean);
+  public
+    { Public declarations }
+    property FormTYPE : String read FFormTYPE write FFormTYPE;
+    property SearchID : String read FSearchID write FSearchID;
+    property Save : Boolean read FSave write FSave;
+  end;
+
+var
+  fmBuildingAlarmConfirm: TfmBuildingAlarmConfirm;
+
+implementation
+uses
+  uCommonFunction,
+  uCommonVariable,
+  uDataBase,
+  uDBSelect,
+  uDBUpdate,
+  uFormVariable,
+  uFormDeviceState,
+  uFormFunction;
+{$R *.dfm}
+
+procedure TfmBuildingAlarmConfirm.AdvStrinGridSetAllCheck(Sender: TObject;
+  bchkState: Boolean);
+var
+  i : integer;
+begin
+    for i:= 1 to (Sender as TAdvStringGrid).RowCount - 1  do
+    begin
+      (Sender as TAdvStringGrid).SetCheckBoxState(0,i,bchkState);
+    end;
+
+end;
+
+procedure TfmBuildingAlarmConfirm.btn_CancelClick(Sender: TObject);
+begin
+  inherited;
+  Close;
+end;
+
+procedure TfmBuildingAlarmConfirm.btn_SaveClick(Sender: TObject);
+var
+  bChkState : boolean;
+  nLoop : integer;
+  stTime : string;
+  stNodeNo : string;
+  stEcuID : string;
+  stMsgNo : string;
+begin
+  inherited;
+  AdvProgress1.Visible := True;
+  AdvProgress1.Max := sg_AlarmEvent.RowCount - 1;
+  with sg_AlarmEvent do
+  begin
+    for nLoop := 1 to RowCount - 1 do   //체크되어 있는 알람을 모두 확인 함.
+    begin
+      AdvProgress1.Position := nLoop;
+      GetCheckBoxState(0,nLoop, bChkState);
+      if bChkState then  //체크 되어 있으면
+      begin
+        if Cells[10,nLoop] = '' then continue;
+        if Cells[2,nLoop] = '' then continue;
+        if Cells[11,nLoop] = '' then continue;
+        if Cells[12,nLoop] = '' then continue;
+        stTime := Cells[12,nLoop];
+        stTime := stringReplace(stTime,'-','',[rfReplaceAll]);
+        stTime := stringReplace(stTime,':','',[rfReplaceAll]);
+        stTime := stringReplace(stTime,' ','',[rfReplaceAll]);
+
+        stNodeNo := Cells[10,nLoop];
+        stEcuID := Cells[2,nLoop];
+        stMsgNo := Cells[11,nLoop];
+        dmDBUpdate.UpdateTB_ALARMEVENT_Confirm(copy(stTime,1,8), copy(stTime,9,6),
+                stNodeNo, stEcuID, '0', stMsgNo, '1', Memo1.Text, formatDateTime('yyyymmddhhnnsszzz',now),
+                GetLocalIPAddr);
+
+        Save := True;
+      end;
+    end;
+    AdvProgress1.Visible := False;
+  end;
+
+  LoadAlarmEvent;
+end;
+
+procedure TfmBuildingAlarmConfirm.FormShow(Sender: TObject);
+begin
+  LoadAlarmEvent;
+end;
+
+procedure TfmBuildingAlarmConfirm.LoadAlarmEvent;
+var
+  stSql : string;
+  TempAdoQuery : TADOQuery;
+  nRow : integer;
+  nIndex : integer;
+  stNodeIP : string;
+  stAlarmAreaName : string;
+  stAlarmDeviceTypeName : string;
+  stAlarmModeName : string;
+  stNodeNo,stEcuID,stArmAreaNo : string;
+begin
+  GridInit(sg_AlarmEvent,13,2,True);
+
+  if FormTYPE = 'BUILDING' then stSql := dmDBSelect.SelectTB_ALARMEVENT_BuildingScurityEvent(SearchID,FormatDateTime('yyyymmddhhnnsszzz',now-5))
+  else
+  begin
+    stNodeNo := copy(SearchID,1,G_nNodeCodeLength);
+    stEcuID := copy(SearchID,1 + G_nNodeCodeLength , 2);
+    stArmAreaNo := copy(SearchID,1 + G_nNodeCodeLength + 2,1);
+    stSql := dmDBSelect.SelectTB_ALARMEVENT_ArmAreaScurityEvent(stNodeNo,stEcuID,stArmAreaNo,FormatDateTime('yyyymmddhhnnsszzz',now-5));
+  end;
+  Try
+    CoInitialize(nil);
+    TempAdoQuery := TADOQuery.Create(nil);
+    TempAdoQuery.Connection := dmDataBase.ADOConnection;
+    TempAdoQuery.DisableControls;
+
+    with TempAdoQuery do
+    begin
+      Close;
+      Sql.Text := stSql;
+
+      Try
+        Open;
+      Except
+        Exit;
+      End;
+
+      if RecordCount < 1 then Exit;
+      nRow := 1;
+      sg_AlarmEvent.RowCount := RecordCount + 1;
+      while Not Eof do
+      begin
+        with sg_AlarmEvent do
+        begin
+          stArmAreaNo := FindField('AR_ARMAREANO').AsString;
+          if Not isDigit(stArmAreaNo) then stArmAreaNo := '0'
+          else stArmAreaNo := inttostr(strtoint(stArmAreaNo));
+
+          nIndex := G_MonitoringNodeList.Indexof(FillZeroNumber(FindField('ND_NODENO').AsInteger,G_nNodeCodeLength));
+          if nIndex > -1 then
+          begin
+            stNodeIP := TMonitoringNode(G_MonitoringNodeList.Objects[nIndex]).NodeIP;
+            stAlarmAreaName := TMonitoringNode(G_MonitoringNodeList.Objects[nIndex]).GetDeviceToArmAreaName(FindField('DE_ECUID').AsString,stArmAreaNo);
+          end;
+          stAlarmDeviceTypeName := dmFormFunction.GetAlarmDeviceTypeName(FindField('AL_ALARMDEVICETYPE').AsString);
+          stAlarmModeName := dmFormFunction.GetAlarmModeName(FindField('AM_ARMMODECODE').AsString);
+
+          Cells[0,nRow] := MakeDatetimeStr(FindField('AE_DATE').AsString + FindField('AE_TIME').AsString);
+          Cells[1,nRow] := stNodeIP;
+          Cells[2,nRow] := FindField('DE_ECUID').AsString;
+          Cells[3,nRow] := FindField('AR_ARMAREANO').AsString;
+          Cells[4,nRow] := stAlarmAreaName;
+          Cells[5,nRow] := stAlarmDeviceTypeName;
+          Cells[6,nRow] := FindField('AE_SUBADDR').AsString;
+          Cells[7,nRow] := stAlarmModeName;
+          Cells[8,nRow] := FindField('AE_PORTNO').AsString;
+          Cells[9,nRow] := FindField('AP_EVENTSTATEPCCODENAME').AsString;
+          Cells[10,nRow] := FindField('ND_NODENO').AsString;
+          Cells[11,nRow] := FindField('AE_MSGNO').AsString;
+          Cells[12,nRow] := FindField('AE_DATE').AsString + FindField('AE_TIME').AsString;
+          if isDigit(FindField('AP_COLOR').AsString) then
+            RowColor[nRow] := strtoint(FindField('AP_COLOR').AsString);
+          AddCheckBox(0,nRow,False,False);
+        end;
+        nRow := nRow + 1;
+
+        Next;
+      end;
+    end;
+  Finally
+    TempAdoQuery.EnableControls;
+    TempAdoQuery.Free;
+    CoUninitialize;
+  End;
+end;
+
+procedure TfmBuildingAlarmConfirm.sg_AlarmEventCheckBoxClick(Sender: TObject;
+  ACol, ARow: Integer; State: Boolean);
+begin
+  inherited;
+  if ARow = 0 then //전체선택 또는 해제
+  begin
+    AdvStrinGridSetAllCheck(Sender,State);
+  end;
+
+end;
+
+end.

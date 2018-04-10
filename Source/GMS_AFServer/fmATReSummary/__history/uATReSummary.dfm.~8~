@@ -1,0 +1,43 @@
+object fmAtResummery: TfmAtResummery
+  Left = 0
+  Top = 0
+  BorderIcons = [biSystemMenu]
+  Caption = #44540#53468#51116#51665#44228
+  ClientHeight = 106
+  ClientWidth = 293
+  Color = clBtnFace
+  Font.Charset = DEFAULT_CHARSET
+  Font.Color = clWindowText
+  Font.Height = -11
+  Font.Name = 'Tahoma'
+  Font.Style = []
+  OldCreateOrder = False
+  Visible = True
+  OnShow = FormShow
+  PixelsPerInch = 96
+  TextHeight = 13
+  object Label1: TLabel
+    Left = 24
+    Top = 24
+    Width = 26
+    Height = 13
+    Caption = 'DATE'
+  end
+  object dmDate: TDateTimePicker
+    Left = 72
+    Top = 20
+    Width = 186
+    Height = 21
+    Date = 41859.579017974540000000
+    Time = 41859.579017974540000000
+    TabOrder = 0
+  end
+  object Button1: TButton
+    Left = 72
+    Top = 56
+    Width = 186
+    Height = 25
+    Caption = 'Summary'
+    TabOrder = 1
+  end
+end

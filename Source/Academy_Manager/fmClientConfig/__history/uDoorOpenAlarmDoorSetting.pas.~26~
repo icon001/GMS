@@ -1,0 +1,257 @@
+unit uDoorOpenAlarmDoorSetting;
+
+interface
+
+uses
+  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
+  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.Grids, AdvObj, BaseGrid, AdvGrid,
+  Vcl.StdCtrls, AdvCombo, AdvSmoothLabel, AdvGlowButton, Vcl.ComCtrls,
+  AdvSmoothPanel, W7Classes, W7Panels, AdvOfficePager, AdvOfficeTabSet,
+  AdvOfficeTabSetStylers, AdvAppStyler, AdvOfficePagerStylers, Vcl.ExtCtrls,
+  AdvSplitter, AdvPanel, AdvEdit, Vcl.ImgList,ActiveX,ADODB,uSubForm,
+  CommandArray, Vcl.Imaging.pngimage;
+
+type
+  TfmDoorOpenAlarmDoorSetting = class(TfmASubForm)
+    AdvOfficePagerOfficeStyler1: TAdvOfficePagerOfficeStyler;
+    AdvFormStyler1: TAdvFormStyler;
+    AdvOfficeTabSetOfficeStyler1: TAdvOfficeTabSetOfficeStyler;
+    pan_DoorMangement: TAdvSmoothPanel;
+    pan_DoorSearch: TAdvSmoothPanel;
+    AdvGlowButton1: TAdvGlowButton;
+    sg_Door: TAdvStringGrid;
+    AdvSplitter1: TAdvSplitter;
+    ed_buildingName: TAdvEdit;
+    btn_DoorPosition: TAdvGlowButton;
+    btn_DoorPosiNotAlarm: TAdvGlowButton;
+    AdvSmoothLabel1: TAdvSmoothLabel;
+    pan_left: TAdvSmoothPanel;
+    AdvSmoothLabel2: TAdvSmoothLabel;
+    tv_List: TTreeView;
+    tv_Code: TTreeView;
+    MenuImageList16: TImageList;
+    ed_BuildingCode: TAdvEdit;
+    procedure pan_leftResize(Sender: TObject);
+    procedure FormShow(Sender: TObject);
+    procedure tv_ListClick(Sender: TObject);
+    procedure sg_DoorCheckBoxClick(Sender: TObject; ACol, ARow: Integer;
+      State: Boolean);
+    procedure btn_DoorPositionClick(Sender: TObject);
+    procedure btn_DoorPosiNotAlarmClick(Sender: TObject);
+  private
+    L_nDoorCheckCount : integer;
+    { Private declarations }
+    procedure FormNameSetting;
+    procedure LoadingDoor;
+    procedure AdvStrinGridSetAllCheck(Sender: TObject;bchkState:Boolean);
+  public
+    { Public declarations }
+  end;
+
+var
+  fmDoorOpenAlarmDoorSetting: TfmDoorOpenAlarmDoorSetting;
+
+implementation
+uses
+  uComboBoxCodeLoad,
+  uCommonVariable,
+  uDataBase,
+  uDBUpdate,
+  uFormFunction,
+  uDBFormMessage;
+
+{$R *.dfm}
+
+procedure TfmDoorOpenAlarmDoorSetting.AdvStrinGridSetAllCheck(Sender: TObject;
+  bchkState: Boolean);
+var
+  i : integer;
+begin
+  for i:= 1 to (Sender as TAdvStringGrid).RowCount - 1  do
+    begin
+      (Sender as TAdvStringGrid).SetCheckBoxState(0,i,bchkState);
+    end;
+end;
+
+procedure TfmDoorOpenAlarmDoorSetting.btn_DoorPosiNotAlarmClick(
+  Sender: TObject);
+var
+  stMessage : string;
+  i : integer;
+  bCheckState : Boolean;
+begin
+  inherited;
+  if L_nDoorCheckCount < 1 then
+  begin
+    stMessage := stringReplace(dmFormMessage.GetMessage('NOTSELECTDATA'),'$WORK',btn_DoorPosiNotAlarm.Caption,[rfReplaceAll]);
+    Application.MessageBox(PChar(stMessage),'Information',MB_OK);
+    Exit;
+  end;
+  with sg_Door do
+  begin
+    for i := RowCount - 1 downto 1 do
+    begin
+      GetCheckBoxState(0,i, bCheckState);
+      if bCheckState then
+      begin
+        dmDBUpdate.UpdateTB_DOOR_Field_StringValue(cells[5,i],cells[6,i],cells[7,i],cells[8,i],'DO_OPENDOORALARM','N');
+      end;
+    end;
+  end;
+  LoadingDoor;
+end;
+
+procedure TfmDoorOpenAlarmDoorSetting.btn_DoorPositionClick(Sender: TObject);
+var
+  stMessage : string;
+  i : integer;
+  bCheckState : Boolean;
+begin
+  inherited;
+  if L_nDoorCheckCount < 1 then
+  begin
+    stMessage := stringReplace(dmFormMessage.GetMessage('NOTSELECTDATA'),'$WORK',btn_DoorPosition.Caption,[rfReplaceAll]);
+    Application.MessageBox(PChar(stMessage),'Information',MB_OK);
+    Exit;
+  end;
+  with sg_Door do
+  begin
+    for i := RowCount - 1 downto 1 do
+    begin
+      GetCheckBoxState(0,i, bCheckState);
+      if bCheckState then
+      begin
+        dmDBUpdate.UpdateTB_DOOR_Field_StringValue(cells[5,i],cells[6,i],cells[7,i],cells[8,i],'DO_OPENDOORALARM','Y');
+      end;
+    end;
+  end;
+  LoadingDoor;
+end;
+
+procedure TfmDoorOpenAlarmDoorSetting.FormNameSetting;
+begin
+  with sg_Door do
+  begin
+    cells[0,0] := dmFormFunction.GetFormName('0','2','COMMONDOORNAME');
+    cells[1,0] := dmFormFunction.GetFormName('0','2','COMMONBUILDINGNAME');
+    cells[2,0] := dmFormFunction.GetFormName('0','2','COMMONBUILDINGNAME');
+    cells[3,0] := dmFormFunction.GetFormName('0','2','COMMONDOORGUBUN');
+    cells[4,0] := 'Open Door Alarm';
+  end;
+
+end;
+
+procedure TfmDoorOpenAlarmDoorSetting.FormShow(Sender: TObject);
+begin
+  FormNameSetting;
+  LoadBuildingTreeView('',tv_List,tv_Code,0,'');
+  tv_ListClick(tv_List);
+  pan_leftResize(pan_left);
+end;
+
+procedure TfmDoorOpenAlarmDoorSetting.LoadingDoor;
+var
+  stSql : string;
+  TempAdoQuery : TADOQuery;
+  nRow : integer;
+begin
+
+  GridInit(sg_Door,5,2,true);
+  stSql := ' Select a.*,c.BC_BUILDINGNAME,d.DG_NAME from TB_DOOR a ';
+  stSql := stSql + ' Inner Join TB_DEVICE b ';
+  stSql := stSql + ' ON(a.GROUP_CODE = b.GROUP_CODE ';   //컨트롤러 사용중인거에서
+  stSql := stSql + ' AND a.ND_NODENO = b.ND_NODENO ';
+  stSql := stSql + ' AND a.DE_ECUID = b.DE_ECUID ';
+  stSql := stSql + ' AND b.DE_EXTENDID = 0 ';
+  stSql := stSql + ' AND b.DE_DEVICEUSE = ''1'') ';
+  stSql := stSql + ' Left Join TB_BUILDINGCODE c ';
+  stSql := stSql + ' ON(a.GROUP_CODE = c.GROUP_CODE ';
+  stSql := stSql + ' AND a.BC_BUILDINGCODE = c.BC_BUILDINGCODE ) ';
+  stSql := stSql + ' Left Join TB_DOORGUBUN d ';
+  stSql := stSql + ' ON(a.GROUP_CODE = d.GROUP_CODE ';
+  stSql := stSql + ' AND a.DG_CODE = d.DG_CODE ) ';
+  stSql := stSql + ' Where a.GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  stSql := stSql + ' AND a.BC_BUILDINGCODE Like ''' + ed_BuildingCode.Text + '%''' ;
+  stSql := stSql + ' AND a.DO_DOORUSE = ''1'' ';
+  stSql := stSql + ' AND a.DO_VIEW = ''1'' ';
+  stSql := stSql + ' Order by a.DO_VIEWSEQ ';
+  Try
+    CoInitialize(nil);
+    TempAdoQuery := TADOQuery.Create(nil);
+    TempAdoQuery.Connection := dmDataBase.ADOConnection;
+
+    with TempAdoQuery do
+    begin
+      Close;
+      sql.Text := stSql;
+      Try
+        Open;
+      Except
+        Exit;
+      End;
+      if recordcount < 1 then Exit;
+      with sg_Door do
+      begin
+        nRow := 1;
+        RowCount := RecordCount + 1;
+        while Not Eof do
+        begin
+          AddCheckBox(0,nRow,False,False);
+          cells[1,nRow] := FindField('DO_DOORNAME').AsString;
+          cells[2,nRow] := FindField('BC_BUILDINGNAME').AsString;
+          cells[3,nRow] := FindField('DG_NAME').AsString;
+          if FindField('DO_OPENDOORALARM').IsNull then cells[4,nRow] := 'N'
+          else cells[4,nRow] := FindField('DO_OPENDOORALARM').AsString;
+          cells[5,nRow] := FindField('ND_NODENO').AsString;
+          cells[6,nRow] := FindField('DE_ECUID').AsString;
+          cells[7,nRow] := FindField('DE_EXTENDID').AsString;
+          cells[8,nRow] := FindField('DO_DOORNO').AsString;
+
+          nRow := nRow + 1;
+          Next;
+        end;
+      end;
+    end;
+  Finally
+    TempAdoQuery.Free;
+    CoUninitialize;
+  End;
+end;
+
+procedure TfmDoorOpenAlarmDoorSetting.pan_leftResize(Sender: TObject);
+begin
+  tv_List.Left := 10;
+  tv_List.Width := pan_left.Width - (tv_List.Left * 2);
+  tv_List.Height := pan_left.Height - tv_List.Top - 10;
+end;
+
+procedure TfmDoorOpenAlarmDoorSetting.sg_DoorCheckBoxClick(Sender: TObject;
+  ACol, ARow: Integer; State: Boolean);
+begin
+  inherited;
+  if ARow = 0 then //전체선택 또는 해제
+  begin
+    if State then L_nDoorCheckCount := (Sender as TAdvStringGrid).RowCount - 1
+    else L_nDoorCheckCount := 0;
+    AdvStrinGridSetAllCheck(Sender,State);
+  end else
+  begin
+    if State then L_nDoorCheckCount := L_nDoorCheckCount + 1
+    else L_nDoorCheckCount := L_nDoorCheckCount - 1 ;
+  end;
+
+end;
+
+procedure TfmDoorOpenAlarmDoorSetting.tv_ListClick(Sender: TObject);
+begin
+  if tv_List.Selected = nil then tv_List.Items[0].Selected := True;
+
+  if ed_buildingName.Text = tv_List.Selected.Text then Exit;
+
+  ed_buildingName.Text := tv_List.Selected.Text;
+  ed_BuildingCode.Text := tv_Code.Items.Item[tv_List.Selected.AbsoluteIndex].Text;
+
+  LoadingDoor;
+end;
+
+end.

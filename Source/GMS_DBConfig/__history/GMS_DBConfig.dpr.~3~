@@ -1,0 +1,22 @@
+program GMS_DBConfig;
+
+uses
+  Forms,
+  uLink in 'uLink.pas' {Form1},
+  uDataBase in '..\..\Lib\DataBase\uDataBase.pas' {dmDataBase: TDataModule},
+  uDataBaseConfig in '..\..\Lib\DataBase\uDataBaseConfig.pas' {fmDataBaseConfig},
+  uCommonEvent in '..\..\Lib\Common\uCommonEvent.pas',
+  uDBInsert in '..\..\Lib\DataBase\uDBInsert.pas' {dmDBInsert: TDataModule},
+  uDBUpdate in '..\..\Lib\DataBase\uDBUpdate.pas' {dmDBUpdate: TDataModule};
+
+{$R *.res}
+
+begin
+  Application.Initialize;
+  Application.CreateForm(TForm1, Form1);
+  Application.CreateForm(TdmDataBase, dmDataBase);
+  Application.CreateForm(TfmDataBaseConfig, fmDataBaseConfig);
+  Application.CreateForm(TdmDBInsert, dmDBInsert);
+  Application.CreateForm(TdmDBUpdate, dmDBUpdate);
+  Application.Run;
+end.

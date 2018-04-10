@@ -1,0 +1,145 @@
+unit uFoodReader;
+
+interface
+
+uses
+  System.SysUtils, System.Classes,DateUtils;
+
+type
+  TFoodCode = Class(TComponent)
+  private
+    FStartTime: string;
+    FFoodCode: string;
+    FFoodCodeName: string;
+    FEndTime: string;
+    FFoodAmt: string;
+    FInitTime: string;
+  published
+    property FoodCode :string read FFoodCode write FFoodCode;
+    property FoodCodeName : string read FFoodCodeName write FFoodCodeName;
+    property StartTime : string read FStartTime write FStartTime;
+    property EndTime : string read FEndTime write FEndTime;
+    property FoodAmt : string read FFoodAmt write FFoodAmt;
+    property InitTime : string read FInitTime write FInitTime;
+  End;
+
+  TFoodReaderType = Class(TComponent)
+  private
+    FoodCodeList : TStringList;
+    FEcuID: string;
+    FReaderNo: string;
+    FNodeNo: integer;
+    FFoodType: string;
+    FYesterDayTime: string;
+    FFoodTypeName: string;
+  public
+    constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
+  public
+    procedure AddFoodCode(aFoodCode,aFoodCodeName,aStartTime,aEndTime,aFoodAmt,aInitTime:string);
+    procedure DeviceCardAccessEvent(aTime,aNodeNo, aEcuID,aDoorNo, aReaderNo, aInOut,stInOutName, aCardMode, aDoorMode, aChangeState, aAccessResult,stAccessPermitName,
+                          aDoorState, aATButton, aType, aArmAreaNo, aCardno, aCompanyCode,aCompanyName, aEmSeq,aEmCode, aEmName,aPosiCode,aPosiName:string);
+  published
+    property NodeNo : integer read FNodeNo write FNodeNo;
+    property EcuID : string read FEcuID write FEcuID;
+    property ReaderNo : string read FReaderNo write FReaderNo;
+    property FoodType : string read FFoodType write FFoodType;
+    property FoodTypeName : string read FFoodTypeName write FFoodTypeName;
+    property YesterDayTime : string read FYesterDayTime write FYesterDayTime;
+  End;
+
+  TdmFoodReader = class(TDataModule)
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+  end;
+
+var
+  dmFoodReader: TdmFoodReader;
+
+implementation
+
+{%CLASSGROUP 'Vcl.Controls.TControl'}
+
+{$R *.dfm}
+
+{ TFoodReaderType }
+
+procedure TFoodReaderType.AddFoodCode(aFoodCode, aFoodCodeName, aStartTime,
+  aEndTime, aFoodAmt, aInitTime: string);
+var
+  nIndex : integer;
+  oFoodCode : TFoodCode;
+begin
+  nIndex := FoodCodeList.IndexOf(aFoodCode);
+  if nIndex < 0 then
+  begin
+    oFoodCode := TFoodCode.Create(nil);
+    oFoodCode.FoodCode := aFoodCode;
+    oFoodCode.FoodCodeName := aFoodCodeName;
+    oFoodCode.StartTime := aStartTime;
+    oFoodCode.EndTime := aEndTime;
+    oFoodCode.FoodAmt := aFoodAmt;
+    oFoodCode.InitTime := aInitTime;
+
+    FoodCodeList.AddObject(aFoodCode,oFoodCode);
+  end else
+  begin
+    TFoodCode(FoodCodeList.Objects[nIndex]).FoodCode := aFoodCode;
+    TFoodCode(FoodCodeList.Objects[nIndex]).FoodCodeName := aFoodCodeName;
+    TFoodCode(FoodCodeList.Objects[nIndex]).StartTime := aStartTime;
+    TFoodCode(FoodCodeList.Objects[nIndex]).EndTime := aEndTime;
+    TFoodCode(FoodCodeList.Objects[nIndex]).FoodAmt := aFoodAmt;
+    TFoodCode(FoodCodeList.Objects[nIndex]).InitTime := aInitTime;
+  end;
+end;
+
+constructor TFoodReaderType.Create(AOwner: TComponent);
+begin
+  inherited;
+  FoodCodeList := TStringList.Create;
+end;
+
+destructor TFoodReaderType.Destroy;
+var
+  i : integer;
+begin
+
+  if FoodCodeList.Count > 0 then
+  begin
+    for i := FoodCodeList.Count - 1 downto 0 do
+    begin
+      TFoodCode(FoodCodeList.Objects[i]).Free;
+    end;      
+  end;
+
+  FoodCodeList.Free;
+  inherited;
+end;
+
+procedure TFoodReaderType.DeviceCardAccessEvent(aTime, aNodeNo, aEcuID, aDoorNo,
+  aReaderNo, aInOut, stInOutName, aCardMode, aDoorMode, aChangeState,
+  aAccessResult, stAccessPermitName, aDoorState, aATButton, aType, aArmAreaNo,
+  aCardno, aCompanyCode, aCompanyName, aEmSeq, aEmCode, aEmName, aPosiCode,
+  aPosiName: string);
+var
+  stFoodDate : string;
+  stFoodTime : string;
+  dtYesterDay : TDatetime;
+  dtPresent :  TDatetime;
+begin
+  stFoodDate := copy(aTime,1,8);
+  stFoodTime := copy(aTime,9,4);
+  dtPresent:= EncodeDatetime(strtoint(copy(aTime,1,4)), strtoint(copy(aTime,5,2)), strtoint(copy(aTime,7,2)), 00, 00, 00,00);
+  dtYesterDay := dtPresent - 1;
+  if stFoodTime < YesterDayTime  then
+  begin
+    stFoodDate := formatDateTime('yyyymmdd',dtYesterDay);
+  end;
+
+  stFoodDate,aTime,aCardno,aCompanyCode, aCompanyName,aEmSeq,aEmCode,aEmName,aAccessResult,FoodType,FoodTypeName,
+                                                  stFoodCode,stFoodCodeName,stFoodAmt
+end;
+
+end.

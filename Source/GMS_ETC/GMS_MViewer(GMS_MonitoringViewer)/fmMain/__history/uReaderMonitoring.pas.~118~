@@ -1,0 +1,507 @@
+unit uReaderMonitoring;
+
+interface
+
+uses
+  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
+  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.ExtCtrls, AdvPanel,uSubForm,Vcl.Imaging.jpeg,
+  CommandArray, Vcl.Imaging.pngimage, AdvAppStyler, AdvSmoothPanel, Vcl.Grids,
+  AdvObj, BaseGrid, AdvGrid, AdvSmoothLabel, Vcl.StdCtrls,ActiveX,ADODB;
+
+type
+  TReaderInfo = class(TObject)
+  private
+    FEcuID: string;
+    FInOut: string;
+    FReaderNo: string;
+    FNodeNo: integer;
+  public
+    property NodeNo : integer read FNodeNo write FNodeNo;
+    property EcuID : string read FEcuID write FEcuID;
+    property ReaderNo : string read FReaderNo write FReaderNo;
+    property InOut : string read FInOut write FInOut;  //0.IN,1.OUT
+  end;
+
+  TfmReaderMonitoring = class(TfmASubForm)
+    pan_top: TAdvPanel;
+    pan_Center: TAdvPanel;
+    pan_topBody: TAdvSmoothPanel;
+    pan_CenterBody: TAdvSmoothPanel;
+    panImage: TAdvSmoothPanel;
+    sg_Name: TAdvStringGrid;
+    lb_Header: TAdvSmoothLabel;
+    pan_ImgIn: TPanel;
+    Img_IN: TImage;
+    pan_ImgOut: TPanel;
+    Img_Out: TImage;
+    Img_Photo: TImage;
+    Panel1: TPanel;
+    Img_InA: TImage;
+    Img_InD: TImage;
+    Img_OutA: TImage;
+    Img_OutD: TImage;
+    Button1: TButton;
+    Button2: TButton;
+    Button3: TButton;
+    InTimer: TTimer;
+    OutTimer: TTimer;
+    InitTimer: TTimer;
+    pan_Photo: TAdvSmoothPanel;
+    procedure FormResize(Sender: TObject);
+    procedure FormShow(Sender: TObject);
+    procedure sg_NameDrawCell(Sender: TObject; ACol, ARow: Integer; Rect: TRect;
+      State: TGridDrawState);
+    procedure FormCreate(Sender: TObject);
+    procedure FormClose(Sender: TObject; var Action: TCloseAction);
+    procedure Button1Click(Sender: TObject);
+    procedure Button2Click(Sender: TObject);
+    procedure Button3Click(Sender: TObject);
+    procedure InTimerTimer(Sender: TObject);
+    procedure OutTimerTimer(Sender: TObject);
+    procedure InitTimerTimer(Sender: TObject);
+  private
+    GroupReaderNoList : TStringList;
+    FfmParent: TfmASubForm;
+    FTextPos: integer;
+    FGroupNo: integer;
+    FInitTime: integer;
+    procedure SetGroupNo(const Value: integer);
+    { Private declarations }
+    procedure GroupReaderClear;
+    procedure LineGroupReaderAdd(aLine:string);
+    procedure FormClear;
+    procedure FormIn;
+    procedure FormOut;
+    procedure SetInitTime(const Value: integer);
+  public
+    procedure DeviceCardAccessEvent(aDecoderNo: integer;aTime, aNodeNo, aEcuID, aDoorNo, aReaderNo, aInOut, aCardMode, aDoorMode,
+                                    aChangeState, aAccessResult, aDoorState, aATButton, aType, aArmAreaNo,aCardno, aCompanyCode, aCompanyName, aEmSeq, aEmCode, aEmName, aPosiCode,
+                                    aPosiName, aPrintNo, aHandPhone,aAccessPermitName:string);
+  public
+    { Public declarations }
+    property fmParent : TfmASubForm read FfmParent write FfmParent;
+    property GroupNo : integer read FGroupNo write SetGroupNo;
+    property TextPos : integer read FTextPos write FTextPos;
+    property InitTime : integer read FInitTime write SetInitTime;
+  end;
+
+var
+  fmReaderMonitoring: TfmReaderMonitoring;
+
+implementation
+uses
+  uCommonFunction,
+  uCommonVariable,
+  uDataBase,
+  uDataBaseConfig;
+
+{$R *.dfm}
+
+procedure TfmReaderMonitoring.Button1Click(Sender: TObject);
+begin
+  inherited;
+  FormClear;
+end;
+
+procedure TfmReaderMonitoring.Button2Click(Sender: TObject);
+begin
+  inherited;
+  FormIn;
+end;
+
+procedure TfmReaderMonitoring.Button3Click(Sender: TObject);
+begin
+  inherited;
+  FormOut;
+end;
+
+
+procedure TfmReaderMonitoring.DeviceCardAccessEvent(aDecoderNo: integer; aTime,
+  aNodeNo, aEcuID, aDoorNo, aReaderNo, aInOut, aCardMode, aDoorMode,
+  aChangeState, aAccessResult, aDoorState, aATButton, aType, aArmAreaNo,
+  aCardno, aCompanyCode, aCompanyName, aEmSeq, aEmCode, aEmName, aPosiCode,
+  aPosiName, aPrintNo, aHandPhone,aAccessPermitName: string);
+var
+  TempAdoQuery : TADOQuery;
+  MapJpg : TJpegImage;
+  MapStream : TMemoryStream;
+  stSql : string;
+  nIndex : integer;
+begin
+  nIndex := GroupReaderNoList.IndexOf(aNodeNo + aEcuID + aReaderNo);
+  if nIndex < 0 then Exit;
+  if TReaderInfo(GroupReaderNoList.Objects[nIndex]).InOut = '0' then FormIn
+  else FormOut;
+
+  Try
+    MapJpg := TJpegImage.Create;
+    MapStream := TMemoryStream.Create;
+    if G_nDBType = POSTGRESQL then
+    begin
+      DeleteFile(G_stExeFolder + '\1.jpg');
+      stSql := ' SELECT lo_export(TB_EMPLOYEE.EM_IMAGE, ' + G_stExeFolder + '\1.jpg' + '),a.*,b.CA_CARDNO,c.EM_GUBUNCODENAME,d.CO_COMPANYNAME From TB_EMPLOYEE a ' ;
+      stSql := stSql + ' inner join TB_CARD b ';
+      stSql := stSql + ' ON(a.GROUP_CODE = b.GROUP_CODE ';
+      stSql := stSql + ' AND a.EM_SEQ = b.EM_SEQ ) ';
+      stSql := stSql + ' Left Join TB_EMPLOYEEGUBUN c ';
+      stSql := stSql + ' ON(a.EM_GUBUNCODE = c.EM_GUBUNCODE ) ';
+      stSql := stSql + ' Left Join TB_COMPANYCODE d ';
+      stSql := stSql + ' ON(substring(a.CO_COMPANYCODE,1,' + inttostr(G_nCompanyCodeLength + 1) + ') = substring(d.CO_COMPANYCODE,1,' + inttostr(G_nCompanyCodeLength + 1) + ')) ';
+      stSql := stSql + ' Where a.GROUP_CODE = ''' + G_stGroupCode + ''' ';
+      stSql := stSql + ' AND b.CA_CARDNO = ''' + aCardno + ''' ';
+    end else
+    begin
+      stSql := ' select a.*,b.CA_CARDNO,c.EM_GUBUNCODENAME,d.CO_COMPANYNAME from TB_EMPLOYEE a ' ;
+      stSql := stSql + ' inner join TB_CARD b ';
+      stSql := stSql + ' ON(a.GROUP_CODE = b.GROUP_CODE ';
+      stSql := stSql + ' AND a.EM_SEQ = b.EM_SEQ ) ';
+      stSql := stSql + ' Left Join TB_EMPLOYEEGUBUN c ';
+      stSql := stSql + ' ON(a.EM_GUBUNCODE = c.EM_GUBUNCODE ) ';
+      stSql := stSql + ' Left Join TB_COMPANYCODE d ';
+      stSql := stSql + ' ON(substring(a.CO_COMPANYCODE,1,' + inttostr(G_nCompanyCodeLength + 1) + ') = substring(d.CO_COMPANYCODE,1,' + inttostr(G_nCompanyCodeLength + 1) + ')) ';
+      stSql := stSql + ' Where a.GROUP_CODE = ''' + G_stGroupCode + ''' ';
+      stSql := stSql + ' AND b.CA_CARDNO = ''' + aCardno + ''' ';
+    end;
+
+    if Not dmDataBase.DBConnected then
+    begin
+      TDataBaseConfig.GetObject.DataBaseConnect(False);
+      if Not dmDataBase.DBConnected then
+      begin
+        sg_Name.cells[0,0] := 'DB Connected Fail';
+        Exit;
+      end;
+    end;
+    CoInitialize(nil);
+    TempAdoQuery := TADOQuery.Create(nil);
+    TempAdoQuery.Connection := dmDataBase.ADOConnection;
+    with TempAdoQuery do
+    begin
+      //CommandTimeOut := 600;
+      Close;
+      Sql.Clear;
+      Sql.Text := stSql;
+      Try
+        Open;
+      Except
+        sg_Name.cells[0,0] := aAccessPermitName;
+        sg_Name.cells[0,1] := aCardno;
+        sg_Name.cells[0,4] := MakeTimeStr(aTime);
+        dmDataBase.DBConnected := False;
+        Exit;
+      End;
+
+      if RecordCount > 0 then
+      begin
+        if Not FindField('EM_IMAGE').IsNull then
+        begin
+          if G_nDBType = POSTGRESQL then
+          begin
+            if FileExists(G_stExeFolder + '\1.jpg') then
+              Img_Photo.Picture.LoadFromFile(G_stExeFolder + '\1.jpg');
+          end else
+          begin
+            JPEGLoadFromDB(FieldByName('EM_IMAGE'), Img_Photo);
+          end;
+        end;
+        with sg_Name do
+        begin
+          cells[0,0] := aAccessPermitName;
+          cells[0,1] := FindField('EM_NAME').AsString;
+          cells[0,2] := FindField('CO_COMPANYNAME').AsString ;
+          //cells[0,3] := MakeDatetimeStr(FindField('EM_REGDATE').AsString) + '~' + MakeDatetimeStr(FindField('EM_ENDDATE').AsString);
+          //cells[0,4] := MakeTimeStr(aTime);
+        end;
+        lb_Header.Caption.Text := FindField('EM_GUBUNCODENAME').AsString;
+      end;
+    end;
+  Finally
+    TempAdoQuery.Free;
+    CoUninitialize;
+    MapJpg.Free;
+    MapStream.Free;
+  End;
+
+
+end;
+
+procedure TfmReaderMonitoring.FormClear;
+begin
+  lb_Header.Caption.Text := '';
+  sg_Name.Cells[0,0] := '';
+  sg_Name.Cells[0,1] := '';
+  sg_Name.Cells[0,2] := '';
+  sg_Name.Cells[0,3] := '~';
+  sg_Name.Cells[0,4] := '';
+  Img_IN.Picture := Img_InD.Picture;
+  Img_Out.Picture := Img_OutD.Picture;
+  pan_topBody.Fill.BorderColor := 14671839;
+  pan_topBody.Fill.Color := 14671839;
+  pan_topBody.Fill.ColorTo := 14671839;
+  pan_topBody.Fill.ColorMirror := 14671839;
+  pan_topBody.Fill.ColorMirrorTo := 14671839;
+
+  pan_ImgIn.Color := 14671839;
+  pan_ImgOut.Color := 14671839;
+
+  pan_CenterBody.Fill.BorderColor := 14671839;
+  pan_CenterBody.Fill.Color := 14671839;
+  pan_CenterBody.Fill.ColorTo := 14671839;
+  pan_CenterBody.Fill.ColorMirror := 14671839;
+  pan_CenterBody.Fill.ColorMirrorTo := 14671839;
+
+  pan_Photo.Fill.BorderColor := 16316664;
+  pan_Photo.Fill.Color := 16316664;
+  pan_Photo.Fill.ColorTo := 16316664;
+  pan_Photo.Fill.ColorMirror := 16316664;
+  pan_Photo.Fill.ColorMirrorTo := 16316664;
+
+  Img_Photo.Picture := nil;
+  pan_ImgIN.Visible := True;
+  pan_ImgOut.Visible := True;
+  InTimer.Enabled := False;
+  OutTimer.Enabled := False;
+  InitTimer.Enabled := False;
+end;
+
+procedure TfmReaderMonitoring.FormClose(Sender: TObject;
+  var Action: TCloseAction);
+begin
+  inherited;
+  GroupReaderClear;
+  GroupReaderNoList.free;
+end;
+
+procedure TfmReaderMonitoring.FormCreate(Sender: TObject);
+begin
+  inherited;
+  GroupReaderNoList := TStringList.Create;
+end;
+
+procedure TfmReaderMonitoring.FormIn;
+begin
+  InitTimer.Enabled := False;
+  Img_IN.Picture := Img_InA.Picture;
+  Img_Out.Picture := Img_OutD.Picture;
+  pan_topBody.Fill.BorderColor := 14254451;
+  pan_topBody.Fill.Color := 14254451;
+  pan_topBody.Fill.ColorTo := 14254451;
+  pan_topBody.Fill.ColorMirror := 14254451;//16429333;
+  pan_topBody.Fill.ColorMirrorTo := 14254451;
+
+  pan_ImgIn.Color := 14254451;
+  pan_ImgOut.Color := 14254451;
+
+  pan_CenterBody.Fill.BorderColor := 14254451;
+  pan_CenterBody.Fill.Color := 14254451;
+  pan_CenterBody.Fill.ColorTo := 14254451;
+  pan_CenterBody.Fill.ColorMirror := 14254451;
+  pan_CenterBody.Fill.ColorMirrorTo := 14254451;
+  pan_ImgIN.Visible := True;
+  pan_ImgOut.Visible := True;
+  InTimer.Enabled := True;
+  OutTimer.Enabled := False;
+  InitTimer.Enabled := True;
+end;
+
+procedure TfmReaderMonitoring.FormOut;
+begin
+  InitTimer.Enabled := False;
+  Img_IN.Picture := Img_InD.Picture;
+  Img_Out.Picture := Img_OutA.Picture;
+  pan_topBody.Fill.BorderColor := 16429333;
+  pan_topBody.Fill.Color := 16429333;
+  pan_topBody.Fill.ColorTo := 16429333;
+  pan_topBody.Fill.ColorMirror := 16429333;
+  pan_topBody.Fill.ColorMirrorTo := 16429333;
+
+  pan_ImgIn.Color := 16429333;
+  pan_ImgOut.Color := 16429333;
+
+  pan_CenterBody.Fill.BorderColor := 16429333;
+  pan_CenterBody.Fill.Color := 16429333;
+  pan_CenterBody.Fill.ColorTo := 16429333;
+  pan_CenterBody.Fill.ColorMirror := 16429333;
+  pan_CenterBody.Fill.ColorMirrorTo := 16429333;
+  pan_ImgIN.Visible := True;
+  pan_ImgOut.Visible := True;
+  InTimer.Enabled := False;
+  OutTimer.Enabled := True;
+  InitTimer.Enabled := True;
+end;
+
+procedure TfmReaderMonitoring.FormResize(Sender: TObject);
+begin
+  inherited;
+  pan_top.Height := Height div 2 + (Height div 10);   // 절반 보다 조금 더 크게
+
+  pan_topBody.Top := 10;
+  pan_topBody.Left := 10;
+  pan_topBody.Width := pan_top.Width - 20;
+  pan_topBody.Height := pan_top.Height - 20;
+
+  panImage.Left := 4;
+  panImage.Top := 70;
+  panImage.Width := pan_topBody.Width - 8;
+  panImage.Height := pan_topBody.Height - 74;
+
+  pan_Photo.Top := panImage.Height div 2 - pan_Photo.Height div 2;
+  pan_Photo.Left := panImage.Width div 2 - pan_Photo.Width div 2;
+//  Img_Photo.Top := panImage.Height div 2 - Img_Photo.Height div 2;
+//  Img_Photo.Left := panImage.Width div 2 - Img_Photo.Width div 2;
+(*
+  Img_Photo.Top := 20;
+  Img_Photo.Left := 50;
+  Img_Photo.Width := panImage.Width - (Img_Photo.Left * 2);
+  Img_Photo.Height := panImage.Height - (Img_Photo.Top * 2);
+*)
+
+  pan_CenterBody.Top := 10;
+  pan_CenterBody.Left := 10;
+  pan_CenterBody.Width := pan_Center.Width - 20;
+  pan_CenterBody.Height := pan_Center.Height - 20;
+
+  sg_Name.Left := 4;
+  sg_Name.Top := 4;
+  sg_Name.Width := pan_CenterBody.Width - 8;
+  sg_Name.Height := pan_CenterBody.Height - 8;
+  sg_Name.DefaultColWidth := sg_Name.Width;
+  sg_Name.DefaultRowHeight := (sg_Name.Height - 3) div 5;
+  pan_ImgIn.Top := 10;
+  pan_ImgIn.Left := 10;
+  pan_ImgIn.Color := pan_topBody.Fill.BorderColor; //clYellow;//
+  pan_ImgIn.Refresh;
+
+  pan_ImgOut.Top := 10;
+  pan_ImgOut.Left := pan_topBody.Width - pan_ImgOut.Width + 10;
+  pan_ImgOut.Color := pan_topBody.Fill.BorderColor; //clYellow;//
+  pan_ImgOut.Refresh;
+
+end;
+
+procedure TfmReaderMonitoring.FormShow(Sender: TObject);
+begin
+  inherited;
+  FormClear;
+(*
+  sg_name.Cells[0,0] := '정상';
+  sg_name.Cells[0,1] := '이순신';
+  sg_name.Cells[0,2] := '제론얼라이언스';
+  sg_name.Cells[0,3] := '2007-08-09~2013-12-31';
+  sg_name.Cells[0,4] := '2013-12-31 15:13:12';
+*)
+end;
+
+procedure TfmReaderMonitoring.GroupReaderClear;
+var
+  i : integer;
+begin
+  if GroupReaderNoList.Count < 1 then Exit;
+  for i := GroupReaderNoList.Count - 1 downto 0 do
+  begin
+    TReaderInfo(GroupReaderNoList.Objects[i]).Free;
+  end;
+  GroupReaderNoList.Clear;
+end;
+
+procedure TfmReaderMonitoring.InitTimerTimer(Sender: TObject);
+begin
+  inherited;
+  FormClear;
+end;
+
+procedure TfmReaderMonitoring.InTimerTimer(Sender: TObject);
+begin
+  inherited;
+  pan_ImgIn.Visible := Not pan_ImgIn.Visible;
+end;
+
+procedure TfmReaderMonitoring.LineGroupReaderAdd(aLine: string);
+var
+  TempList : TStringList;
+  i : integer;
+  stNodeNo : string;
+  stEcuID : string;
+  stReaderNo : string;
+  stInOut : string;
+  oReader:TReaderInfo;
+begin
+  TempList := TStringList.Create;
+  Try
+    TempList.DelimitedText := aLine;
+    TempList.Delimiter := ',';
+    if TempList.Count < 7 then Exit;
+    stNodeNo := TempList.Strings[5];
+    stEcuID := TempList.Strings[2];
+    stReaderNo := TempList.Strings[3];
+    stInOut := TempList.Strings[6];
+    if Not isDigit(stNodeNo) then Exit;
+
+    oReader:=TReaderInfo.Create;
+    oReader.EcuID := stEcuID;
+    oReader.NodeNo := strtoint(stNodeNo);
+    oReader.ReaderNo := stReaderNo;
+    oReader.InOut := stInOut;
+    if GroupReaderNoList.IndexOf(stNodeNo + stEcuID + stReaderNo) < 0 then
+       GroupReaderNoList.AddObject(stNodeNo + stEcuID + stReaderNo,oReader);
+  Finally
+    TempList.Free;
+  End;
+end;
+
+procedure TfmReaderMonitoring.OutTimerTimer(Sender: TObject);
+begin
+  inherited;
+  pan_ImgOut.Visible := Not pan_ImgOut.Visible;
+end;
+
+procedure TfmReaderMonitoring.SetGroupNo(const Value: integer);
+var
+  ReaderList : TStringList;
+  i : integer;
+begin
+  if FGroupNo = Value then exit;
+  FGroupNo := Value;
+  Try
+    ReaderList := TStringList.Create;
+    if FileExists(G_stExeFolder + '\Reader' + inttostr(Value) + '.dat') then
+       ReaderList.LoadFromFile(G_stExeFolder + '\Reader' + inttostr(Value) + '.dat');
+    if ReaderList.Count < 2 then Exit;
+    GroupReaderClear;
+    for i := 1 to ReaderList.Count - 1 do
+    begin
+      LineGroupReaderAdd(ReaderList.Strings[i]);
+    end;
+
+  Finally
+    ReaderList.Free;
+  End;
+end;
+
+procedure TfmReaderMonitoring.SetInitTime(const Value: integer);
+begin
+  if FInitTime = Value then Exit;
+
+  FInitTime := Value;
+  InitTimer.Interval := Value * 1000;
+end;
+
+procedure TfmReaderMonitoring.sg_NameDrawCell(Sender: TObject; ACol,
+  ARow: Integer; Rect: TRect; State: TGridDrawState);
+var
+  S: string;
+  SavedAlign: word;
+begin
+  if ACol = 0 then begin  // ACol is zero based
+    S := TAdvStringGrid(Sender).Cells[ACol, ARow]; // cell contents
+    SavedAlign := SetTextAlign(TAdvStringGrid(Sender).Canvas.Handle, TA_CENTER);
+    TAdvStringGrid(Sender).Canvas.TextRect(Rect,
+      Rect.Left + (Rect.Right - Rect.Left) div 2,
+      Rect.Bottom -
+      ((Rect.Bottom - Rect.Top ) div 2) + TextPos,S);//Rect.Top + 2, S);
+    SetTextAlign(TAdvStringGrid(Sender).Canvas.Handle, SavedAlign);
+  end;
+
+end;
+
+end.

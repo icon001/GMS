@@ -1,0 +1,94 @@
+unit uSecurityEventConfirm;
+
+interface
+
+uses
+  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
+  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls, AdvGlassButton,
+  AdvSmoothPanel;
+
+type
+  TfmSecurityEventConfirm = class(TForm)
+    Pan_Workcode: TAdvSmoothPanel;
+    Label1: TLabel;
+    ed_ArmAreaName: TEdit;
+    ed_AlarmStateName: TEdit;
+    Label2: TLabel;
+    Label3: TLabel;
+    Memo1: TMemo;
+    btn_Save: TAdvGlassButton;
+    btn_Cancel: TAdvGlassButton;
+    procedure btn_CancelClick(Sender: TObject);
+    procedure btn_SaveClick(Sender: TObject);
+    procedure FormShow(Sender: TObject);
+  private
+    FNodeNo: string;
+    FEcuID: string;
+    FMsgNo: string;
+    FAlarmTime: string;
+    FAlarmDate: string;
+    FExtendID: string;
+    FSave: Boolean;
+    { Private declarations }
+  public
+    { Public declarations }
+    property NodeNo : string read FNodeNo write FNodeNo;
+    property EcuID : string read FEcuID write FEcuID;
+    property ExtendID : string read FExtendID write FExtendID;
+    property MsgNo : string read FMsgNo write FMsgNo;
+    property AlarmDate : string read FAlarmDate write FAlarmDate;
+    property AlarmTime : string read FAlarmTime write FAlarmTime;
+    property Save : Boolean read FSave write FSave;
+  end;
+
+var
+  fmSecurityEventConfirm: TfmSecurityEventConfirm;
+
+implementation
+uses
+  uCommonFunction,
+  uCommonVariable,
+  uDataBase;
+
+{$R *.dfm}
+
+procedure TfmSecurityEventConfirm.btn_CancelClick(Sender: TObject);
+begin
+  Save := False;
+  Close;
+end;
+
+procedure TfmSecurityEventConfirm.btn_SaveClick(Sender: TObject);
+var
+  stSql : string;
+begin
+  if Memo1.Text = '' then
+  begin
+    showmessage('조치내용을 입력 하여 주세요.');
+    memo1.SetFocus;
+    Exit;
+  end;
+  stSql := 'Update TB_ALARMEVENT set ';
+  stSql := stSql + ' AE_CHECKOK = ''1'', ';
+  stSql := stSql + ' AE_CHECKMSG = ''' + Memo1.Text + ''', ';
+  stSql := stSql + ' AD_USERID = ''' + G_stAdminUserID + ''', ';
+  stSql := stSql + ' AE_CHECKTIME = ''' + formatDateTime('yyyymmddhhnnsszzz',now) + ''', ';
+  stSql := stSql + ' AE_PCIP = ''' + GetLocalIPAddr + ''' ';
+  stSql := stSql + ' Where GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  stSql := stSql + ' AND AE_DATE = ''' + AlarmDate + ''' ';
+  stSql := stSql + ' AND AE_TIME = ''' + AlarmTime + ''' ';
+  stSql := stSql + ' AND ND_NODENO = ' + NodeNo + ' ';
+  stSql := stSql + ' AND DE_ECUID = ''' + EcuID + ''' ';
+  stSql := stSql + ' AND DE_EXTENDID = ' + ExtendID + ' ';
+  stSql := stSql + ' AND AE_MSGNO = ''' + MsgNo + ''' ';
+  dmDataBase.ProcessExecSQL(stSql);
+  Save := True;
+  Close;
+end;
+
+procedure TfmSecurityEventConfirm.FormShow(Sender: TObject);
+begin
+  Memo1.SetFocus;
+end;
+
+end.

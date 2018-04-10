@@ -1,0 +1,142 @@
+unit uCompanyModal;
+
+interface
+
+uses
+  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
+  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, AdvGlowButton, Vcl.StdCtrls, AdvEdit,
+  AdvGlassButton, AdvSmoothLabel, Vcl.ComCtrls, AdvSmoothPanel, W7Classes,
+  W7Panels, AdvOfficePager, Vcl.Menus, Vcl.ImgList, AdvPanel, AdvOfficeTabSet,
+  AdvOfficeTabSetStylers, AdvAppStyler,uSubForm;
+
+type
+  TfmCompanyModal = class(TfmASubForm)
+    AdvFormStyler1: TAdvFormStyler;
+    AdvOfficeTabSetOfficeStyler1: TAdvOfficeTabSetOfficeStyler;
+    AdvPanelStyler1: TAdvPanelStyler;
+    MenuImageList16: TImageList;
+    pm_Work: TPopupMenu;
+    pm_ChiledCodeAdd: TMenuItem;
+    pm_UpdateCode: TMenuItem;
+    pm_DeleteCode: TMenuItem;
+    N1: TMenuItem;
+    pm_CompanyGrade: TMenuItem;
+    N2: TMenuItem;
+    pm_ParentCompanyGrade: TMenuItem;
+    AdvOfficePager1: TAdvOfficePager;
+    AdvOfficePage1: TAdvOfficePage;
+    BodyPanel: TW7Panel;
+    List: TAdvSmoothPanel;
+    tv_CompanyList: TTreeView;
+    tv_CompanyCode: TTreeView;
+    Pan_Companycode: TAdvSmoothPanel;
+    lb_CompanyName: TAdvSmoothLabel;
+    btn_Save: TAdvGlassButton;
+    btn_Cancel: TAdvGlassButton;
+    ed_CompanyName: TAdvEdit;
+    ed_SelectCode: TAdvEdit;
+    btn_minimize: TAdvGlowButton;
+    btn_Close: TAdvGlowButton;
+  private
+    BuildingArmAreaCodeList : TStringList; //빌딩별 방범구역 코드 리스트를 가지고 있자.
+    BuildingDoorCodeList : TStringList; //빌딩별 출입문 코드 리스트를 가지고 있자.
+    GradeArmAreaCodeList : TStringList;
+    GradeDoorCodeList : TStringList;
+    NotGradeArmAreaCodeList : TStringList; //방범권한이 없는 방범리스트
+    NotGradeDoorCodeList : TStringList;  //출입권한이 없는 리스트
+    L_nPermitArmAreaCheckCount : integer;           //삭제시 방범구역 선택 갯수
+    L_nNotPermitArmAreaCheckCount : integer;        //등록시 방범구역 선택 갯수
+    L_nPermitDoorCheckCount : integer;           //삭제시 출입문 선택 갯수
+    L_nNotPermitDoorCheckCount : integer;        //등록시 출입문 선택 갯수
+    L_stMenuID : string;
+    L_stButtonCloseCaption : string;
+    L_stWork : string;
+    { Private declarations }
+
+    procedure FormNameSetting;
+    procedure FontSetting;
+    function ChangeCompanyCode(aOrgCode,aCode,aDeepSeq,aViewSeq:string):Boolean;
+  public
+    { Public declarations }
+    procedure Form_Close;
+    procedure FormChangeEvent(aNumber:integer);
+    procedure FormGradeRefresh;
+    procedure FormIDSetting(aID:string);
+  end;
+
+var
+  fmCompanyModal: TfmCompanyModal;
+
+implementation
+uses
+  uCommonFunction,
+  uComboBoxCodeLoad,
+  uCommonVariable,
+  uFormFunction,
+  uFormVariable,
+  uDataBase,
+  uDBCardPermit,
+  uDBDelete,
+  uDBVariable,
+  uDBFormMessage,
+  uDBFunction,
+  uDBInsert,
+  uDBSelect,
+  uDBUpdate,
+  uFormUtil,
+  uMain;
+
+{$R *.dfm}
+
+{ TfmCompanyModal }
+
+function TfmCompanyModal.ChangeCompanyCode(aOrgCode, aCode, aDeepSeq,
+  aViewSeq: string): Boolean;
+begin
+  List.Caption.Text := dmFormFunction.GetFormName('0','2','COMMONLIST01');
+  pm_ChiledCodeAdd.Caption := dmFormFunction.GetFormName('2','2','BM2_011pm001');
+  pm_DeleteCode.Caption := dmFormFunction.GetFormName('0','2','BUTTONDEL001');
+  pm_UpdateCode.Caption := dmFormFunction.GetFormName('0','2','BUTTONUPDATE001');
+  btn_Save.Caption := dmFormFunction.GetFormName('0','2','BUTTONSAVE001');
+  btn_Cancel.Caption := dmFormFunction.GetFormName('0','2','BUTTONCANCEL001');
+  lb_CompanyName.Caption.Text := dmFormFunction.GetFormName('0','2','COMMONCOMPANYNAME');
+end;
+
+procedure TfmCompanyModal.FontSetting;
+begin
+
+end;
+
+procedure TfmCompanyModal.FormChangeEvent(aNumber: integer);
+begin
+  case aNumber of
+    con_FormBMOSBUILDINGCODE : begin
+//      LoadBuildingTreeView('',tv_buildingName,tv_buildingCode,con_LocalBuildingImageIndex);
+    end;
+  end;
+end;
+
+procedure TfmCompanyModal.FormGradeRefresh;
+begin
+  if IsInsertGrade or IsUpdateGrade or IsDeleteGrade then PopupMenu := pm_Work;
+  pm_ChiledCodeAdd.Enabled := IsInsertGrade;
+  pm_DeleteCode.Enabled := IsDeleteGrade;
+  pm_UpdateCode.Enabled := IsUpdateGrade;
+end;
+
+procedure TfmCompanyModal.FormIDSetting(aID: string);
+begin
+  L_stMenuID := aID;
+end;
+
+procedure TfmCompanyModal.FormNameSetting;
+begin
+
+end;
+
+procedure TfmCompanyModal.Form_Close;
+begin
+  Close;
+end;
+
+end.

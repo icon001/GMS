@@ -1,0 +1,1030 @@
+unit uWinsockDevice;
+
+interface
+
+uses
+  System.SysUtils, System.Classes,Web.Win.Sockets,Vcl.ExtCtrls,System.SyncObjs,
+  uDeviceVariable,Winapi.WinSock,Vcl.Controls,Winapi.Messages,
+  u_c_byte_buffer;
+
+const wm_asynch_select= wm_User;
+const k_buffer_max= 4096;
+      k_tcp_ip_chunk= 1500;
+const MAXNODERCVCOUNT = 100;
+const MAXDEVICERCVCOUNT = 1000;
+
+const
+    con_NODEKTTSYSTEMID = 1;  //관제 시스템 아이디
+    con_NODEKTTTELNUMBER1 = 2;  //관제 데코더 전화번호1
+    con_NODEKTTTELNUMBER2 = 3;  //관제 데코더 전화번호2
+    con_NODEKTTREMOTEARMRINGCOUNT = 4;  //원격경계시 링횟수
+    con_NODEKTTREMOTEDISARMRINGCOUNT = 5;  //원격해제시 링횟수
+    con_NODEKTTCDMASKILL = 6;   //CDMA 기능 유무
+    con_NODEKTTCDMAUSE = 7; //CDMA 사용 유무 0.미사용,1.사용
+    con_NODEKTTCDMAIP = 8;     //CDMA IP
+    con_NODEKTTCDMAPORT = 9; //CDMA Port
+    con_NODEKTTCDMACHECKTIME = 10; //CDMA check time
+    con_NODEKTTCDMARSSI = 11; //CDMA rssi
+    con_NODEKTTCDMAMIN = 12;
+    con_NODEKTTCDMAUMUX = 13;
+    con_NODEDVRSKILL = 14;   //DVR 기능 유무
+    con_NODEDVRUSE = 15; //DVR 사용 유무 0.미사용,1.사용
+    con_NODEDVRIP = 16; //DVR IP
+    con_NODEDVRPORT = 17; //DVR Port
+
+
+type
+  TNode = Class(TComponent)
+  private
+    RcvCheckTimer: TTimer;
+    FTCSDeviceSender : TCriticalSection;
+    FNo: Integer;
+    FLanPort: integer;
+    FLanIP: string;
+    FSocketOpen: Boolean;
+    FNodeConnected: Boolean;
+    FDeviceID: string;
+    FNodeName: string;
+    FKTTSYSTEMID: string;
+    FDVRUSE: string;
+    FKTTCDMAUSE: string;
+    FKTTCDMASKILL: Boolean;
+    FKTTCDMARSSI: string;
+    FKTTCDMAMIN: string;
+    FFIREGUBUNCODE: string;
+    FKTTREMOTEARMRINGCOUNT: integer;
+    FDVRPORT: string;
+    FKTTCDMAPORT: string;
+    FKTTCDMACHECKTIME: string;
+    FKTTCDMAUMUX: string;
+    FKTTREMOTEDISARMRINGCOUNT: integer;
+    FKTTTELNUMBER2: string;
+    FKTTTELNUMBER1: string;
+    FDVRIP: string;
+    FKTTCDMAIP: string;
+    FDVRSKILL: Boolean;
+    FGETDEVICE: string;
+
+    procedure SetNo(const Value: Integer);
+    procedure SetLanIP(const Value: string);
+    procedure SetLanPort(const Value: integer);
+    procedure SetSocketOpen(const Value: Boolean);
+    procedure SetNodeConnected(const Value: Boolean);
+    procedure SetDeviceID(const Value: string);
+    procedure SetNodeName(const Value: string);
+    procedure SetKTTSYSTEMID(const Value: string);
+    procedure SetDVRIP(const Value: string);
+    procedure SetDVRPORT(const Value: string);
+    procedure SetDVRUSE(const Value: string);
+    procedure SetFIREGUBUNCODE(const Value: string);
+    procedure SetKTTCDMACHECKTIME(const Value: string);
+    procedure SetKTTCDMAIP(const Value: string);
+    procedure SetKTTCDMAMIN(const Value: string);
+    procedure SetKTTCDMAPORT(const Value: string);
+    procedure SetKTTCDMARSSI(const Value: string);
+    procedure SetKTTCDMASKILL(const Value: Boolean);
+    procedure SetKTTCDMAUMUX(const Value: string);
+    procedure SetKTTCDMAUSE(const Value: string);
+    procedure SetKTTREMOTEARMRINGCOUNT(const Value: integer);
+    procedure SetKTTREMOTEDISARMRINGCOUNT(const Value: integer);
+    procedure SetKTTTELNUMBER1(const Value: string);
+    procedure SetKTTTELNUMBER2(const Value: string);
+    procedure SetDVRSKILL(const Value: Boolean);
+    procedure SetGETDEVICE(const Value: string);
+  private
+    FKTTCDMARSSIRCV: string;
+    FKTTCDMAMINRCV: string;
+    FKTTREMOTEARMRINGCOUNTRCV: integer;
+    FDVRPORTRCV: string;
+    FKTTCDMAPORTRCV: string;
+    FKTTCDMACHECKTIMERCV: string;
+    FKTTCDMAUMUXRCV: string;
+    FKTTREMOTEDISARMRINGCOUNTRCV: integer;
+    FKTTTELNUMBER2RCV: string;
+    FKTTTELNUMBER1RCV: string;
+    FDVRIPRCV: string;
+    FKTTCDMAIPRCV: string;
+    FKTTSYSTEMIDRCV: string;
+    FDVRUSERCV: string;
+    FDVRSKILLRCV: Boolean;
+    FKTTCDMAUSERCV: string;
+    FKTTCDMASKILLRCV: Boolean;
+
+    procedure SetDVRIPRCV(const Value: string);
+    procedure SetDVRPORTRCV(const Value: string);
+    procedure SetDVRSKILLRCV(const Value: Boolean);
+    procedure SetDVRUSERCV(const Value: string);
+    procedure SetKTTCDMACHECKTIMERCV(const Value: string);
+    procedure SetKTTCDMAIPRCV(const Value: string);
+    procedure SetKTTCDMAMINRCV(const Value: string);
+    procedure SetKTTCDMAPORTRCV(const Value: string);
+    procedure SetKTTCDMARSSIRCV(const Value: string);
+    procedure SetKTTCDMASKILLRCV(const Value: Boolean);
+    procedure SetKTTCDMAUMUXRCV(const Value: string);
+    procedure SetKTTCDMAUSERCV(const Value: string);
+    procedure SetKTTREMOTEARMRINGCOUNTRCV(const Value: integer);
+    procedure SetKTTREMOTEDISARMRINGCOUNTRCV(const Value: integer);
+    procedure SetKTTSYSTEMIDRCV(const Value: string);
+    procedure SetKTTTELNUMBER1RCV(const Value: string);
+    procedure SetKTTTELNUMBER2RCV(const Value: string);
+  private
+    L_cRCVSTATE: Array [0..MAXNODERCVCOUNT] of char;     //수신상태
+    l_wsa_data: twsaData;
+    l_client_socket_handle: tSocket;
+    l_c_reception_buffer: c_byte_buffer;
+    L_nSendMsgNo : integer;
+    L_stComBuffer : string;
+    NodeDeviceList : TStringList;
+    FOnDeviceConnected: TDeviceConnect;
+    FOnRcvInvalidDevice: TNotifyReceive;
+    FOnSendData: TNotifyReceive;
+    FOnRcvData: TNotifyReceive;
+    { Private declarations }
+    procedure RcvCheckTimerTimer(Sender: TObject);
+  private
+    FReciveStateChange: Boolean;
+    procedure TcpClientReceive(Sender: TObject; Buf: PAnsiChar;
+      var DataLen: Integer);
+    procedure TcpClientConnect(Sender: TObject);
+    procedure TcpClientDisconnect(Sender: TObject);
+    procedure TcpClientError(Sender: TObject; SocketError: Integer);
+    procedure TcpClientSend(Sender: TObject; Buf: PAnsiChar;
+      var DataLen: Integer);
+
+    procedure NodeDataReadingProcessing;
+    procedure SetReciveStateChange(const Value: Boolean);
+    procedure NodeInformationSend(aInformationType:integer);
+    procedure NodeInformationCheck(aInformationType:integer);
+  public
+    constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
+    procedure handle_wm_async_select(var Msg: TMessage);
+                message wm_asynch_select;
+  public
+    function  GetSendMsgNo:char;
+  public
+    { Public declarations }
+    Procedure  SendPacket(aEcuId: String;aCmd:Char;aMsgNo:char;aDeviceVer, aData: String;aPriority:integer=0);
+    function PutString(aData:string):Boolean;
+  published
+    property SocketOpen : Boolean read FSocketOpen write SetSocketOpen;
+    property NodeConnected : Boolean read FNodeConnected write SetNodeConnected;
+  published
+    //설정값 정보
+    Property No: Integer Read FNo write SetNo;
+    Property DeviceID:string Read FDeviceID write SetDeviceID;   //노드 아이디 7자리
+    Property NodeName:string Read FNodeName write SetNodeName;   //노드 명
+    property LANIP : string read FLanIP write SetLanIP;
+    property LANPort : integer read FLanPort write SetLanPort;
+    property KTTSYSTEMID : string read FKTTSYSTEMID write SetKTTSYSTEMID;  //관제 시스템 아이디
+    property KTTTELNUMBER1 : string read FKTTTELNUMBER1 write SetKTTTELNUMBER1;  //관제 데코더 전화번호1
+    property KTTTELNUMBER2 : string read FKTTTELNUMBER2 write SetKTTTELNUMBER2;  //관제 데코더 전화번호2
+    property KTTREMOTEARMRINGCOUNT : integer read FKTTREMOTEARMRINGCOUNT write SetKTTREMOTEARMRINGCOUNT;  //원격경계시 링횟수
+    property KTTREMOTEDISARMRINGCOUNT : integer read FKTTREMOTEDISARMRINGCOUNT write SetKTTREMOTEDISARMRINGCOUNT;  //원격해제시 링횟수
+    property KTTCDMASKILL : Boolean read FKTTCDMASKILL write SetKTTCDMASKILL;   //CDMA 기능 유무
+    property KTTCDMAUSE : string read FKTTCDMAUSE write SetKTTCDMAUSE; //CDMA 사용 유무 0.미사용,1.사용
+    property KTTCDMAIP : string read FKTTCDMAIP write SetKTTCDMAIP;     //CDMA IP
+    property KTTCDMAPORT : string read FKTTCDMAPORT write SetKTTCDMAPORT; //CDMA Port
+    property KTTCDMACHECKTIME : string read FKTTCDMACHECKTIME write SetKTTCDMACHECKTIME; //CDMA check time
+    property KTTCDMARSSI : string read FKTTCDMARSSI write SetKTTCDMARSSI; //CDMA rssi
+    property KTTCDMAMIN : string read FKTTCDMAMIN write SetKTTCDMAMIN;
+    property KTTCDMAUMUX : string read FKTTCDMAUMUX write SetKTTCDMAUMUX;
+    property DVRSKILL : Boolean read FDVRSKILL write SetDVRSKILL;   //DVR 기능 유무
+    property DVRUSE : string read FDVRUSE write SetDVRUSE; //DVR 사용 유무 0.미사용,1.사용
+    property DVRIP : string read FDVRIP write SetDVRIP; //DVR IP
+    property DVRPORT : string read FDVRPORT write SetDVRPORT; //DVR Port
+    property FIREGUBUNCODE : string read FFIREGUBUNCODE write SetFIREGUBUNCODE; //화재그룹코드
+    property GETDEVICE : string read FGETDEVICE write SetGETDEVICE;   //확장기 갯수 가져왔는지 여부 0.안가져옴
+    property ReciveStateChange : Boolean read FReciveStateChange write SetReciveStateChange; //수신 상태 변경 여부
+  published
+    //수신상태 정보
+    property KTTSYSTEMIDRCV : string read FKTTSYSTEMIDRCV write SetKTTSYSTEMIDRCV;  //관제 시스템 아이디
+    property KTTTELNUMBER1RCV : string read FKTTTELNUMBER1RCV write SetKTTTELNUMBER1RCV;  //관제 데코더 전화번호1
+    property KTTTELNUMBER2RCV : string read FKTTTELNUMBER2RCV write SetKTTTELNUMBER2RCV;  //관제 데코더 전화번호2
+    property KTTREMOTEARMRINGCOUNTRCV : integer read FKTTREMOTEARMRINGCOUNTRCV write SetKTTREMOTEARMRINGCOUNTRCV;  //원격경계시 링횟수
+    property KTTREMOTEDISARMRINGCOUNTRCV : integer read FKTTREMOTEDISARMRINGCOUNTRCV write SetKTTREMOTEDISARMRINGCOUNTRCV;  //원격해제시 링횟수
+    property KTTCDMASKILLRCV : Boolean read FKTTCDMASKILLRCV write SetKTTCDMASKILLRCV;   //CDMA 기능 유무
+    property KTTCDMAUSERCV : string read FKTTCDMAUSERCV write SetKTTCDMAUSERCV; //CDMA 사용 유무 0.미사용,1.사용
+    property KTTCDMAIPRCV : string read FKTTCDMAIPRCV write SetKTTCDMAIPRCV;     //CDMA IP
+    property KTTCDMAPORTRCV : string read FKTTCDMAPORTRCV write SetKTTCDMAPORTRCV; //CDMA Port
+    property KTTCDMACHECKTIMERCV : string read FKTTCDMACHECKTIMERCV write SetKTTCDMACHECKTIMERCV; //CDMA check time
+    property KTTCDMARSSIRCV : string read FKTTCDMARSSIRCV write SetKTTCDMARSSIRCV; //CDMA rssi
+    property KTTCDMAMINRCV : string read FKTTCDMAMINRCV write SetKTTCDMAMINRCV;
+    property KTTCDMAUMUXRCV : string read FKTTCDMAUMUXRCV write SetKTTCDMAUMUXRCV;
+    property DVRSKILLRCV : Boolean read FDVRSKILLRCV write SetDVRSKILLRCV;   //DVR 기능 유무
+    property DVRUSERCV : string read FDVRUSERCV write SetDVRUSERCV; //DVR 사용 유무 0.미사용,1.사용
+    property DVRIPRCV : string read FDVRIPRCV write SetDVRIPRCV; //DVR IP
+    property DVRPORTRCV : string read FDVRPORTRCV write SetDVRPORTRCV; //DVR Port
+  published
+    //노드 이벤트
+    ProPerty OnDeviceConnected : TDeviceConnect read FOnDeviceConnected Write FOnDeviceConnected;
+    ProPerty OnRcvData : TNotifyReceive read FOnRcvData write FOnRcvData;
+    ProPerty OnRcvInvalidDevice: TNotifyReceive read FOnRcvInvalidDevice write FOnRcvInvalidDevice;
+    ProPerty OnSendData : TNotifyReceive read FOnSendData write FOnSendData;
+  end;
+
+  TDevice = Class(TComponent)
+  private
+    FDeviceID: string;
+    FDeviceUse: Boolean;
+    FFireGroupCode: string;
+    DeviceDoorList : TStringList;
+    DeviceArmAreaList : TStringList;
+    FDeviceNode: TNode;
+    FDeviceConnected: Boolean;
+    procedure SetDeviceNode(const Value: TNode);
+    procedure SetDeviceConnected(const Value: Boolean);
+  private
+    L_stDeviceVer : string;
+    FReciveStateChange: Boolean;
+    procedure SetReciveStateChange(const Value: Boolean);
+    { Private declarations }
+  public
+    constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
+  published
+    property ReciveStateChange : Boolean read FReciveStateChange write SetReciveStateChange; //수신 상태 변경 여부
+  published
+    property DeviceConnected : Boolean read FDeviceConnected write SetDeviceConnected;
+    Property DeviceNode: TNode Read FDeviceNode write SetDeviceNode;
+    property DeviceID : string read FDeviceID write FDeviceID;
+    property DeviceUse : Boolean read FDeviceUse write FDeviceUse; //기기사용유무
+    property FireGroupCode : string read FFireGroupCode write FFireGroupCode;  //화재 발생시 전송 그룹 코드
+  public
+    { Public declarations }
+
+  End;
+
+  TDeviceDoor = Class(TComponent)
+  private
+    FDoorNo: integer;
+    FDoorUse: Boolean;
+    { Private declarations }
+  published
+    property DoorNo : integer read FDoorNo write FDoorNo;
+    property DoorUse : Boolean read FDoorUse write FDoorUse; //출입문사용유무
+  public
+    { Public declarations }
+  end;
+
+  TDeviceArmArea = Class(TComponent)
+  private
+    FArmAreaNo: integer;
+    FArmAreaUse: Boolean;
+    { Private declarations }
+  published
+    property ArmAreaNo : integer read FArmAreaNo write FArmAreaNo;
+    property ArmAreaUse : Boolean read FArmAreaUse write FArmAreaUse; //출입문사용유무
+  public
+    { Public declarations }
+  end;
+
+  TdmDevice = class(TDataModule)
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+  end;
+
+var
+  dmDevice: TdmDevice;
+  NodeList : TStringList;
+
+implementation
+
+uses
+  uCommonFunction,
+  uCommonVariable,
+  uDeviceFunction;
+
+{%CLASSGROUP 'System.Classes.TPersistent'}
+
+{$R *.dfm}
+
+{ TNode }
+
+constructor TNode.Create(AOwner: TComponent);
+var
+  i : integer;
+  oDevice : TDevice;
+begin
+  inherited;
+
+  for i := 0 to HIGH(L_cRCVSTATE) do
+  begin
+    L_cRCVSTATE[i] := 'Y';
+  end;
+  L_nSendMsgNo := 0;
+
+  FTCSDeviceSender := TCriticalSection.Create;
+
+  NodeDeviceList := TStringList.Create;
+  for i := 0 to G_nMaxECUCount do
+  begin
+    oDevice := TDevice.Create(nil);
+    oDevice.DeviceID := FillZeroNumber(i,2);
+    if i = 0 then oDevice.DeviceUse := True
+    else oDevice.DeviceUse := False;
+    oDevice.DeviceNode := self;
+    NodeDeviceList.AddObject(FillZeroNumber(i,2),oDevice);
+  end;
+  l_client_socket_handle := Invalid_Socket;
+  l_c_reception_buffer := Nil;
+  RcvCheckTimer := TTimer.Create;
+  RcvCheckTimer.Interval := 300;
+  RcvCheckTimer.OnTimer := RcvCheckTimerTimer;
+  RcvCheckTimer.Enabled := False;
+end;
+
+destructor TNode.Destroy;
+var
+  i : integer;
+begin
+  ReciveStateChange := False;
+  for i := NodeDeviceList.Count - 1 downto 0 do
+  begin
+    TDevice(NodeDeviceList.Objects[i]).Free;
+  end;
+  NodeDeviceList.Clear;
+  NodeDeviceList.Free;
+  FTCSDeviceSender.Free;
+  inherited;
+end;
+
+function TNode.GetSendMsgNo: char;
+begin
+  result := inttostr(L_nSendMsgNo)[1];
+  L_nSendMsgNo := L_nSendMsgNo + 1;
+  if L_nSendMsgNo > 9 then L_nSendMsgNo := 0;
+end;
+
+procedure TNode.handle_wm_async_select(var Msg: TMessage);
+// -- wParam: hSocket, lo(lParam): notification, hi(lParam): error
+      procedure handle_fd_connect_notification(p_socket: Integer);
+      begin
+        TcpClientConnect(self);
+      end; // handle_fd_connect_notification
+
+      procedure handle_fd_write_notification(p_socket: Integer);
+      begin
+      end; // handle_fd_write_notification
+
+      procedure handle_fd_read_notification(p_socket: tSocket);
+        var l_remaining: Integer;
+            l_pt_start_reception: Pointer;
+            l_packet_bytes: Integer;
+            l_eol_position: Integer;
+        begin
+          with l_c_reception_buffer do
+          begin
+            l_remaining:= m_buffer_size- m_write_index;
+
+            // -- if not at least a tcp-ip chunk, increase the room
+            if l_remaining < k_tcp_ip_chunk then
+            begin
+              // -- reallocate
+              double_the_capacity;
+              l_remaining:= m_buffer_size- m_write_index;
+            end;
+
+            // -- add the received data to the current buffer
+            l_pt_start_reception:= @ m_oa_byte_buffer[m_write_index];
+
+            // -- get the data from the client socket
+            l_packet_bytes:= Recv(l_client_socket_handle, l_pt_start_reception^, l_remaining, 0);
+            if l_packet_bytes < 0 then TcpClientError(self,WSAGetLastError)
+            else
+            begin
+              TcpClientReceive(self, l_pt_start_reception, l_packet_bytes);
+              (*
+              if l_packet_bytes > 0 then
+              begin
+                m_write_index := m_write_index + l_packet_bytes;
+
+                // -- fetch the size
+                l_eol_position:= f_return_line_feed_position(0);
+                if (g_file_size= 0) and (l_eol_position> 0) then
+                begin
+                  g_file_size:= StrToInt(f_extract_string_start_end(0, l_eol_position- 3));
+                  remove_from_start(l_eol_position);
+                end;
+
+              end; // if l_packet_bytes
+              *)
+            end;
+          end; // with g_c_reception_buffer
+
+        end; // handle_fd_read_notification
+
+      procedure handle_fd_close_notification(p_socket: Integer);
+      var l_status: Integer;
+          l_linger: TLinger;
+          l_absolute_linger: array[0..3] of char absolute l_linger;
+      begin
+        if WSAIsBlocking
+          then
+            begin
+              WSACancelBlockingCall;
+            end;
+
+        ShutDown(p_socket, 2);
+        l_linger.l_onoff:= 1;
+        l_linger.l_linger:= 0;
+
+        SetSockOpt(p_socket, Sol_Socket, So_Linger, pAnsichar(l_absolute_linger[0]), sizeof(l_linger));
+
+        l_status:= CloseSocket(p_socket);
+        if l_status <> 0 then
+          TcpClientDisconnect(self);
+      end; // handle_fd_close_notification
+
+var l_param: Integer;
+    l_error, l_notification: Integer;
+    l_socket_handle: Integer;
+
+begin // handle_wm_async_select
+    l_param:= Msg.lParam;
+    l_socket_handle:= Msg.wParam;
+
+    // -- extract the error and the notification code from l_param
+    l_error:= wsaGetSelectError(l_param);
+    l_notification:= wsaGetSelectEvent(l_param);
+
+    if l_error <= wsaBaseErr then
+    begin
+        case l_notification of
+          FD_CONNECT: handle_fd_connect_notification(l_socket_handle);
+          FD_ACCEPT: {display_bug_stop('no_client_accept')} ;
+          FD_WRITE: handle_fd_write_notification(l_socket_handle);
+          FD_READ: handle_fd_read_notification(l_socket_handle);
+          FD_CLOSE: handle_fd_close_notification(l_socket_handle);
+        end // case
+    end else
+    begin
+      if l_notification= FD_CLOSE then handle_fd_close_notification(l_socket_handle)
+      else TcpClientError(self,WSAGetLastError);
+    end;
+
+end;
+
+procedure TNode.NodeDataReadingProcessing;
+begin
+
+end;
+
+procedure TNode.NodeInformationCheck(aInformationType: integer);
+begin
+  case aInformationType of
+    con_NODEKTTSYSTEMID: begin
+    end;  //관제 시스템 아이디
+    con_NODEKTTTELNUMBER1: begin
+    end;  //관제 데코더 전화번호1
+    con_NODEKTTTELNUMBER2: begin
+    end;  //관제 데코더 전화번호2
+    con_NODEKTTREMOTEARMRINGCOUNT: begin
+    end;  //원격경계시 링횟수
+    con_NODEKTTREMOTEDISARMRINGCOUNT: begin
+    end;  //원격해제시 링횟수
+    con_NODEKTTCDMASKILL: begin
+    end;   //CDMA 기능 유무
+    con_NODEKTTCDMAUSE: begin
+    end; //CDMA 사용 유무 0.미사용,1.사용
+    con_NODEKTTCDMAIP: begin
+    end;     //CDMA IP
+    con_NODEKTTCDMAPORT: begin
+    end; //CDMA Port
+    con_NODEKTTCDMACHECKTIME: begin
+    end; //CDMA check time
+    con_NODEKTTCDMARSSI: begin
+    end; //CDMA rssi
+    con_NODEKTTCDMAMIN: begin
+    end;
+    con_NODEKTTCDMAUMUX: begin
+    end;
+    con_NODEDVRSKILL: begin
+    end;   //DVR 기능 유무
+    con_NODEDVRUSE: begin
+    end; //DVR 사용 유무 0.미사용,1.사용
+    con_NODEDVRIP: begin
+    end; //DVR IP
+    con_NODEDVRPORT: begin
+    end; //DVR Port
+
+  end;
+end;
+
+procedure TNode.NodeInformationSend(aInformationType: integer);
+begin
+
+end;
+
+function TNode.PutString(aData: string): Boolean;
+var
+  l_result: Integer;
+begin
+  Try
+    FTCSDeviceSender.Enter;
+    result := False;
+    if Not NodeConnected then Exit;
+
+    Try
+      l_result:= Send(l_client_socket_handle,aData[1], Length(aData), 0);
+
+      if l_result < 0 then TcpClientError(self,WSAGetLastError);
+    Except
+      Exit;
+    End;
+    result := True;
+  Finally
+    FTCSDeviceSender.Leave;
+  End;
+end;
+
+procedure TNode.RcvCheckTimerTimer(Sender: TObject);
+var
+  i : integer;
+  bReciveStateCheck : Boolean;
+begin
+  Try
+    RcvCheckTimer.Enabled := False;
+    for i := 0 to HIGH(L_cRCVSTATE) do
+    begin
+      if L_cRCVSTATE[i] = 'U' then  //변경된 건이 있으면 송신 하자....
+      begin
+        NodeInformationSend(i);
+        Exit;
+      end;
+    end;
+    for i := 0 to HIGH(L_cRCVSTATE) do
+    begin
+      if L_cRCVSTATE[i] = 'N' then  //상태를 수신할 건이 있으면 수신 체크 하자....
+      begin
+        NodeInformationCheck(i);
+        Exit;
+      end;
+    end;
+
+    //여기서는 수신상태 체크 하는 곳
+    bReciveStateCheck := False;
+    for i := 0 to HIGH(L_cRCVSTATE) do
+    begin
+      if L_cRCVSTATE[i] <> 'Y' then
+      begin
+        bReciveStateCheck := True;
+        break;
+      end;
+    end;
+    ReciveStateChange := bReciveStateCheck;
+  Finally
+    //RcvCheckTimer.Enabled := ReciveStateChange;  //수신상태를 변경 하면서 무조건 수행 됨
+  End;
+
+end;
+
+procedure TNode.SendPacket(aEcuId: String;aCmd: Char;aMsgNo:char;aDeviceVer,aData: String; aPriority: integer);
+var
+  stDeviceID : string;
+  nDataLength : integer;
+  stLen : string;
+  stPacket : string;
+begin
+  if Not NodeConnected then Exit;
+  stDeviceID := FillZeroNumber(0,G_nIDLength) + aEcuID;
+  nDataLength := (G_nIDLength + 14) + Length(aData);
+  stLen := FillZeroNumber(nDataLength, 3);
+  if aCmd = 'a' then {응답 처리}
+     stPacket := dmDeviceFunction.PacketCreate(G_nProgramType,stLen,aDeviceVer,stDeviceID,aCmd,aData,aMsgNo)
+  else {제어 or 등록 }
+  begin
+    stPacket := dmDeviceFunction.PacketCreate(G_nProgramType,stLen,aDeviceVer,stDeviceID,aCmd,aData,aMsgNo);
+  end;
+  if aPriority = 0 then
+  begin
+    PutString(stPacket); //소켓에 바로 전송 --ack 데이터
+  end;
+
+end;
+
+procedure TNode.SetDeviceID(const Value: string);
+begin
+  FDeviceID := Value;
+end;
+
+procedure TNode.SetDVRIP(const Value: string);
+begin
+  FDVRIP := Value;
+end;
+
+procedure TNode.SetDVRIPRCV(const Value: string);
+begin
+  L_cRCVSTATE[con_NODEDVRIP] := Value[1];
+  if FDVRIPRCV = Value then Exit;
+  FDVRIPRCV := Value;
+  ReciveStateChange:=True;
+end;
+
+procedure TNode.SetDVRPORT(const Value: string);
+begin
+  FDVRPORT := Value;
+end;
+
+
+procedure TNode.SetDVRPORTRCV(const Value: string);
+begin
+  L_cRCVSTATE[con_NODEDVRPORT] := Value[1];
+  if FDVRPORTRCV = Value then Exit;
+  FDVRPORTRCV := Value;
+  ReciveStateChange:=True;
+end;
+
+procedure TNode.SetDVRSKILL(const Value: Boolean);
+begin
+  FDVRSKILL := Value;
+end;
+
+procedure TNode.SetDVRSKILLRCV(const Value: Boolean);
+begin
+  L_cRCVSTATE[con_NODEDVRSKILL] := Value[1];
+  if FDVRSKILLRCV = Value then Exit;
+  FDVRSKILLRCV := Value;
+  ReciveStateChange:=True;
+end;
+
+procedure TNode.SetDVRUSE(const Value: string);
+begin
+  FDVRUSE := Value;
+end;
+
+procedure TNode.SetDVRUSERCV(const Value: string);
+begin
+  L_cRCVSTATE[con_NODEDVRSKILL] := Value[1];
+  if FDVRUSERCV = Value then Exit;
+  FDVRUSERCV := Value;
+  ReciveStateChange:=True;
+end;
+
+procedure TNode.SetFIREGUBUNCODE(const Value: string);
+begin
+  FFIREGUBUNCODE := Value;
+end;
+
+procedure TNode.SetGETDEVICE(const Value: string);
+begin
+  FGETDEVICE := Value;
+end;
+
+procedure TNode.SetKTTCDMACHECKTIME(const Value: string);
+begin
+  FKTTCDMACHECKTIME := Value;
+end;
+
+procedure TNode.SetKTTCDMACHECKTIMERCV(const Value: string);
+begin
+  L_cRCVSTATE[con_NODEKTTCDMACHECKTIME] := Value[1];
+  if FKTTCDMACHECKTIMERCV = Value then Exit;
+  FKTTCDMACHECKTIMERCV := Value;
+  ReciveStateChange:=True;
+end;
+
+procedure TNode.SetKTTCDMAIP(const Value: string);
+begin
+  FKTTCDMAIP := Value;
+end;
+
+procedure TNode.SetKTTCDMAIPRCV(const Value: string);
+begin
+  L_cRCVSTATE[con_NODEKTTCDMAIP] := Value[1];
+  if FKTTCDMAIPRCV = Value then Exit;
+  FKTTCDMAIPRCV := Value;
+  ReciveStateChange:=True;
+end;
+
+procedure TNode.SetKTTCDMAMIN(const Value: string);
+begin
+  FKTTCDMAMIN := Value;
+end;
+
+procedure TNode.SetKTTCDMAMINRCV(const Value: string);
+begin
+  L_cRCVSTATE[con_NODEKTTCDMAMIN] := Value[1];
+  if FKTTCDMAMINRCV = Value then Exit;
+  FKTTCDMAMINRCV := Value;
+  ReciveStateChange:=True;
+end;
+
+procedure TNode.SetKTTCDMAPORT(const Value: string);
+begin
+  FKTTCDMAPORT := Value;
+end;
+
+procedure TNode.SetKTTCDMAPORTRCV(const Value: string);
+begin
+  L_cRCVSTATE[con_NODEKTTCDMAPORT] := Value[1];
+  if FKTTCDMAPORTRCV = Value then Exit;
+  FKTTCDMAPORTRCV := Value;
+  ReciveStateChange:=True;
+end;
+
+procedure TNode.SetKTTCDMARSSI(const Value: string);
+begin
+  FKTTCDMARSSI := Value;
+end;
+
+procedure TNode.SetKTTCDMARSSIRCV(const Value: string);
+begin
+  L_cRCVSTATE[con_NODEKTTCDMARSSI] := Value[1];
+  if FKTTCDMARSSIRCV = Value then Exit;
+  ReciveStateChange:=True;
+  FKTTCDMARSSIRCV := Value;
+end;
+
+procedure TNode.SetKTTCDMASKILL(const Value: Boolean);
+begin
+  FKTTCDMASKILL := Value;
+end;
+
+procedure TNode.SetKTTCDMASKILLRCV(const Value: Boolean);
+begin
+  L_cRCVSTATE[con_NODEKTTCDMASKILL] := Value[1];
+  if FKTTCDMASKILLRCV = Value then Exit;
+  ReciveStateChange:=True;
+  FKTTCDMASKILLRCV := Value;
+end;
+
+procedure TNode.SetKTTCDMAUMUX(const Value: string);
+begin
+  FKTTCDMAUMUX := Value;
+end;
+
+procedure TNode.SetKTTCDMAUMUXRCV(const Value: string);
+begin
+  L_cRCVSTATE[con_NODEKTTCDMAUMUX] := Value[1];
+  if FKTTCDMAUMUXRCV = Value then Exit;
+  ReciveStateChange:=True;
+  FKTTCDMAUMUXRCV := Value;
+end;
+
+procedure TNode.SetKTTCDMAUSE(const Value: string);
+begin
+  FKTTCDMAUSE := Value;
+end;
+
+procedure TNode.SetKTTCDMAUSERCV(const Value: string);
+begin
+  L_cRCVSTATE[con_NODEKTTCDMAUSE] := Value[1];
+  if FKTTCDMAUSERCV = Value then Exit;
+  ReciveStateChange:=True;
+  FKTTCDMAUSERCV := Value;
+end;
+
+procedure TNode.SetKTTREMOTEARMRINGCOUNT(const Value: integer);
+begin
+  FKTTREMOTEARMRINGCOUNT := Value;
+end;
+
+procedure TNode.SetKTTREMOTEARMRINGCOUNTRCV(const Value: integer);
+begin
+  L_cRCVSTATE[con_NODEKTTREMOTEARMRINGCOUNT] := Value[1];
+  if FKTTREMOTEARMRINGCOUNTRCV = Value then Exit;
+  ReciveStateChange:=True;
+  FKTTREMOTEARMRINGCOUNTRCV := Value;
+end;
+
+procedure TNode.SetKTTREMOTEDISARMRINGCOUNT(const Value: integer);
+begin
+  FKTTREMOTEDISARMRINGCOUNT := Value;
+end;
+
+procedure TNode.SetKTTREMOTEDISARMRINGCOUNTRCV(const Value: integer);
+begin
+  L_cRCVSTATE[con_NODEKTTREMOTEDISARMRINGCOUNT] := Value[1];
+  if FKTTREMOTEDISARMRINGCOUNTRCV = Value then Exit;
+  ReciveStateChange:=True;
+  FKTTREMOTEDISARMRINGCOUNTRCV := Value;
+end;
+
+procedure TNode.SetKTTSYSTEMID(const Value: string);
+begin
+  FKTTSYSTEMID := Value;
+end;
+
+procedure TNode.SetKTTSYSTEMIDRCV(const Value: string);
+begin
+  L_cRCVSTATE[con_NODEKTTSYSTEMID] := Value[1];
+  if FKTTSYSTEMIDRCV = Value then Exit;
+  ReciveStateChange:=True;
+  FKTTSYSTEMIDRCV := Value;
+end;
+
+procedure TNode.SetKTTTELNUMBER1(const Value: string);
+begin
+  FKTTTELNUMBER1 := Value;
+end;
+
+procedure TNode.SetKTTTELNUMBER1RCV(const Value: string);
+begin
+  L_cRCVSTATE[con_NODEKTTTELNUMBER1] := Value[1];
+  if FKTTTELNUMBER1RCV = Value then Exit;
+  ReciveStateChange:=True;
+  FKTTTELNUMBER1RCV := Value;
+end;
+
+procedure TNode.SetKTTTELNUMBER2(const Value: string);
+begin
+  FKTTTELNUMBER2 := Value;
+end;
+
+procedure TNode.SetKTTTELNUMBER2RCV(const Value: string);
+begin
+  L_cRCVSTATE[con_NODEKTTTELNUMBER2] := Value[1];
+  if FKTTTELNUMBER2RCV = Value then Exit;
+  ReciveStateChange:=True;
+  FKTTTELNUMBER2RCV := Value;
+end;
+
+procedure TNode.SetLanIP(const Value: string);
+begin
+  FLanIP := Value;
+//  RemoteHost := Value;
+end;
+
+procedure TNode.SetLanPort(const Value: integer);
+begin
+  FLanPort := Value;
+//  RemotePort := inttostr(Value);
+end;
+
+procedure TNode.SetNo(const Value: Integer);
+begin
+  FNo := Value;
+end;
+
+procedure TNode.SetNodeConnected(const Value: Boolean);
+var
+  i : integer;
+  nIndex : integer;
+begin
+  if FNodeConnected = Value then Exit;
+  FNodeConnected := Value;
+
+  if Value then
+  begin
+    nIndex := NodeDeviceList.IndexOf('00');
+    if nIndex > -1 then
+      TDevice(NodeDeviceList.Objects[0]).DeviceConnected := True;
+    //시간 동기화 날리자.
+    //컨트롤러 통신상태 확인 전문 날리자.
+  end;
+  if Not Value then
+  begin
+    for i := 0 to NodeDeviceList.Count - 1 do
+    begin
+      TDevice(NodeDeviceList.Objects[i]).DeviceConnected := False;
+    end;
+  end;
+end;
+
+procedure TNode.SetNodeName(const Value: string);
+begin
+  FNodeName := Value;
+end;
+
+procedure TNode.SetReciveStateChange(const Value: Boolean);
+begin
+  FReciveStateChange := Value;   //수신상태 변경 되었을때 이곳으로
+  if Value then
+     RcvCheckTimer.Enabled := True; //수신상태 체크
+end;
+
+procedure TNode.SetSocketOpen(const Value: Boolean);
+var
+  l_result : Integer;
+  l_error: Integer;
+  l_version : Word;
+  l_socket_address_in: tSockAddrIn;
+  l_ip_z: array[0..255] of char;
+begin
+  if FSocketOpen = Value then Exit;
+  if Value then
+  begin
+    l_version:= $0101;
+    l_result := wsaStartup(l_version, l_wsa_data);
+    if l_result <> 0 then
+    begin
+      SocketOpen := False;
+      Exit;  //소켓생성 실패 시에 Open False
+    end;
+    l_client_socket_handle:= Socket(PF_INET, SOCK_STREAM, IPPROTO_IP);
+    if l_client_socket_handle = INVALID_SOCKET then
+    begin
+      SocketOpen := False;
+      Exit;  //소켓생성 실패 시에 Open False
+    end;
+    l_result:= wsaAsyncSelect(l_client_socket_handle, No,
+        wm_asynch_select,
+        FD_CONNECT+ FD_READ+ FD_WRITE+ FD_CLOSE);
+
+    FillChar(l_socket_address_in, sizeof(l_socket_address_in), 0);
+    with l_socket_address_in do
+    begin
+      sin_family:= pf_Inet;
+      // -- the requested service
+      sin_port:= hToNs(LANPort);
+      // -- the server IP address
+      StrPCopy(l_ip_z, LANIP);
+      sin_addr.s_Addr:= inet_addr(PAnsichar(l_ip_z[0]));
+    end; // with m_socket_address_in
+    l_result:= Connect(l_client_socket_handle, l_socket_address_in,
+        sizeof(l_socket_address_in));
+    if l_result<> 0 then
+    begin
+      l_error:= WSAGetLastError;
+      if l_error <> wsaEWouldBlock then
+      begin
+        SocketOpen := False;
+        Exit;  //소켓생성 실패 시에 Open False
+      end;
+    end;
+  end else
+  begin
+    if l_client_socket_handle <> INVALID_SOCKET then
+    begin
+      l_result:= CloseSocket(l_client_socket_handle);
+      if l_result = 0 then
+      begin
+        l_client_socket_handle:= INVALID_SOCKET;
+        l_c_reception_buffer.Free;
+        l_c_reception_buffer:= Nil;
+      end;
+    end;
+  end;
+  FSocketOpen := Value;
+end;
+
+
+procedure TNode.TcpClientConnect(Sender: TObject);
+begin
+  NodeConnected := True;
+end;
+
+procedure TNode.TcpClientDisconnect(Sender: TObject);
+begin
+  NodeConnected := False;
+end;
+
+procedure TNode.TcpClientError(Sender: TObject; SocketError: Integer);
+begin
+  if SocketError = WSAEWOULDBLOCK then Tag := 0
+  else begin
+    NodeConnected := False;
+    Tag := SocketError;
+  end;
+
+end;
+
+procedure TNode.TcpClientReceive(Sender: TObject; Buf: PAnsiChar;
+  var DataLen: Integer);
+begin
+  L_stComBuffer := L_stComBuffer + Buf;
+  NodeDataReadingProcessing;
+
+end;
+
+procedure TNode.TcpClientSend(Sender: TObject; Buf: PAnsiChar;
+  var DataLen: Integer);
+begin
+
+end;
+
+{ TDevice }
+
+constructor TDevice.Create(AOwner: TComponent);
+begin
+  inherited;
+  L_stDeviceVer := 'K1';  //컨트롤러의 디폴트 버젼 정보
+  DeviceDoorList := TStringList.Create;
+  DeviceArmAreaList := TStringList.Create;
+end;
+
+destructor TDevice.Destroy;
+begin
+
+  inherited;
+end;
+
+procedure TDevice.SetDeviceConnected(const Value: Boolean);
+begin
+  FDeviceConnected := Value;
+end;
+
+procedure TDevice.SetDeviceNode(const Value: TNode);
+begin
+  FDeviceNode := Value;
+end;
+
+procedure TDevice.SetReciveStateChange(const Value: Boolean);
+begin
+  FReciveStateChange := Value;
+end;
+
+end.

@@ -1,0 +1,35 @@
+unit uSprash;
+
+interface
+
+uses
+  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
+  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls, EllipsLabel, Vcl.ExtCtrls,
+  Vcl.ComCtrls, AdvProgr, Vcl.Samples.Gauges;
+
+type
+  TfmSprash = class(TForm)
+    Timer1: TTimer;
+    EllipsLabel1: TEllipsLabel;
+    Progress1: TGauge;
+    procedure Timer1Timer(Sender: TObject);
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+  end;
+
+var
+  fmSprash: TfmSprash;
+
+implementation
+
+{$R *.dfm}
+
+procedure TfmSprash.Timer1Timer(Sender: TObject);
+begin
+  Progress1.Progress := Progress1.Progress + 1;
+  if Progress1.Progress > Progress1.MaxValue then Progress1.Progress := 0;
+end;
+
+end.

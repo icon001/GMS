@@ -1,0 +1,983 @@
+unit uMain;
+
+interface
+
+uses
+  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
+  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, AdvGlowButton, AdvSmoothLabel,
+  Vcl.StdCtrls, AdvAppStyler, AdvSmoothLedLabel,System.IniFiles,ActiveX,ADODB,
+  Vcl.ExtCtrls, AdvSmoothPanel, Vcl.Imaging.pngimage, AdvSmoothCircularProgress,
+  Vcl.Grids, AdvObj, BaseGrid, AdvGrid, Vcl.Buttons,uSubForm, CommandArray,
+  AdvGroupBox, AdvEdit;
+
+type
+
+  TfmMain = class(TfmASubForm)
+    pan_Main: TAdvSmoothPanel;
+    AdvSmoothPanel1: TAdvSmoothPanel;
+    AdvSmoothLabel1: TAdvSmoothLabel;
+    AdvSmoothPanel2: TAdvSmoothPanel;
+    AdvSmoothLabel2: TAdvSmoothLabel;
+    btn_FoodOut: TAdvGlowButton;
+    AdvSmoothPanel3: TAdvSmoothPanel;
+    lb_CurrentFoodCount: TAdvSmoothLedLabel;
+    AdvSmoothPanel4: TAdvSmoothPanel;
+    lb_CurrentFoodOutCount: TAdvSmoothLedLabel;
+    RelayTimer: TTimer;
+    Panel1: TPanel;
+    Image1: TImage;
+    Panel2: TPanel;
+    pan_Body: TPanel;
+    Label13: TLabel;
+    Label12: TLabel;
+    Image8: TImage;
+    btn_Close: TImage;
+    Timer2: TTimer;
+    Image4: TImage;
+    lb_time: TAdvSmoothLabel;
+    lb_Weekend: TAdvSmoothLabel;
+    lb_Date: TAdvSmoothLabel;
+    AdvFormStyler1: TAdvFormStyler;
+    Img_Report: TImage;
+    btn_Config: TImage;
+    pan_Left: TPanel;
+    pan_LTop: TPanel;
+    AdvSmoothLabel3: TAdvSmoothLabel;
+    sg_VisitCard: TAdvStringGrid;
+    btn_CardCreate: TSpeedButton;
+    pan_LBottom: TPanel;
+    AdvSmoothLabel4: TAdvSmoothLabel;
+    sg_VisitList: TAdvStringGrid;
+    btn_CardReturn: TSpeedButton;
+    pan_Right: TPanel;
+    sg_dayVisit: TAdvStringGrid;
+    AdvSmoothLabel5: TAdvSmoothLabel;
+    AdvSmoothLabel6: TAdvSmoothLabel;
+    AdvSmoothLabel7: TAdvSmoothLabel;
+    AdvSmoothLabel8: TAdvSmoothLabel;
+    Splitter1: TSplitter;
+    Splitter2: TSplitter;
+    procedure btn_CloseClick(Sender: TObject);
+    procedure FormShow(Sender: TObject);
+    procedure FormClose(Sender: TObject; var Action: TCloseAction);
+    procedure FormResize(Sender: TObject);
+    procedure FormActivate(Sender: TObject);
+    procedure Timer2Timer(Sender: TObject);
+    procedure Image1MouseDown(Sender: TObject; Button: TMouseButton;
+      Shift: TShiftState; X, Y: Integer);
+    procedure FormCreate(Sender: TObject);
+    procedure RelayTimerTimer(Sender: TObject);
+    procedure btn_ConfigClick(Sender: TObject);
+    procedure btn_CardCreateClick(Sender: TObject);
+    procedure Pan_EmcodeMouseMove(Sender: TObject; Shift: TShiftState; X,
+      Y: Integer);
+    procedure btn_CardReturnClick(Sender: TObject);
+    procedure sg_VisitListDblClick(Sender: TObject);
+    procedure sg_VisitCardDblClick(Sender: TObject);
+    procedure Img_ReportClick(Sender: TObject);
+    procedure Image1DblClick(Sender: TObject);
+    procedure pan_LTopResize(Sender: TObject);
+    procedure pan_LBottomResize(Sender: TObject);
+    procedure pan_RightResize(Sender: TObject);
+  private
+    procedure ClientConfigIniSetting; //INI 파일 읽어서 메모리 설정
+    Function LoadDoorRelayCode(aAll:Boolean=True) : Boolean;
+    Function GetTB_Config : Boolean;
+    function SearchDayVisitList(aGlCode:string;aTopRow:integer = 0):Boolean;
+    function SearchVisitCardRegistList(aGlCode:string;aSelectRow:integer= 0;aTopRow:integer = 0):Boolean;
+    function SearchVisitList(aGlCode:string;aTopRow:integer = 0):Boolean;
+  private
+    L_nMaxWindow : integer;
+    L_nPageListMaxCount : integer;
+    L_stOldDate : string;
+    L_bActivate : Boolean;
+    { Private declarations }
+    procedure WndProc(var Message: TMessage); override;
+  public
+    { Public declarations }
+  end;
+
+var
+  fmMain: TfmMain;
+
+implementation
+uses
+  uCardDelete,
+  uClientConfig,
+  uCardCreate,
+  uCommonFunction,
+  uCommonVariable,
+  uComPort,
+  uDataBase,
+  uDataBaseConfig,
+  uDBCardPermit,
+  uDBFunction,
+  uDBInsert,
+  uDBRelay,
+  uDBUpdate,
+  uEmployeeRelay,
+  uFingerVariable,
+  uGuestReport,
+  uSupremaFinger;
+{$R *.dfm}
+
+procedure TfmMain.btn_CardCreateClick(Sender: TObject);
+begin
+  inherited;
+  Try
+    fmCardCreate := TfmCardCreate.Create(nil);
+    fmCardCreate.ed_GlSeq.Text := '';
+    fmCardCreate.ed_emSeq.Text := '';
+    fmCardCreate.ed_GLCode.Text := '';
+    fmCardCreate.ed_CompanyName.Text := '';
+    fmCardCreate.ed_Name.Text := '';
+    fmCardCreate.ed_Handphone.Text := '';
+    fmCardCreate.ed_RegCardNo.Text := '';
+
+    with sg_VisitCard do
+    begin
+      if SelectedRowCount = 0 then
+      begin
+        SelectRows(1,1);
+      end;
+
+      if cells[2,Row] = '' then
+      begin
+        showmessage('카드 발급할 방문자가 선택 되지 않았습니다.');
+        Exit;
+      end;
+
+      fmCardCreate.ed_GLCode.Text := cells[2,Row];
+      fmCardCreate.ed_CompanyName.Text := cells[3,Row];
+      fmCardCreate.ed_Name.Text := cells[4,Row];
+      fmCardCreate.ed_Handphone.Text := cells[5,Row];
+    end;
+    fmCardCreate.ShowModal;
+  Finally
+    fmCardCreate.Free;
+  End;
+  SearchDayVisitList(sg_VisitCard.cells[2,sg_VisitCard.Row]);
+  SearchVisitCardRegistList(sg_VisitCard.cells[2,sg_VisitCard.Row]);
+  SearchVisitList(sg_VisitCard.cells[2,sg_VisitCard.Row]);
+
+end;
+
+
+procedure TfmMain.btn_CardReturnClick(Sender: TObject);
+var
+  stGLSeq : string;
+begin
+  inherited;
+  fmCardDelete := TfmCardDelete.Create(self);
+  fmCardDelete.ReaderUse := True;
+  fmCardDelete.ed_RegCardNo1.Text := '';
+  fmCardDelete.ed_GlSeq1.Text := '';
+  fmCardDelete.ed_emSeq1.Text := '';
+  fmCardDelete.ed_GLCode1.Text := '';
+  fmCardDelete.ed_CompanyName1.Text := '';
+  fmCardDelete.ed_Name1.Text := '';
+  fmCardDelete.ed_Handphone1.Text := '';
+  fmCardDelete.ShowModal;
+  stGLSeq := fmCardDelete.ed_GLCode1.Text;
+  fmCardDelete.Free;
+  SearchDayVisitList(stGLSeq);
+  SearchVisitCardRegistList(stGLSeq);
+  SearchVisitList(stGLSeq);
+
+end;
+
+procedure TfmMain.btn_CloseClick(Sender: TObject);
+begin
+  Close;
+end;
+
+procedure TfmMain.btn_ConfigClick(Sender: TObject);
+begin
+  inherited;
+  dmComPort.PortOpen := False;
+  fmClientConfig := TfmClientConfig.create(self);
+  fmClientConfig.ShowModal;
+  fmClientConfig.Free;
+  ClientConfigIniSetting;
+
+end;
+
+procedure TfmMain.ClientConfigIniSetting;
+var
+  ini_fun : TiniFile;
+  stType : string;
+  i : integer;
+  nTemp : integer;
+begin
+  inherited;
+  Try
+    ini_fun := TiniFile.Create(G_stExeFolder + '\GMS_VCR.INI');
+    with ini_fun do
+    begin
+
+      G_nCardRegisterType := ReadInteger('Config','CardRegType',0);  //0.일반등록기,1.슈프리마지문등록기
+      G_nCardRegisterPort := ReadInteger('Config','CardRegPort',0);
+      G_stCardRegisterIP := ReadString('Config','CardRegIP','');
+      G_stCardRegisterFingerPort := ReadString('Config','CardRegFingerPort','1471');
+      G_stGuestAreaCode := ReadString('Config','AREACD','01');
+      if G_nCardRegisterPort <> 0 then
+      begin
+        try
+          dmComPort.PortOpen := False;
+          dmComPort.SERIALPORT := G_nCardRegisterPort;
+          dmComPort.PortOpen := True;
+        except
+        end;
+      end;
+      sg_visitcard.ColWidths[3] := ReadInteger('VISIT1','3',120);
+      sg_visitcard.ColWidths[4] := ReadInteger('VISIT1','4',120);
+      sg_visitList.ColWidths[3] := ReadInteger('VISIT2','3',120);
+      sg_visitList.ColWidths[4] := ReadInteger('VISIT2','4',120);
+      sg_dayvisit.ColWidths[3] := ReadInteger('VISIT3','3',120);
+      sg_dayvisit.ColWidths[4] := ReadInteger('VISIT3','4',120);
+      sg_dayvisit.ColWidths[6] := ReadInteger('VISIT3','6',120);
+      sg_dayvisit.ColWidths[7] := ReadInteger('VISIT3','7',120);
+    end;
+  Finally
+    ini_fun.Free;
+  End;
+end;
+
+
+
+procedure TfmMain.FormActivate(Sender: TObject);
+begin
+//  if L_nMaxWindow = 1 then WindowState := wsMaximized;
+  if L_bActivate then Exit;
+  L_bActivate := True;
+  top := 0;
+  Left := 0;
+  WindowState := wsMaximized;
+
+end;
+
+procedure TfmMain.FormClose(Sender: TObject; var Action: TCloseAction);
+var
+  i : integer;
+  ini_fun : TiniFile;
+begin
+  G_bApplicationTerminate := True;
+  Timer2.Enabled := False;
+  RelayTimer.Enabled := False;
+  Try
+    ini_fun := TiniFile.Create(G_stExeFolder + '\GMS_VCR.INI');
+    with ini_fun do
+    begin
+      WriteInteger('VISIT1','3',sg_visitcard.ColWidths[3]);
+      WriteInteger('VISIT1','4',sg_visitcard.ColWidths[4]);
+      WriteInteger('VISIT2','3',sg_visitList.ColWidths[3]);
+      WriteInteger('VISIT2','4',sg_visitList.ColWidths[4]);
+      WriteInteger('VISIT3','3',sg_dayvisit.ColWidths[3]);
+      WriteInteger('VISIT3','4',sg_dayvisit.ColWidths[4]);
+      WriteInteger('VISIT3','6',sg_dayvisit.ColWidths[6]);
+      WriteInteger('VISIT3','7',sg_dayvisit.ColWidths[7]);
+
+      WriteInteger('PANEL1','WIDTH',pan_left.Width);
+      WriteInteger('PANEL2','HEIGHT',pan_lTop.Height);
+      //WriteInteger('PANEL1','HEIGHT',pan_left.Height);
+    end;
+  Finally
+    ini_fun.Free;
+  End;
+end;
+
+procedure TfmMain.FormCreate(Sender: TObject);
+begin
+  G_stExeFolder := ExtractFileDir(Application.ExeName);
+  sg_VisitCard.ColWidths[0] := 0;
+  sg_VisitCard.ColWidths[1] := 0;
+  sg_VisitCard.ColWidths[2] := 0;
+  sg_VisitCard.ColWidths[5] := 0;
+  sg_VisitCard.ColWidths[6] := 0;
+  sg_VisitCard.RowCount := 2;
+  sg_VisitList.ColWidths[0] := 0;
+  sg_VisitList.ColWidths[1] := 0;
+  sg_VisitList.ColWidths[2] := 0;
+  sg_VisitList.ColWidths[5] := 0;
+  sg_VisitList.ColWidths[6] := 0;
+  sg_VisitList.RowCount := 2;
+  sg_dayVisit.ColWidths[0] := 0;
+  sg_dayVisit.ColWidths[1] := 0;
+  sg_dayVisit.ColWidths[2] := 0;
+  sg_dayVisit.ColWidths[5] := 0;
+  sg_dayVisit.ColWidths[8] := 0;
+  sg_dayVisit.RowCount := 2;
+
+  L_nPageListMaxCount := 10;
+  ClientConfigIniSetting;
+end;
+
+procedure TfmMain.FormResize(Sender: TObject);
+var
+  nImageWidth : integer;
+  nImageHight : integer;
+begin
+  btn_Close.Top := 5;
+  btn_Close.Left := Width - btn_Close.Width - 20;
+(*
+  pan_Body.Top := ((Height - panel1.Height - 95) div 2) - (pan_Body.Height div 2);
+  pan_Body.Left := (width div 2) - (pan_Body.Width div 2);
+*)
+(*  pan_Main.Top := (Height div 2) - (pan_Main.Height div 2);
+  pan_Main.Left := (width div 2) - (pan_Main.width div 2);
+
+  AdvSmoothPanel3.Left := 20;
+  AdvSmoothPanel4.Left := 20;
+  AdvSmoothPanel3.Width := AdvSmoothPanel1.Width - (AdvSmoothPanel3.Left * 2);
+  AdvSmoothPanel4.Width := AdvSmoothPanel2.Width - (AdvSmoothPanel4.Left * 2);
+  *)
+//  ScreenRefresh;
+
+  nImageWidth := 1919;
+  nImageHight := 928;
+
+  Image4.Height := Panel2.Height; //nImageHight * width div nImageWidth;
+  Image4.Width := nImageWidth * Panel2.Height div nImageHight;
+
+  Image4.Top := 0; //at_Menu.Height + (Height - at_Menu.Height - sb_Status.Height) div 2 - (Image1.Height div 2);
+  Image4.Left := Width div 2 - Image4.Width div 2;
+
+end;
+
+procedure TfmMain.FormShow(Sender: TObject);
+var
+  ini_fun : TiniFile;
+begin
+  TDataBaseConfig.GetObject.DataBaseConnect(False);
+  if Not TDataBaseConfig.GetObject.DBConnected then
+  begin
+    showmessage('데이터베이스 접속 실패.데이터베이스접속 환경설정을 다시 하세요.');
+    Application.Terminate;
+    G_bApplicationTerminate := True;
+    Exit;
+  end;
+
+  GetTB_Config;
+  LoadDoorRelayCode(True);
+  FormResize(self);
+  RelayTimer.Enabled := True;
+
+  SearchVisitCardRegistList('');
+  SearchVisitList('');
+  SearchDayVisitList('');
+
+//  top := 0;
+//  Left := 0;
+//  WindowState := wsMaximized;
+end;
+
+
+function TfmMain.GetTB_Config: Boolean;
+var
+  stSql : string;
+  TempAdoQuery : TADOQuery;
+begin
+  result := False;
+
+  Try
+    CoInitialize(nil);
+    TempAdoQuery := TADOQuery.Create(nil);
+    TempAdoQuery.Connection := dmDataBase.ADOConnection;
+    TempAdoQuery.DisableControls;
+
+    G_nEmployeeSearchType := 1;
+    G_nFormLanguageType := 1;       //폼 언어 타입 1.KOR,2.ENG
+    G_bFingerRelayUse := False;     //지문리더 연동 유무
+    G_stDaemonControlPort := '5101';
+//    G_stDaemonControlServerIP := '127.0.0.1';
+    G_stFireStateCode := 'FI';
+    G_bFingerDeleteUse := False;
+    G_stLongTimeStateCode := 'LT';
+    G_nProgramGrade := 1;
+    G_nACAMVersion := 1;
+    G_nProgramType := 0;
+    G_nSystmRelayUse := 0; //연동유무
+    G_nSystmRelayCustomerNo := 0;  //0.하이닉스,1.SK가스,2.증평
+
+
+    stSql := 'select * from TB_CONFIG ';
+    stSql := stSql + ' where GROUP_CODE = ''' + G_stGroupCode + ''' ';
+    with TempAdoQuery do
+    begin
+      Close;
+      //Sql.Clear;
+      Sql.Text := stSql;
+
+      Try
+        Open;
+      Except
+        Exit;
+      End;
+
+      if RecordCount < 1 then Exit;
+      while Not Eof do
+      begin
+        if G_bApplicationTerminate then Exit;
+        if FindField('CO_CONFIGGROUP').AsString = 'ACAM' then
+        begin
+          if FindField('CO_CONFIGCODE').AsString = 'VER' then
+          begin
+            if isDigit(FindField('CO_CONFIGVALUE').AsString) then
+              G_nACAMVersion := strtoint(FindField('CO_CONFIGVALUE').AsString);
+          end;
+        end else if FindField('CO_CONFIGGROUP').AsString = 'ACAMSERVER' then
+        begin
+          if FindField('CO_CONFIGCODE').AsString = 'VER' then
+          begin
+            if isDigit(FindField('CO_CONFIGVALUE').AsString) then
+              G_nACAMServerVersion := strtoint(FindField('CO_CONFIGVALUE').AsString);
+          end;
+        end else if FindField('CO_CONFIGGROUP').AsString = 'CARD' then
+        begin
+          if FindField('CO_CONFIGCODE').AsString = 'EMPLOYEESEARCH' then G_nEmployeeSearchType := strtoint(FindField('CO_CONFIGVALUE').AsString)
+          else if FindField('CO_CONFIGCODE').AsString = 'CARDREGISTFORM' then G_nCardRegistForm := strtoint(FindField('CO_CONFIGVALUE').AsString)
+          else if FindField('CO_CONFIGCODE').AsString = 'DEFAULTDOORPERMITTYPE' then G_nCardDefaultDOORPermitType := strtoint(FindField('CO_CONFIGVALUE').AsString)
+          else if FindField('CO_CONFIGCODE').AsString = 'DEFAULTARMPERMITTYPE' then G_nCardDefaultArmPermitType := strtoint(FindField('CO_CONFIGVALUE').AsString)
+          else if FindField('CO_CONFIGCODE').AsString = 'DEFAULTGRADEGROUP' then G_nCardDefaultGroupType := strtoint(FindField('CO_CONFIGVALUE').AsString)
+          else if FindField('CO_CONFIGCODE').AsString = 'FPTYPE' then G_nCardFPType := strtoint(FindField('CO_CONFIGVALUE').AsString)
+          ;
+        end else if FindField('CO_CONFIGGROUP').AsString = 'COMMON' then
+        begin
+          if FindField('CO_CONFIGCODE').AsString = 'LANGUAGE' then G_nFormLanguageType := strtoint(FindField('CO_CONFIGVALUE').AsString)
+          else if FindField('CO_CONFIGCODE').AsString = 'ATAUTO' then
+          begin
+            if FindField('CO_CONFIGVALUE').AsString = '1' then G_bAttendDedicateDoorUse := True
+            else G_bAttendDedicateDoorUse := False;
+          end else if FindField('CO_CONFIGCODE').AsString = 'FDAUTO' then
+          begin
+            if FindField('CO_CONFIGVALUE').AsString = '1' then G_bFoodDedicateDoorUse := True
+            else G_bFoodDedicateDoorUse := False;
+          end else if FindField('CO_CONFIGCODE').AsString = 'PROTOCOL' then
+          begin
+            if isDigit(FindField('CO_CONFIGVALUE').AsString) then G_nMonitoringProtocol := FindField('CO_CONFIGVALUE').AsInteger
+            else G_nMonitoringProtocol := 0;
+          end else if FindField('CO_CONFIGCODE').AsString = 'MAXDOORCOUNT' then
+          begin
+            if isDigit(FindField('CO_CONFIGVALUE').AsString) then G_nMonitoringOnlyDoorCount := FindField('CO_CONFIGVALUE').AsInteger
+            else G_nMonitoringOnlyDoorCount := 1;
+          end else if FindField('CO_CONFIGCODE').AsString = 'ONLYMAINCOUNT' then
+          begin
+            if isDigit(FindField('CO_CONFIGVALUE').AsString) then G_nMonitoringOnlyMainCount := FindField('CO_CONFIGVALUE').AsInteger
+            else G_nMonitoringOnlyDoorCount := 100;
+          end else if FindField('CO_CONFIGCODE').AsString = 'PGTYPE' then
+          begin
+            G_nMonitoringType := FindField('CO_CONFIGVALUE').AsInteger;
+          end
+          ;
+        end else if FindField('CO_CONFIGGROUP').AsString = 'DAEMON' then
+        begin
+          if FindField('CO_CONFIGCODE').AsString = 'CONTROLPORT' then G_stDaemonControlPort := FindField('CO_CONFIGVALUE').asstring
+//          else if FindField('CO_CONFIGCODE').AsString = 'SERVERIP' then G_stDaemonControlServerIP := FindField('CO_CONFIGVALUE').asstring
+          else if FindField('CO_CONFIGCODE').AsString = 'LONGTIMECD' then G_stLongTimeStateCode := FindField('CO_CONFIGVALUE').asstring
+          else if FindField('CO_CONFIGCODE').AsString = 'CARDGRADE' then
+          begin
+            if isDigit(FindField('CO_CONFIGVALUE').AsString) then G_nProgramGrade := strtoint(FindField('CO_CONFIGVALUE').AsString);
+          end else if FindField('CO_CONFIGCODE').AsString = 'PACKETTYPE' then
+          begin
+            if isDigit(FindField('CO_CONFIGVALUE').AsString) then G_nProgramType := strtoint(FindField('CO_CONFIGVALUE').AsString);
+          end
+          ;
+        end else if FindField('CO_CONFIGGROUP').AsString = 'DATABASE' then
+        begin
+        end else if FindField('CO_CONFIGGROUP').AsString = 'FIRE' then
+        begin
+          if FindField('CO_CONFIGCODE').AsString = 'STATECODE' then G_stFireStateCode := FindField('CO_CONFIGVALUE').AsString;
+        end else if FindField('CO_CONFIGGROUP').AsString = 'MONITORING' then
+        begin
+          if FindField('CO_CONFIGCODE').AsString = 'MAPTYPE' then G_nMonitorMapType := FindField('CO_CONFIGVALUE').AsInteger
+          else if FindField('CO_CONFIGCODE').AsString = 'MAPBUILDING' then G_nMonitorMapBuilding := FindField('CO_CONFIGVALUE').AsInteger
+
+          ;
+        end else if FindField('CO_CONFIGGROUP').AsString = 'RELAY' then
+        begin
+          if FindField('CO_CONFIGCODE').AsString = 'FINGERRELAYUSE' then
+          begin
+            if FindField('CO_CONFIGVALUE').AsString = '1' then G_bFingerRelayUse := True;  //지문 연동 사용시
+          end else if FindField('CO_CONFIGCODE').AsString = 'EMPLOYEETYPE' then
+          begin
+            if isDigit(FindField('CO_CONFIGVALUE').AsString) then G_nEmployeeRelayType := strtoint(FindField('CO_CONFIGVALUE').AsString);  //
+          end else if FindField('CO_CONFIGCODE').AsString = 'FINGERDELETEUSE' then
+          begin
+             if FindField('CO_CONFIGVALUE').AsString = '1' then G_bFingerDeleteUse := True;  //지문 연동 사용시
+          end;
+        end else if FindField('CO_CONFIGGROUP').AsString = 'REPORT' then
+        begin
+          if FindField('CO_CONFIGCODE').AsString = 'SEARCHTYPE' then
+          begin
+            G_nReportSearchType := FindField('CO_CONFIGVALUE').AsInteger;
+          end;
+        end else if FindField('CO_CONFIGGROUP').AsString = 'SYSTEMRELAY' then
+        begin
+          if FindField('CO_CONFIGCODE').AsString = 'USE' then
+          begin
+            if isDigit(FindField('CO_CONFIGVALUE').AsString) then
+              G_nSystmRelayUse := FindField('CO_CONFIGVALUE').AsInteger;
+          end else if FindField('CO_CONFIGCODE').AsString = 'CUSTMOR' then
+          begin
+            if isDigit(FindField('CO_CONFIGVALUE').AsString) then
+             G_nSystmRelayCustomerNo := FindField('CO_CONFIGVALUE').AsInteger;
+          end else if FindField('CO_CONFIGCODE').AsString = 'CYCLE' then
+          begin
+            if isDigit(FindField('CO_CONFIGVALUE').AsString) then
+             G_nSystmRelayCyle := FindField('CO_CONFIGVALUE').AsInteger;
+          end else if FindField('CO_CONFIGCODE').AsString = 'DB1TYPE' then
+          begin
+            G_stSystmRelayDB1Type := FindField('CO_CONFIGVALUE').AsString;
+          end else if FindField('CO_CONFIGCODE').AsString = 'DB1IP' then
+          begin
+            G_stSystmRelayDB1IP := FindField('CO_CONFIGVALUE').AsString;
+          end else if FindField('CO_CONFIGCODE').AsString = 'DB1PORT' then
+          begin
+            G_stSystmRelayDB1PORT := FindField('CO_CONFIGVALUE').AsString;
+          end else if FindField('CO_CONFIGCODE').AsString = 'DB1USERID' then
+          begin
+            G_stSystmRelayDB1USERID := FindField('CO_CONFIGVALUE').AsString;
+          end else if FindField('CO_CONFIGCODE').AsString = 'DB1USERPW' then
+          begin
+            G_stSystmRelayDB1USERPW := FindField('CO_CONFIGVALUE').AsString;
+          end else if FindField('CO_CONFIGCODE').AsString = 'DB1DBNAME' then
+          begin
+            G_stSystmRelayDB1NAME := FindField('CO_CONFIGVALUE').AsString;
+          end else if FindField('CO_CONFIGCODE').AsString = 'DB2TYPE' then
+          begin
+            G_stSystmRelayDB2Type := FindField('CO_CONFIGVALUE').AsString;
+          end else if FindField('CO_CONFIGCODE').AsString = 'DB2IP' then
+          begin
+            G_stSystmRelayDB2IP := FindField('CO_CONFIGVALUE').AsString;
+          end else if FindField('CO_CONFIGCODE').AsString = 'DB2PORT' then
+          begin
+            G_stSystmRelayDB2PORT := FindField('CO_CONFIGVALUE').AsString;
+          end else if FindField('CO_CONFIGCODE').AsString = 'DB2USERID' then
+          begin
+            G_stSystmRelayDB2USERID := FindField('CO_CONFIGVALUE').AsString;
+          end else if FindField('CO_CONFIGCODE').AsString = 'DB2USERPW' then
+          begin
+            G_stSystmRelayDB2USERPW := FindField('CO_CONFIGVALUE').AsString;
+          end else if FindField('CO_CONFIGCODE').AsString = 'DB2DBNAME' then
+          begin
+            G_stSystmRelayDB2NAME := FindField('CO_CONFIGVALUE').AsString;
+          end else if FindField('CO_CONFIGCODE').AsString = 'RELAYCODE1' then
+          begin
+            G_stRelayCode1 := FindField('CO_CONFIGVALUE').AsString;
+          end else if FindField('CO_CONFIGCODE').AsString = 'RELAYCODE2' then
+          begin
+            G_stRelayCode2 := FindField('CO_CONFIGVALUE').AsString;
+          end else if FindField('CO_CONFIGCODE').AsString = 'RELAYCODE3' then
+          begin
+            G_stRelayCode3 := FindField('CO_CONFIGVALUE').AsString;
+          end else if FindField('CO_CONFIGCODE').AsString = 'RELAYCODE4' then
+          begin
+            G_stRelayCode4 := FindField('CO_CONFIGVALUE').AsString;
+          end;
+        end;
+        Next;
+      end;
+    end;
+  Finally
+    TempAdoQuery.EnableControls;
+    TempAdoQuery.Free;
+    CoUninitialize;
+  End;
+  result := True;
+end;
+
+
+procedure TfmMain.Image1DblClick(Sender: TObject);
+begin
+  inherited;
+  WindowState := wsMaximized;
+end;
+
+procedure TfmMain.Image1MouseDown(Sender: TObject; Button: TMouseButton;
+  Shift: TShiftState; X, Y: Integer);
+begin
+  ReleaseCapture;
+  Perform(WM_SYSCOMMAND, $F012, 0);
+end;
+
+procedure TfmMain.Img_ReportClick(Sender: TObject);
+begin
+  inherited;
+  fmGuestReport := TfmGuestReport.create(self);
+  fmGuestReport.ShowModal;
+  fmGuestReport.Free;
+end;
+
+function TfmMain.LoadDoorRelayCode(aAll: Boolean): Boolean;
+var
+  stSql : string;
+  TempAdoQuery : TADOQuery;
+begin
+  if aAll then
+  begin
+    stSql := ' Update TB_DOOR Set DO_RELAYIDCHANGE = ''Y'' ';
+    dmDataBase.ProcessExecSQL(stSql);
+  end;
+
+  stSql := ' Select * from TB_DOOR Where DO_RELAYIDCHANGE = ''Y'' ';
+  Try
+    CoInitialize(nil);
+    TempAdoQuery := TADOQuery.Create(nil);
+    TempAdoQuery.Connection := dmDataBase.ADOConnection;
+    TempAdoQuery.DisableControls;
+
+    with TempAdoQuery do
+    begin
+      Close;
+      Sql.Text := stSql;
+      Try
+        Open;
+      Except
+        Exit;
+      End;
+      if recordCount < 1 then Exit;
+      if aAll then dmEmployeeRelay.RelayNumberClear;
+      While Not Eof do
+      begin
+        if G_bApplicationTerminate then Exit;
+        dmEmployeeRelay.SetRelayNumberFromDoorNO(FindField('DO_RELAYID').AsString,FindField('ND_NODENO').AsString,FindField('DE_ECUID').AsString,FindField('DO_DOORNO').AsString);
+        dmDBUpdate.UpdateTB_DOOR_Field_StringValue(FindField('ND_NODENO').AsString,FindField('DE_ECUID').AsString,FindField('DE_EXTENDID').AsString,FindField('DO_DOORNO').AsString,'DO_RELAYIDCHANGE','N');
+        Next;
+      end;
+    end;
+  Finally
+    TempAdoQuery.EnableControls;
+    TempAdoQuery.Free;
+    CoUninitialize;
+  End;
+end;
+
+procedure TfmMain.Pan_EmcodeMouseMove(Sender: TObject; Shift: TShiftState; X,
+  Y: Integer);
+const
+ SC_DragMove = $F012;
+begin
+ ReleaseCapture;
+ (sender as TWinControl).perform(WM_SysCommand, SC_DragMove,0);
+
+end;
+
+procedure TfmMain.pan_LBottomResize(Sender: TObject);
+begin
+  inherited;
+  sg_VisitList.Height := pan_LBottom.Height - sg_VisitList.Top - 40;
+  sg_VisitList.Width := pan_LBottom.Width - sg_VisitList.Left - btn_CardReturn.Width - 40;
+  btn_CardReturn.Left := pan_LBottom.Width - btn_CardReturn.Width - 20;
+
+end;
+
+procedure TfmMain.pan_LTopResize(Sender: TObject);
+begin
+  inherited;
+  sg_VisitCard.Height := pan_LTop.Height - sg_VisitCard.Top - 20;
+  sg_VisitCard.Width := pan_LTop.Width - sg_VisitCard.Left - btn_CardCreate.Width - 40;
+  btn_CardCreate.Left := pan_LTop.Width - btn_CardCreate.Width - 20;
+
+end;
+
+procedure TfmMain.pan_RightResize(Sender: TObject);
+begin
+  inherited;
+  sg_dayVisit.Height := pan_Right.Height - sg_dayVisit.Top - 40;
+  sg_dayVisit.Width := pan_Right.Width - (sg_dayVisit.Left * 2);
+
+end;
+
+procedure TfmMain.RelayTimerTimer(Sender: TObject);
+begin
+  if G_bApplicationTerminate then Exit;
+
+  RelayTimer.Enabled := False;
+  Try
+    //LoadDoorRelayCode(False);
+    //if dmEmployeeRelay.Relay_SKChungcheong_Start('V',False) then
+    begin
+      SearchVisitCardRegistList('',sg_VisitCard.Row,sg_VisitCard.TopRow);
+    end;
+  Finally
+    RelayTimer.Enabled := Not G_bApplicationTerminate;
+  End;
+end;
+
+function TfmMain.SearchDayVisitList(aGlCode: string;aTopRow:integer = 0): Boolean;
+var
+  stSql : string;
+  TempAdoQuery : TADOQuery;
+  nRow : integer;
+begin
+  GridInitialize(sg_dayVisit);
+
+  stSql := ' Select * from TB_VISIT_DOC where IO_DATE = ''' + formatDateTime('yyyymmdd',now) + ''' ';
+  stSql := stSql + ' AND AREA_CD = ''' + G_stGuestAreaCode + ''' ';
+  stSql := stSql + ' order by DOC_NO ';
+
+  Try
+    CoInitialize(nil);
+    TempAdoQuery := TADOQuery.Create(nil);
+    TempAdoQuery.Connection := dmDataBase.ADOConnection;
+    TempAdoQuery.DisableControls;
+
+    with TempAdoQuery do
+    begin
+      Close;
+      sql.Text := stSql;
+      Try
+        Open;
+      Except
+        Exit;
+      End;
+      if recordcount < 1 then Exit;
+      with sg_dayVisit do
+      begin
+        nRow := 1;
+        RowCount := RecordCount + 1;
+        while Not Eof do
+        begin
+          Cells[2,nRow] := FindField('DOC_NO').AsString;
+          Cells[3,nRow] := FindField('CO_NAME').AsString;
+          Cells[4,nRow] := FindField('REQ_MAN').AsString;
+          Cells[5,nRow] := FindField('MAN_TEL').AsString;
+          Cells[6,nRow] := FindField('VISIT_IN_TIME').AsString;
+          Cells[7,nRow] := FindField('VISIT_OUT_TIME').AsString;
+          Cells[8,nRow] := FindField('CARD_NO').AsString;
+          if FindField('DOC_NO').AsString  = aGlCode then
+          begin
+            SelectRows(nRow,1);
+          end;
+          nRow := nRow + 1;
+          Next;
+        end;
+        if aTopRow = 0 then
+        begin
+          if Row > (L_nPageListMaxCount - 1) then TopRow := Row - L_nPageListMaxCount;
+        end else
+        begin
+          TopRow := aTopRow;
+        end;
+      end;
+    end;
+  Finally
+    TempAdoQuery.EnableControls;
+    TempAdoQuery.Free;
+    CoUninitialize;
+  End;
+end;
+
+function TfmMain.SearchVisitCardRegistList(aGlCode: string;aSelectRow:integer= 0;aTopRow:integer = 0): Boolean;
+var
+  stSql : string;
+  TempAdoQuery : TADOQuery;
+  nRow : integer;
+begin
+  GridInitialize(sg_VisitCard);
+
+  stSql := ' Select * from TB_VISIT_DOC where IO_DATE = ''' + formatDateTime('yyyymmdd',now) + ''' ';
+  stSql := stSql + ' AND AREA_CD = ''' + G_stGuestAreaCode + ''' ';
+  stSql := stSql + ' AND CARD_NO is Null or CARD_NO = '''' ';
+  stSql := stSql + ' order by DOC_NO ';
+
+  Try
+    CoInitialize(nil);
+    TempAdoQuery := TADOQuery.Create(nil);
+    TempAdoQuery.Connection := dmDBRelay.ADOConnection1;
+    TempAdoQuery.DisableControls;
+
+    with TempAdoQuery do
+    begin
+      Close;
+      sql.Text := stSql;
+      Try
+        Open;
+      Except
+        Exit;
+      End;
+      if recordcount < 1 then Exit;
+      with sg_VisitCard do
+      begin
+        nRow := 1;
+        RowCount := RecordCount + 1;
+        while Not Eof do
+        begin
+          Cells[2,nRow] := FindField('DOC_NO').AsString;
+          Cells[3,nRow] := FindField('CO_NAME').AsString;
+          Cells[4,nRow] := FindField('REQ_MAN').AsString;
+          Cells[5,nRow] := FindField('MAN_TEL').AsString;
+          Cells[6,nRow] := FindField('CARD_NO').AsString;
+          if FindField('DOC_NO').AsString  = aGlCode then
+          begin
+            SelectRows(nRow,1);
+          end;
+          nRow := nRow + 1;
+          Next;
+        end;
+        if aTopRow = 0 then
+        begin
+          if Row > (L_nPageListMaxCount - 1) then TopRow := Row - L_nPageListMaxCount;
+        end else
+        begin
+          TopRow := aTopRow;
+        end;
+        if aSelectRow <> 0 then SelectRows(aSelectRow,1);
+      end;
+
+    end;
+  Finally
+    TempAdoQuery.EnableControls;
+    TempAdoQuery.Free;
+    CoUninitialize;
+  End;
+
+end;
+
+function TfmMain.SearchVisitList(aGlCode: string;aTopRow:integer = 0): Boolean;
+var
+  stSql : string;
+  TempAdoQuery : TADOQuery;
+  nRow : integer;
+begin
+  GridInitialize(sg_VisitList);
+
+  stSql := ' Select * from TB_VISIT_DOC where IO_DATE = ''' + formatDateTime('yyyymmdd',now) + ''' ';
+  stSql := stSql + ' AND AREA_CD = ''' + G_stGuestAreaCode + ''' ';
+  stSql := stSql + ' AND VISIT_IN_TIME is Not Null AND VISIT_OUT_TIME is Null';
+  stSql := stSql + ' order by DOC_NO ';
+  Try
+    CoInitialize(nil);
+    TempAdoQuery := TADOQuery.Create(nil);
+    TempAdoQuery.Connection := dmDataBase.ADOConnection;
+    TempAdoQuery.DisableControls;
+
+    with TempAdoQuery do
+    begin
+      Close;
+      sql.Text := stSql;
+      Try
+        Open;
+      Except
+        Exit;
+      End;
+      if recordcount < 1 then Exit;
+      with sg_VisitList do
+      begin
+        nRow := 1;
+        RowCount := RecordCount + 1;
+        while Not Eof do
+        begin
+          Cells[2,nRow] := FindField('DOC_NO').AsString;
+          Cells[3,nRow] := FindField('CO_NAME').AsString;
+          Cells[4,nRow] := FindField('REQ_MAN').AsString;
+          Cells[5,nRow] := FindField('MAN_TEL').AsString;
+          Cells[6,nRow] := FindField('CARD_NO').AsString;
+          if FindField('DOC_NO').AsString  = aGlCode then
+          begin
+            SelectRows(nRow,1);
+          end;
+          nRow := nRow + 1;
+          Next;
+        end;
+        if aTopRow = 0 then
+        begin
+          if Row > (L_nPageListMaxCount - 1) then TopRow := Row - L_nPageListMaxCount;
+        end else
+        begin
+          TopRow := aTopRow;
+        end;
+      end;
+    end;
+  Finally
+    TempAdoQuery.EnableControls;
+    TempAdoQuery.Free;
+    CoUninitialize;
+  End;
+end;
+
+procedure TfmMain.sg_VisitCardDblClick(Sender: TObject);
+begin
+  inherited;
+  btn_CardCreateClick(btn_CardCreate);
+end;
+
+procedure TfmMain.sg_VisitListDblClick(Sender: TObject);
+var
+  nResult : UF_RET_CODE;
+  stGlSeq : string;
+begin
+  inherited;
+  with sg_VisitList do
+  begin
+    if SelectedRowCount = 0 then
+    begin
+      SelectRows(1,1);
+    end;
+
+    if cells[0,Row] = '' then
+    begin
+      showmessage('카드 반납 할 방문자가 선택 되지 않았습니다.');
+      Exit;
+    end;
+    stGlSeq := cells[0,Row];
+    fmCardDelete := TfmCardDelete.Create(self);
+    fmCardDelete.ReaderUse := False;
+    fmCardDelete.ed_GlSeq1.Text := stGlSeq;
+    fmCardDelete.ed_emSeq1.Text := cells[1,Row];
+    fmCardDelete.ed_GLCode1.Text := cells[2,Row];
+    fmCardDelete.ed_CompanyName1.Text := cells[3,Row];
+    fmCardDelete.ed_Name1.Text := cells[4,Row];
+    fmCardDelete.ed_Handphone1.Text := cells[5,Row];
+    fmCardDelete.ed_RegCardNo1.Text := cells[6,Row];
+    if fmCardDelete.ed_RegCardNo1.Text <> '' then
+    begin
+      fmCardDelete.ed_RegCardNo1.Text := FillCharString(fmCardDelete.ed_RegCardNo1.Text,'*',16,False);
+    end;
+    fmCardDelete.showmodal;
+    fmCardDelete.Free;
+    SearchDayVisitList(stGlSeq);
+    SearchVisitCardRegistList(stGlSeq);
+    SearchVisitList(stGlSeq);
+  end;
+
+end;
+
+procedure TfmMain.Timer2Timer(Sender: TObject);
+var
+  nDay : integer;
+  days: array[1..7] of string;
+begin
+  if G_bApplicationTerminate then Exit;
+
+  lb_Time.Caption.Text := FormatDateTime('hh:nn am/pm',now);
+
+  if L_stOldDate = FormatDateTime('yyyymmdd',now) then Exit;
+  L_stOldDate := FormatDateTime('yyyymmdd',now);
+
+  lb_Date.Caption.Text := FormatDateTime('yyyy mm dd',now);
+  nDay := DayOfWeek(now);
+  days[1] := '日';
+  days[2] := '月';
+  days[3] := '火';
+  days[4] := '水';
+  days[5] := '木';
+  days[6] := '金';
+  days[7] := '土';
+
+  lb_Weekend.Caption.Text := days[DayOfWeek(now)];
+
+end;
+
+procedure TfmMain.WndProc(var Message: TMessage);
+begin
+  inherited;
+  if Message.Msg=WM_ENDSESSION then begin
+    if Not G_bApplicationTerminate then Close;
+  end else if Message.Msg = WM_QUERYENDSESSION then begin
+    if Not G_bApplicationTerminate then Close;
+    Message.Result := 1;
+  end;
+end;
+
+end.

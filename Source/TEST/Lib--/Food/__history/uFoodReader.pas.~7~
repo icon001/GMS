@@ -1,0 +1,90 @@
+unit uFoodReader;
+
+interface
+
+uses
+  System.SysUtils, System.Classes;
+
+type
+  TFoodCode = Class(TComponent)
+  private
+    FStartTime: string;
+    FFoodCode: string;
+    FFoodCodeName: string;
+    FEndTime: string;
+  published
+    property FoodCode :string read FFoodCode write FFoodCode;
+    property FoodCodeName : string read FFoodCodeName write FFoodCodeName;
+    property StartTime : string read FStartTime write FStartTime;
+    property EndTime : string read FEndTime write FEndTime;
+  End;
+
+  TFoodReaderType = Class(TComponent)
+  private
+    FoodCodeList : TStringList;
+    FEcuID: string;
+    FReaderNo: string;
+    FNodeNo: integer;
+    FFoodType: string;
+    FYesterDayTime: string;
+    FFoodTypeName: string;
+  public
+    constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
+  public
+    procedure AddFoodCode(aFoodCode,aFoodCodeName,aStartTime,aEndTime,aFoodAmt,aInitTime:string);
+  published
+    property NodeNo : integer read FNodeNo write FNodeNo;
+    property EcuID : string read FEcuID write FEcuID;
+    property ReaderNo : string read FReaderNo write FReaderNo;
+    property FoodType : string read FFoodType write FFoodType;
+    property FoodTypeName : string read FFoodTypeName write FFoodTypeName;
+    property YesterDayTime : string read FYesterDayTime write FYesterDayTime;
+  End;
+
+  TdmFoodReader = class(TDataModule)
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+  end;
+
+var
+  dmFoodReader: TdmFoodReader;
+
+implementation
+
+{%CLASSGROUP 'Vcl.Controls.TControl'}
+
+{$R *.dfm}
+
+{ TFoodReaderType }
+
+procedure TFoodReaderType.AddFoodCode(aFoodCode, aFoodCodeName, aStartTime,
+  aEndTime, aFoodAmt, aInitTime: string);
+var
+  nIndex : integer;
+  oFoodCode : TFoodCode;
+begin
+  nIndex := FoodCodeList.IndexOf(aFoodCode);
+  if nIndex < 0 then
+  begin
+  end else
+  begin
+  end;
+end;
+
+constructor TFoodReaderType.Create(AOwner: TComponent);
+begin
+  inherited;
+  FoodCodeList := TStringList.Create;
+end;
+
+destructor TFoodReaderType.Destroy;
+begin
+
+  FoodCodeList.Free;
+  inherited;
+end;
+
+end.

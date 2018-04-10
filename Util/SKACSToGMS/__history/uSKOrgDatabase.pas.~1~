@@ -1,0 +1,25 @@
+unit uSKOrgDatabase;
+
+interface
+
+uses
+  System.SysUtils, System.Classes;
+
+type
+  TdmSKOrgData = class(TDataModule)
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+  end;
+
+var
+  dmSKOrgData: TdmSKOrgData;
+
+implementation
+
+{%CLASSGROUP 'Vcl.Controls.TControl'}
+
+{$R *.dfm}
+
+end.

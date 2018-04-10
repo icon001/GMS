@@ -1,0 +1,41 @@
+program SupremaFingerServer;
+
+uses
+  Vcl.Forms,
+  uMain in 'uMain.pas' {fmMain},
+  DIMime in '..\..\Lib\Common\DIMime.pas',
+  uCommonFunction in '..\..\Lib\Common\uCommonFunction.pas',
+  uCommonVariable in '..\..\Lib\Common\uCommonVariable.pas',
+  uSubForm in '..\..\Lib\Form\uSubForm.pas' {fmASubForm},
+  uDataBase in '..\..\Lib\DataBase\uDataBase.pas' {dmDataBase: TDataModule},
+  uDataBaseConfig in '..\..\Lib\DataBase\uDataBaseConfig.pas' {fmDataBaseConfig},
+  uDBVariable in '..\..\Lib\DataBase\uDBVariable.pas',
+  uDBAlter in '..\..\Lib\DataBase\uDBAlter.pas' {dmDBAlter: TDataModule},
+  uDBCreate in '..\..\Lib\DataBase\uDBCreate.pas' {dmDBCreate: TDataModule},
+  uDBFormMessage in '..\..\Lib\DataBase\uDBFormMessage.pas' {dmFormMessage: TDataModule},
+  uDBFormName in '..\..\Lib\DataBase\uDBFormName.pas' {dmFormName: TDataModule},
+  uDBFunction in '..\..\Lib\DataBase\uDBFunction.pas' {dmDBFunction: TDataModule},
+  uDBInsert in '..\..\Lib\DataBase\uDBInsert.pas' {dmDBInsert: TDataModule},
+  uFormVariable in '..\..\Lib\Form\uFormVariable.pas',
+  uLoginVariable in '..\..\Lib\Login\uLoginVariable.pas',
+  uDeviceFunction in '..\..\Lib\Device\uDeviceFunction.pas' {dmDeviceFunction: TDataModule},
+  uDeviceVariable in '..\..\Lib\Device\uDeviceVariable.pas',
+  uSolarLunar in '..\..\Lib\Date\uSolarLunar.pas',
+  uFingerDevice in 'fmFingerDevice\uFingerDevice.pas' {fmFingerDevice},
+  uDBDelete in '..\..\Lib\DataBase\uDBDelete.pas' {dmDBDelete: TDataModule},
+  uDBUpdate in '..\..\Lib\DataBase\uDBUpdate.pas' {dmDBUpdate: TDataModule},
+  uDBSelect in '..\..\Lib\DataBase\uDBSelect.pas' {dmDBSelect: TDataModule};
+
+{$R *.res}
+
+begin
+  Application.Initialize;
+  Application.MainFormOnTaskbar := True;
+  Application.CreateForm(TdmDataBase, dmDataBase);
+  Application.CreateForm(TfmMain, fmMain);
+  Application.CreateForm(TfmFingerDevice, fmFingerDevice);
+  Application.CreateForm(TdmDBDelete, dmDBDelete);
+  Application.CreateForm(TdmDBUpdate, dmDBUpdate);
+  Application.CreateForm(TdmDBSelect, dmDBSelect);
+  Application.Run;
+end.

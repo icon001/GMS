@@ -1,0 +1,355 @@
+unit uBuildingDoorState;
+
+interface
+
+uses
+  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
+  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.Grids, AdvObj, BaseGrid, AdvGrid,System.IniFiles,
+  Vcl.Menus, Vcl.ExtCtrls, Vcl.StdCtrls, Vcl.Buttons;
+
+type
+  TDoorEventChange = class(TComponent)
+  private
+    FBuildingIndex: integer;
+    FNFStateChange: Boolean;
+    FDoorLongOpenStateChange: Boolean;
+    FDoorOpenStateChange: Boolean;
+    FNFEventBlinkCount: integer;
+    FDoorLongOpenEventBlinkCount: integer;
+    FDoorOpenEventBlinkCount: integer;
+  public
+    property BuildingIndex : integer read FBuildingIndex write FBuildingIndex;
+    property NFStateChange : Boolean read FNFStateChange write FNFStateChange;
+    property DoorOpenStateChange : Boolean read FDoorOpenStateChange write FDoorOpenStateChange;
+    property DoorLongOpenStateChange : Boolean read FDoorLongOpenStateChange write FDoorLongOpenStateChange;
+    property NFEventBlinkCount : integer read FNFEventBlinkCount write FNFEventBlinkCount ;
+    property DoorOpenEventBlinkCount : integer read FDoorOpenEventBlinkCount write FDoorOpenEventBlinkCount ;
+    property DoorLongOpenEventBlinkCount : integer read FDoorLongOpenEventBlinkCount write FDoorLongOpenEventBlinkCount ;
+  end;
+
+  TfmBuildingDoorState = class(TForm)
+    sg_buildingState: TAdvStringGrid;
+    PopupMenu1: TPopupMenu;
+    pm_FormTop: TMenuItem;
+    ColorChangeTimer: TTimer;
+    procedure FormShow(Sender: TObject);
+    procedure FormClose(Sender: TObject; var Action: TCloseAction);
+    procedure sg_buildingStateResize(Sender: TObject);
+    procedure FormCreate(Sender: TObject);
+    procedure pm_FormTopClick(Sender: TObject);
+    procedure ColorChangeTimerTimer(Sender: TObject);
+    procedure sg_buildingStateDblClick(Sender: TObject);
+    procedure BitBtn1Click(Sender: TObject);
+  private
+    BuildingStateChangeList : TStringList;
+    { Private declarations }
+    procedure ShowBuildingCount;
+    procedure ReportShow(aBuildingIndex,aMode:integer;aCaption:string);
+  public
+    { Public declarations }
+    procedure BuildingDoorStateCountChange(aBuildingCode:string;aState, aCount:integer);
+  end;
+
+var
+  fmBuildingDoorState: TfmBuildingDoorState;
+
+implementation
+uses
+  uDoorAlarmReport,
+  uCommonVariable,
+  uFormDeviceState,
+  uFormVariable,
+  uMonitoringMain;
+
+{$R *.dfm}
+
+procedure TfmBuildingDoorState.BitBtn1Click(Sender: TObject);
+begin
+  BuildingDoorStateCountChange('0',2,10);
+end;
+
+procedure TfmBuildingDoorState.BuildingDoorStateCountChange(
+  aBuildingCode: string; aState, aCount: integer);
+var
+  nBuildingIndex : integer;
+  nIndex : integer;
+  oDoorEventChange : TDoorEventChange;
+begin
+  nBuildingIndex := G_MonitoringBuildingList.IndexOf(aBuildingCode) ;
+  if nBuildingIndex < 0 then Exit;
+
+  with sg_buildingState do
+  begin
+    case aState of
+      0 : begin
+        cells[1+nBuildingIndex,1] := inttostr(aCount);
+      end;
+      1 : begin
+        cells[1+nBuildingIndex,3] := inttostr(aCount);
+      end;
+      2 : begin
+        cells[1+nBuildingIndex,4] := inttostr(aCount);
+      end;
+      3 : begin
+        cells[1+nBuildingIndex,2] := inttostr(aCount);
+      end;
+    end;
+  end;
+  nIndex := BuildingStateChangeList.IndexOf(aBuildingCode);
+  if nIndex < 0 then
+  begin
+    oDoorEventChange := TDoorEventChange.Create(nil);
+    oDoorEventChange.BuildingIndex := nBuildingIndex;
+    case aState of
+      1 : begin
+        oDoorEventChange.DoorOpenStateChange := True;
+        oDoorEventChange.DoorOpenEventBlinkCount := 0;
+      end;
+      2 : begin
+        oDoorEventChange.DoorLongOpenStateChange := True;
+        oDoorEventChange.DoorLongOpenEventBlinkCount := 0;
+      end;
+      3 : begin
+        oDoorEventChange.NFStateChange := True;
+        oDoorEventChange.NFEventBlinkCount := 0;
+      end;
+    end;
+    BuildingStateChangeList.AddObject(aBuildingCode,oDoorEventChange);
+  end else
+  begin
+    case aState of
+      1 : begin
+        TDoorEventChange(BuildingStateChangeList.Objects[nIndex]).DoorOpenStateChange := True;
+        TDoorEventChange(BuildingStateChangeList.Objects[nIndex]).DoorOpenEventBlinkCount := 0;
+      end;
+      2 : begin
+        TDoorEventChange(BuildingStateChangeList.Objects[nIndex]).DoorLongOpenStateChange := True;
+        TDoorEventChange(BuildingStateChangeList.Objects[nIndex]).DoorLongOpenEventBlinkCount := 0;
+      end;
+      3 : begin
+        TDoorEventChange(BuildingStateChangeList.Objects[nIndex]).NFStateChange := True;
+        TDoorEventChange(BuildingStateChangeList.Objects[nIndex]).NFEventBlinkCount := 0;
+      end;
+    end;
+  end;
+end;
+
+procedure TfmBuildingDoorState.ColorChangeTimerTimer(Sender: TObject);
+var
+  i : integer;
+begin
+
+  if BuildingStateChangeList.Count < 1 then Exit;
+
+  with sg_buildingState do
+  begin
+    for i := 0 to BuildingStateChangeList.Count - 1 do
+    begin
+      if (TDoorEventChange(BuildingStateChangeList.Objects[i]).DoorOpenStateChange) and (TDoorEventChange(BuildingStateChangeList.Objects[i]).DoorOpenEventBlinkCount < 10) then
+      begin
+        TDoorEventChange(BuildingStateChangeList.Objects[i]).DoorOpenEventBlinkCount := TDoorEventChange(BuildingStateChangeList.Objects[i]).DoorOpenEventBlinkCount + 1;
+        if (TDoorEventChange(BuildingStateChangeList.Objects[i]).DoorOpenEventBlinkCount mod 2) = 1 then
+        begin
+          Colors[1 + TDoorEventChange(BuildingStateChangeList.Objects[i]).BuildingIndex,3] := clFuchsia;
+        end else
+        begin
+          Colors[1 + TDoorEventChange(BuildingStateChangeList.Objects[i]).BuildingIndex,3] := clSkyBlue;
+        end;
+      end else
+      begin
+        TDoorEventChange(BuildingStateChangeList.Objects[i]).DoorOpenStateChange := False;
+        Colors[1 + TDoorEventChange(BuildingStateChangeList.Objects[i]).BuildingIndex,3] := clSkyBlue;
+      end;
+      if (TDoorEventChange(BuildingStateChangeList.Objects[i]).NFStateChange) and (TDoorEventChange(BuildingStateChangeList.Objects[i]).NFEventBlinkCount < 10) then
+      begin
+        TDoorEventChange(BuildingStateChangeList.Objects[i]).NFEventBlinkCount := TDoorEventChange(BuildingStateChangeList.Objects[i]).NFEventBlinkCount + 1;
+        if (TDoorEventChange(BuildingStateChangeList.Objects[i]).NFEventBlinkCount mod 2) = 1 then
+        begin
+          Colors[1 + TDoorEventChange(BuildingStateChangeList.Objects[i]).BuildingIndex,2] := clFuchsia;
+        end else
+        begin
+          Colors[1 + TDoorEventChange(BuildingStateChangeList.Objects[i]).BuildingIndex,2] := clRed;
+        end;
+      end else
+      begin
+        TDoorEventChange(BuildingStateChangeList.Objects[i]).NFStateChange := False;
+        Colors[1 + TDoorEventChange(BuildingStateChangeList.Objects[i]).BuildingIndex,2] := clRed;
+      end;
+      if (TDoorEventChange(BuildingStateChangeList.Objects[i]).DoorLongOpenStateChange) and (TDoorEventChange(BuildingStateChangeList.Objects[i]).DoorLongOpenEventBlinkCount < 10) then
+      begin
+        TDoorEventChange(BuildingStateChangeList.Objects[i]).DoorLongOpenEventBlinkCount := TDoorEventChange(BuildingStateChangeList.Objects[i]).DoorLongOpenEventBlinkCount + 1;
+        if (TDoorEventChange(BuildingStateChangeList.Objects[i]).DoorLongOpenEventBlinkCount mod 2) = 1 then
+        begin
+          Colors[1 + TDoorEventChange(BuildingStateChangeList.Objects[i]).BuildingIndex,4] := clFuchsia;
+        end else
+        begin
+          Colors[1 + TDoorEventChange(BuildingStateChangeList.Objects[i]).BuildingIndex,4] := clYellow;
+        end;
+      end else
+      begin
+        TDoorEventChange(BuildingStateChangeList.Objects[i]).DoorLongOpenStateChange := False;
+        Colors[1 + TDoorEventChange(BuildingStateChangeList.Objects[i]).BuildingIndex,4] := clYellow;
+      end;
+
+    end;
+  end;
+
+
+end;
+
+
+procedure TfmBuildingDoorState.FormClose(Sender: TObject;
+  var Action: TCloseAction);
+var
+  ini_fun : TiniFile;
+begin
+  ColorChangeTimer.enabled := False;
+  fmMonitoringMain.L_bfmBuildingDoorStateShow := False;
+  Try
+    ini_fun := TiniFile.Create(G_stExeFolder + '\BuildingDoorState.INI');
+    Try
+      with ini_fun do
+      begin
+        WriteInteger('Form','Width',Width);
+        WriteInteger('Form','Height',Height);
+        WriteInteger('Form','Left',Left);
+        WriteInteger('Form','Top',Top);
+        if pm_FormTop.Checked then WriteInteger('Form','TopMost',1)
+        else WriteInteger('Form','TopMost',0);
+      end;
+    Except
+      Exit;
+    End;
+  Finally
+    ini_fun.Free;
+  End;
+
+end;
+
+procedure TfmBuildingDoorState.FormCreate(Sender: TObject);
+var
+  ini_fun : TiniFile;
+begin
+  BuildingStateChangeList := TStringList.Create;
+  Try
+    ini_fun := TiniFile.Create(G_stExeFolder + '\BuildingDoorState.INI');
+    Try
+      with ini_fun do
+      begin
+        Width := ReadInteger('Form','Width',1024);
+        Height := ReadInteger('Form','Height',240);
+        Left := ReadInteger('Form','Left',0);
+        Top := ReadInteger('Form','Top',0);
+        if ReadInteger('Form','TopMost',1) = 1 then pm_FormTop.Checked := True
+        else pm_FormTop.Checked := False;
+        pm_FormTopClick(pm_FormTop);
+      end;
+    Except
+      Exit;
+    End;
+  Finally
+    ini_fun.Free;
+  End;
+
+end;
+
+procedure TfmBuildingDoorState.FormShow(Sender: TObject);
+var
+  i : integer;
+begin
+  with sg_buildingState do
+  begin
+    ColCount := G_MonitoringBuildingList.Count + 1;
+    for i := 0 to G_MonitoringBuildingList.Count - 1 do
+    begin
+      Cells[1+i,0] := TMonitoringBuildingState(G_MonitoringBuildingList.Objects[i]).BuildingName;
+    end;
+    Cells[0,1] := '출입문전체';
+    Cells[0,2] := '통신단선';
+    Cells[0,3] := '출입문열림';
+    Cells[0,4] := '장시간열림';
+  end;
+  ShowBuildingCount;
+
+  fmMonitoringMain.L_bfmBuildingDoorStateShow := True;
+end;
+
+
+procedure TfmBuildingDoorState.pm_FormTopClick(Sender: TObject);
+begin
+  if pm_FormTop.Checked then
+  begin
+    SetWindowLong(Handle, GWL_HWNDPARENT, TForm(Owner).Handle);
+    SetWindowPos(Handle, HWND_TOPMOST, // 폼을 최상위로...
+                 Left, Top, Width, Height,
+                 SWP_NOACTIVATE or SWP_NOMOVE or SWP_NOSIZE);
+  end else
+  begin
+    SetWindowLong(Handle, GWL_HWNDPARENT, TForm(Owner).Handle);
+    SetWindowPos(Handle, HWND_NOTOPMOST, // 폼의 최상위 해제...
+                 Left, Top, Width, Height,
+                 0);
+  end;
+end;
+
+procedure TfmBuildingDoorState.ReportShow(aBuildingIndex, aMode: integer;aCaption:string);
+begin
+  if aBuildingIndex > G_MonitoringBuildingList.Count - 1 then Exit;
+
+  fmDoorAlarmReport := TfmDoorAlarmReport.Create(nil);
+  fmDoorAlarmReport.BuildingCode := TMonitoringBuildingState(G_MonitoringBuildingList.Objects[aBuildingIndex]).BuildingCode;
+  fmDoorAlarmReport.BuildingName :=  TMonitoringBuildingState(G_MonitoringBuildingList.Objects[aBuildingIndex]).BuildingName;
+  fmDoorAlarmReport.ReportName := aCaption;
+  fmDoorAlarmReport.ReportType := aMode;
+  fmDoorAlarmReport.ShowModal;
+
+end;
+
+procedure TfmBuildingDoorState.sg_buildingStateDblClick(Sender: TObject);
+begin
+  with sg_buildingState do
+  begin
+    if Row = 2 then ReportShow(Col - 1,0,cells[0,Row])
+    else if Row = 3 then ReportShow(Col - 1,1,cells[0,Row])
+    else if Row = 4 then ReportShow(Col - 1,2,cells[0,Row])
+  end;
+
+end;
+
+procedure TfmBuildingDoorState.sg_buildingStateResize(Sender: TObject);
+begin
+  Exit;
+  with sg_buildingState do
+  begin
+    DefaultColWidth := Width div ColCount;
+  end;
+end;
+
+procedure TfmBuildingDoorState.ShowBuildingCount;
+var
+  i : integer;
+begin
+  with sg_buildingState do
+  begin
+    for i := 0 to G_MonitoringBuildingList.Count - 1 do
+    begin
+      (*
+      cells[1+i,1] := FormatFloat('#,',TMonitoringBuildingState(G_MonitoringBuildingList.Objects[i]).GetDoorCount);
+      cells[1+i,2] := FormatFloat('#,',TMonitoringBuildingState(G_MonitoringBuildingList.Objects[i]).NetWorkFailCount);
+      cells[1+i,3] := FormatFloat('#,',TMonitoringBuildingState(G_MonitoringBuildingList.Objects[i]).DoorOpenCount);
+      cells[1+i,4] := FormatFloat('#,',TMonitoringBuildingState(G_MonitoringBuildingList.Objects[i]).DoorLongOpenCount);
+      *)
+      cells[1+i,1] := inttostr(TMonitoringBuildingState(G_MonitoringBuildingList.Objects[i]).GetDoorCount);
+      cells[1+i,2] := inttostr(TMonitoringBuildingState(G_MonitoringBuildingList.Objects[i]).NetWorkFailCount);
+      cells[1+i,3] := inttostr(TMonitoringBuildingState(G_MonitoringBuildingList.Objects[i]).DoorOpenCount);
+      cells[1+i,4] := inttostr(TMonitoringBuildingState(G_MonitoringBuildingList.Objects[i]).DoorLongOpenCount);
+    end;
+    sg_buildingState.RowColor[2] := clRed;
+    sg_buildingState.RowFontColor[2] := clWhite;
+    sg_buildingState.RowColor[3] := clSkyBlue;
+    sg_buildingState.RowColor[4] := clYellow;
+  end;
+
+end;
+
+end.

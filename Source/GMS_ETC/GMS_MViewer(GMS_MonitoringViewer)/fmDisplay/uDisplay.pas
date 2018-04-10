@@ -1,0 +1,100 @@
+unit uDisplay;
+
+interface
+
+uses
+  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
+  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.ExtCtrls, AdvPanel,
+  Vcl.Imaging.pngimage, Vcl.StdCtrls, JvGIF,Vcl.Imaging.GIFImg, Vcl.Imaging.jpeg;
+
+type
+  TfmDisplay = class(TForm)
+    AdvPanel1: TAdvPanel;
+    Image1: TImage;
+    Image2: TImage;
+    lb_Date: TLabel;
+    lb_Time: TLabel;
+    lb_Weekend: TLabel;
+    Timer1: TTimer;
+    procedure FormKeyPress(Sender: TObject; var Key: Char);
+    procedure FormMouseDown(Sender: TObject; Button: TMouseButton;
+      Shift: TShiftState; X, Y: Integer);
+    procedure FormClose(Sender: TObject; var Action: TCloseAction);
+    procedure FormShow(Sender: TObject);
+    procedure Timer1Timer(Sender: TObject);
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+    procedure Form_Close;
+  end;
+
+var
+  fmDisplay: TfmDisplay;
+
+implementation
+
+uses
+  uCommonVariable,
+  uMain;
+
+{$R *.dfm}
+
+
+
+procedure TfmDisplay.FormClose(Sender: TObject; var Action: TCloseAction);
+begin
+  Timer1.Enabled := False;
+  fmMain.DisplayView := False;
+end;
+
+procedure TfmDisplay.FormKeyPress(Sender: TObject; var Key: Char);
+begin
+  Close;
+end;
+
+procedure TfmDisplay.FormMouseDown(Sender: TObject; Button: TMouseButton;
+  Shift: TShiftState; X, Y: Integer);
+begin
+  Close;
+end;
+
+procedure TfmDisplay.FormShow(Sender: TObject);
+begin
+  if FileExists(G_stExeFolder + '\display.jpg') then
+  begin
+    Image1.Picture.LoadFromFile(G_stExeFolder + '\display.jpg');
+    //TGIFImage( Image1.Picture.Graphic ).Animate := True;
+  end;
+
+  Timer1.Enabled := True;
+  fmMain.DisplayView := True;
+  WindowState := wsMaximized;
+end;
+
+procedure TfmDisplay.Form_Close;
+begin
+  Close;
+end;
+
+procedure TfmDisplay.Timer1Timer(Sender: TObject);
+var
+  nDay : integer;
+  days: array[1..7] of string;
+begin
+    lb_Time.Caption := FormatDateTime('hh:nn:ss am/pm',now);
+    lb_Date.Caption := FormatDateTime('yyyy mm dd',now);
+    nDay := DayOfWeek(now);
+    days[1] := 'ìí';
+    days[2] := 'êÅ';
+    days[3] := 'ûý';
+    days[4] := 'â©';
+    days[5] := 'ÙÊ';
+    days[6] := 'ÐÝ';
+    days[7] := '÷Ï';
+
+    lb_Weekend.Caption := days[DayOfWeek(now)];
+
+end;
+
+end.

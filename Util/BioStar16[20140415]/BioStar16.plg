@@ -1,0 +1,51 @@
+<html>
+<body>
+<pre>
+<h1>Build Log</h1>
+<h3>
+--------------------Configuration: BioStar16 - Win32 Debug--------------------
+</h3>
+<h3>Command Lines</h3>
+Creating temporary file "C:\DOCUME~1\ADMINI~1\LOCALS~1\Temp\RSP3C.tmp" with contents
+[
+/nologo /MTd /W3 /Gm /GX /ZI /Od /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /D "_MBCS" /D "_USRDLL" /D "BIOSTAR16_EXPORTS" /FR"Debug/" /Fp"Debug/BioStar16.pch" /YX /Fo"Debug/" /Fd"Debug/" /FD /GZ /c 
+"Z:\E\[프로젝트]\[DELXE2]\[Project]\[BMS_XE2]\Util\BioStar16[20140415]\BioStar16DLL.cpp"
+]
+Creating command line "cl.exe @C:\DOCUME~1\ADMINI~1\LOCALS~1\Temp\RSP3C.tmp" 
+Creating temporary file "C:\DOCUME~1\ADMINI~1\LOCALS~1\Temp\RSP3D.tmp" with contents
+[
+kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /dll /incremental:yes /pdb:"Debug/BioStar16.pdb" /debug /machine:I386 /def:".\BioStar16.def" /out:"Debug/BioStar16.dll" /implib:"Debug/BioStar16.lib" /pdbtype:sept 
+".\Debug\BioStar16DLL.obj"
+]
+Creating command line "link.exe @C:\DOCUME~1\ADMINI~1\LOCALS~1\Temp\RSP3D.tmp"
+<h3>Output Window</h3>
+Compiling...
+BioStar16DLL.cpp
+Linking...
+
+LINK : error : Internal error during ReadSymbolTable
+
+  ExceptionCode            = C0000005
+  ExceptionFlags           = 00000000
+  ExceptionAddress         = 0040EBFB
+  NumberParameters         = 00000002
+  ExceptionInformation[ 0] = 00000001
+  ExceptionInformation[ 1] = 00000000
+
+CONTEXT:
+  Eax    = 40030F2C  Esp    = 0013EAD0
+  Ebx    = 3FFF0000  Ebp    = 004695A8
+  Ecx    = C0000A40  Esi    = 40030EF0
+  Edx    = 00000000  Edi    = 3FFF01B8
+  Eip    = 0040EBFB  EFlags = 00010202
+  SegCs  = 0000001B  SegDs  = 00000023
+  SegSs  = 00000023  SegEs  = 00000023
+  SegFs  = 0000003B  SegGs  = 00000000
+  Dr0    = 0013EAD0  Dr3    = 3FFF0000
+  Dr1    = 004695A8  Dr6    = C0000A40
+  Dr2    = 00000000  Dr7    = 00000000
+Error executing link.exe.
+
+</pre>
+</body>
+</html>

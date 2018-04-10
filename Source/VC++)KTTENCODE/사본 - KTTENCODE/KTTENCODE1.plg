@@ -1,0 +1,39 @@
+<html>
+<body>
+<pre>
+<h1>Build Log</h1>
+<h3>
+--------------------Configuration: KTTENCODE1 - Win32 Debug--------------------
+</h3>
+<h3>Command Lines</h3>
+Creating temporary file "C:\DOCUME~1\icon001\LOCALS~1\Temp\RSP89.tmp" with contents
+[
+/nologo /MDd /W3 /Gm /GX /ZI /Od /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /D "_WINDLL" /D "_AFXDLL" /D "_MBCS" /D "_USRDLL" /Fp"Debug/KTTENCODE1.pch" /Yu"stdafx.h" /Fo"Debug/" /Fd"Debug/" /FD /GZ /c 
+"E:\[프로젝트]\[ZTBMS]\Source\VC++)KTTENCODE\KTTENCODE1\KTTENCODE1.cpp"
+]
+Creating command line "cl.exe @C:\DOCUME~1\icon001\LOCALS~1\Temp\RSP89.tmp" 
+Creating temporary file "C:\DOCUME~1\icon001\LOCALS~1\Temp\RSP8A.tmp" with contents
+[
+/nologo /subsystem:windows /dll /incremental:yes /pdb:"Debug/KTTENCODE1.pdb" /debug /machine:I386 /def:".\KTTENCODE1.def" /out:"Debug/KTTENCODE1.dll" /implib:"Debug/KTTENCODE1.lib" /pdbtype:sept 
+".\Debug\KTTENCODE1.obj"
+".\Debug\StdAfx.obj"
+".\Debug\KTTENCODE1.res"
+]
+Creating command line "link.exe @C:\DOCUME~1\icon001\LOCALS~1\Temp\RSP8A.tmp"
+<h3>Output Window</h3>
+Compiling...
+KTTENCODE1.cpp
+E:\[프로젝트]\[ZTBMS]\Source\VC++)KTTENCODE\KTTENCODE1\KTTENCODE1.cpp(111) : warning C4307: '*' : integral constant overflow
+E:\[프로젝트]\[ZTBMS]\Source\VC++)KTTENCODE\KTTENCODE1\KTTENCODE1.cpp(162) : warning C4307: '*' : integral constant overflow
+E:\[프로젝트]\[ZTBMS]\Source\VC++)KTTENCODE\KTTENCODE1\KTTENCODE1.cpp(272) : warning C4244: '=' : conversion from 'unsigned short' to 'char', possible loss of data
+E:\[프로젝트]\[ZTBMS]\Source\VC++)KTTENCODE\KTTENCODE1\KTTENCODE1.cpp(246) : warning C4101: 'EncodeData' : unreferenced local variable
+E:\[프로젝트]\[ZTBMS]\Source\VC++)KTTENCODE\KTTENCODE1\KTTENCODE1.cpp(285) : warning C4101: 'DecodeData' : unreferenced local variable
+Linking...
+
+
+
+<h3>Results</h3>
+KTTENCODE1.dll - 0 error(s), 5 warning(s)
+</pre>
+</body>
+</html>

@@ -1,0 +1,782 @@
+﻿unit uLectureList;
+
+interface
+
+uses
+  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
+  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, uSubForm, CommandArray, AdvGlassButton,
+  Vcl.Grids, AdvObj, BaseGrid, AdvGrid, Vcl.StdCtrls, AdvEdit, AdvSmoothLabel,
+  AdvSmoothPanel, AdvOfficeTabSet, W7Classes, W7Panels,ActiveX,ADODB,
+  Vcl.ComCtrls, Vcl.Menus, Vcl.ExtCtrls, AdvSplitter, AdvPanel, Vcl.ImgList,
+  AdvOfficeButtons, AdvGroupBox,Data.DB,Vcl.Imaging.jpeg, AdvSmoothTabPager,
+  ToolPanels, AdvOfficeTabSetStylers, AdvToolBar, AdvToolBarStylers,
+  AdvGlowButton, AdvOfficePager, AdvAppStyler, AdvOfficePagerStylers,
+  Vcl.Imaging.pngimage,DateUtils, AdvProgressBar,Winapi.ShellAPI, AdvCombo;
+
+const
+  con_LocalCompanyImageIndex = 0;
+  con_LocalEmployeeImageIndex = 1;
+  con_LocalBuildingImageIndex = 2;
+
+type
+  TfmLectureList = class(TfmASubForm)
+    BodyPanel: TW7Panel;
+    pm_Work: TPopupMenu;
+    AdvSmoothPanel1: TAdvSmoothPanel;
+    pan_EmployeeList: TAdvSmoothPanel;
+    AdvSmoothPanel2: TAdvSmoothPanel;
+    sg_EmployeeList: TAdvStringGrid;
+    MenuImageList16: TImageList;
+    pm_EmployeeAdd: TMenuItem;
+    OpenDialog1: TOpenDialog;
+    ed_SearchName: TAdvEdit;
+    lb_EtcDetail: TAdvSmoothLabel;
+    pm_Employee: TPopupMenu;
+    pm_EmUpdate: TMenuItem;
+    pm_EmDelete: TMenuItem;
+    ed_SerchSelectCompanyCode: TAdvEdit;
+    AdvOfficePager1: TAdvOfficePager;
+    AdvOfficePage1: TAdvOfficePage;
+    btn_minimize: TAdvGlowButton;
+    btn_Close: TAdvGlowButton;
+    AdvOfficePagerOfficeStyler1: TAdvOfficePagerOfficeStyler;
+    AdvFormStyler1: TAdvFormStyler;
+    AdvOfficeTabSetOfficeStyler1: TAdvOfficeTabSetOfficeStyler;
+    lb_SearchCount1: TAdvSmoothLabel;
+    lb_SearchCount: TAdvSmoothLabel;
+    lb_Count1: TAdvSmoothLabel;
+    SaveDialog1: TSaveDialog;
+    ProgressBar2: TProgressBar;
+    pan_Message: TAdvSmoothPanel;
+    AdvSmoothLabel2: TAdvSmoothLabel;
+    AdvProgressBar1: TAdvProgressBar;
+    btn_AccessConfirm: TAdvGlassButton;
+    SearchTimer: TTimer;
+    AdvSmoothLabel1: TAdvSmoothLabel;
+    ed_SearchPhone: TAdvEdit;
+    ed_SerchSelectLectureClassCode: TAdvEdit;
+    tv_LectureClassCode: TTreeView;
+    lb_List: TLabel;
+    ed_SearchLeactureClassName: TAdvEdit;
+    btn_LectureClassSelect: TAdvGlowButton;
+    AdvSmoothLabel3: TAdvSmoothLabel;
+    lb_EmployeeClass: TLabel;
+    ed_SearchEmployeeClassName: TAdvEdit;
+    btn_EmployeeClassSelect: TAdvGlowButton;
+    tv_EmployeeClassCode: TTreeView;
+    cmb_CurriculumCode: TAdvComboBox;
+    btn_Excel: TAdvGlowButton;
+    tv_LectureClassName: TTreeView;
+    tv_EmployeeClassList: TTreeView;
+    chk_CurentEmployee: TAdvOfficeCheckBox;
+    procedure FormClose(Sender: TObject; var Action: TCloseAction);
+    procedure FormShow(Sender: TObject);
+    procedure ed_CompanyNameKeyPress(Sender: TObject; var Key: Char);
+    procedure FormCreate(Sender: TObject);
+    procedure pan_EmployeeListResize(Sender: TObject);
+    procedure FormResize(Sender: TObject);
+    procedure btn_SaveMouseEnter(Sender: TObject);
+    procedure btn_SaveMouseLeave(Sender: TObject);
+    procedure sg_CardCanEditCell(Sender: TObject; ARow, ACol: Integer;
+      var CanEdit: Boolean);
+    procedure dt_IndateChange(Sender: TObject);
+    procedure dt_OutDateChange(Sender: TObject);
+    procedure sg_EmployeeListResize(Sender: TObject);
+    procedure Pan_EmcodeMouseDown(Sender: TObject; Button: TMouseButton;
+      Shift: TShiftState; X, Y: Integer);
+    procedure Pan_EmcodeMouseUp(Sender: TObject; Button: TMouseButton;
+      Shift: TShiftState; X, Y: Integer);
+    procedure Pan_EmcodeMouseMove(Sender: TObject; Shift: TShiftState; X,
+      Y: Integer);
+    procedure btn_CloseClick(Sender: TObject);
+    procedure btn_minimizeClick(Sender: TObject);
+    procedure pan_FingerMouseDown(Sender: TObject; Button: TMouseButton;
+      Shift: TShiftState; X, Y: Integer);
+    procedure pan_emPermitAdminMouseDown(Sender: TObject; Button: TMouseButton;
+      Shift: TShiftState; X, Y: Integer);
+    procedure pan_PositionInfoMouseDown(Sender: TObject; Button: TMouseButton;
+      Shift: TShiftState; X, Y: Integer);
+    procedure btn_AccessConfirmClick(Sender: TObject);
+    procedure SearchTimerTimer(Sender: TObject);
+    procedure btn_LectureClassSelectClick(Sender: TObject);
+    procedure tv_LectureClassNameDblClick(Sender: TObject);
+    procedure pan_employeeMouseMove(Sender: TObject; Shift: TShiftState; X,
+      Y: Integer);
+    procedure btn_EmployeeClassSelectClick(Sender: TObject);
+    procedure tv_EmployeeClassListDblClick(Sender: TObject);
+    procedure cmb_CurriculumCodeChange(Sender: TObject);
+    procedure ed_SearchPhoneKeyUp(Sender: TObject; var Key: Word;
+      Shift: TShiftState);
+  private
+    DragOrigin: TPoint;
+    MouseDowning : BOOLEAN;
+  private
+    L_stMenuID : string;
+    L_stAllName : string;
+    L_stButtonCloseCaption : string;
+    L_stDeleteCaption : string;
+    L_stEmCodeCaption : string;
+    L_stEmCompanyPhoneCaption : string;
+    L_stEmEtcCaption : string;
+    L_stEmHandPhoneCaption : string;
+    L_stEmNameCaption : string;
+    L_stCardNoCaption : string;
+    L_stFingerTemplate1_1 : string;
+    L_stFingerTemplate1_2 : string;
+    L_stWork : string;
+    L_nSelectCol : integer;
+    L_nPageListMaxCount : integer;
+    L_bVisitEditMode : Boolean;
+    L_bEmployeeGradeChange : Boolean;
+    CurriculumCodelist : TStringList;
+    procedure FormNameSetting;
+    procedure SearchEmployeeList(aCode:string;aTopRow:integer = 0);
+    procedure LoadTB_CurriculumCode(aClassCode:string;aStringList:TStringList;cmb_Box:TAdvComboBox;aAll:Boolean=True;aAllData:string = '');
+  private
+    L_bFormClose : Boolean;
+    L_bSearchBreak : Boolean;
+    L_bSearchEnd : Boolean;
+    { Private declarations }
+
+    function JpegStartsInBlob(PicField:TBlobField):integer;
+    procedure AdvStrinGridSetAllCheck(Sender: TObject;bchkState:Boolean);
+  public
+    { Public declarations }
+    procedure FormSearchEnable(aEnabled:Boolean);
+    procedure Form_Close;
+    procedure FontSetting;
+    procedure FormChangeEvent(aNumber:integer);
+    procedure FormGradeRefresh;
+    procedure FormIDSetting(aID:string);
+  end;
+
+var
+  fmLectureList: TfmLectureList;
+
+implementation
+uses
+  uComboBoxCodeLoad,
+  uCommonFunction,
+  uCommonVariable,
+  uEmployeeRelay,
+  uFormFunction,
+  uFormVariable,
+  uDataBase,
+  uDBFormMessage,
+  uDBFunction,
+  uDBInsert,
+  uDBUpdate,
+  uDBDelete,
+  uDBCardPermit,
+  uDBSelect,
+  uSupremaFinger,
+  uFingerVariable,
+  uFormUtil,
+  uMain;
+{$R *.dfm}
+
+procedure TfmLectureList.AdvStrinGridSetAllCheck(Sender: TObject;
+  bchkState: Boolean);
+var
+  i : integer;
+begin
+    for i:= 1 to (Sender as TAdvStringGrid).RowCount - 1  do
+    begin
+      (Sender as TAdvStringGrid).SetCheckBoxState(0,i,bchkState);
+    end;
+end;
+
+procedure TfmLectureList.btn_AccessConfirmClick(Sender: TObject);
+begin
+  inherited;
+  L_bSearchBreak := True;
+  Pan_Message.Visible := False;
+
+end;
+
+procedure TfmLectureList.btn_CloseClick(Sender: TObject);
+begin
+  inherited;
+  Close;
+end;
+
+procedure TfmLectureList.btn_EmployeeClassSelectClick(Sender: TObject);
+begin
+  inherited;
+  tv_EmployeeClassList.Visible := Not tv_EmployeeClassList.Visible;
+  tv_EmployeeClassList.Top := AdvSmoothPanel2.Top + btn_EmployeeClassSelect.Top + btn_EmployeeClassSelect.Height + 30;
+  tv_EmployeeClassList.Left := btn_EmployeeClassSelect.Left + btn_EmployeeClassSelect.Width - tv_EmployeeClassList.Width;
+end;
+
+procedure TfmLectureList.btn_LectureClassSelectClick(Sender: TObject);
+begin
+  inherited;
+  tv_LectureClassName.Visible := Not tv_LectureClassName.Visible;
+  tv_LectureClassName.Top := AdvSmoothPanel2.Top + btn_LectureClassSelect.Top + btn_LectureClassSelect.Height + 30;
+  tv_LectureClassName.Left := btn_LectureClassSelect.Left + btn_LectureClassSelect.Width - tv_LectureClassName.Width;
+end;
+
+procedure TfmLectureList.btn_minimizeClick(Sender: TObject);
+begin
+  inherited;
+  windowState := wsNormal;
+
+end;
+
+procedure TfmLectureList.btn_SaveMouseEnter(Sender: TObject);
+begin
+  inherited;
+  TAdvGlassButton(Sender).ShineColor := clYellow;
+end;
+
+procedure TfmLectureList.btn_SaveMouseLeave(Sender: TObject);
+begin
+  inherited;
+  TAdvGlassButton(Sender).ShineColor := clGray;
+end;
+
+
+procedure TfmLectureList.cmb_CurriculumCodeChange(Sender: TObject);
+begin
+  inherited;
+  SearchEmployeeList('');
+end;
+
+procedure TfmLectureList.dt_IndateChange(Sender: TObject);
+begin
+  inherited;
+  L_bEmployeeGradeChange := True;  //유효기간 변경시 카드데이터 재전송
+end;
+
+procedure TfmLectureList.dt_OutDateChange(Sender: TObject);
+begin
+  inherited;
+  L_bEmployeeGradeChange := True; //유효기간 변경시 카드데이터 재전송
+end;
+
+procedure TfmLectureList.ed_CompanyNameKeyPress(Sender: TObject; var Key: Char);
+begin
+  inherited;
+  if Key = #13 then
+  begin
+    Key := #0;
+  end;
+end;
+
+procedure TfmLectureList.ed_SearchPhoneKeyUp(Sender: TObject; var Key: Word;
+  Shift: TShiftState);
+begin
+  inherited;
+  SearchEmployeeList('');
+end;
+
+procedure TfmLectureList.FontSetting;
+begin
+(*  dmFormUtil.TravelFormFontSetting(self,G_stFontName,inttostr(G_nFontSize));
+  dmFormUtil.TravelAdvOfficeTabSetOfficeStylerFontSetting(AdvOfficeTabSetOfficeStyler1, G_stFontName,inttostr(G_nFontSize));
+  dmFormUtil.FormAdvOfficeTabSetOfficeStylerSetting(AdvOfficeTabSetOfficeStyler1,G_stFormStyle);
+  dmFormUtil.FormAdvToolBarOfficeStylerSetting(AdvToolBarOfficeStyler1,G_stFormStyle);
+  dmFormUtil.FormStyleSetting(self,AdvToolBarOfficeStyler1);
+*)
+end;
+
+procedure TfmLectureList.FormChangeEvent(aNumber: integer);
+var
+  stSelectCode1 : string;
+  stSelectCode2 : string;
+  nIndex : integer;
+begin
+  case aNumber of
+    con_FormBMOSCOMPANYCODE : begin
+    end;
+    con_FormBMOSBUILDINGCODE : begin
+//      LoadBuildingTreeView('',tv_buildingName,tv_buildingCode,con_LocalBuildingImageIndex);
+    end;
+    con_FormBMOSPOSICODE : begin
+
+    end;
+    con_FormBMOSEMPLOYEEGUBUN : begin
+    end;
+
+  end;
+end;
+
+procedure TfmLectureList.FormClose(Sender: TObject; var Action: TCloseAction);
+begin
+  inherited;
+  if dmSupremaFinger.Connected then
+  begin
+    dmSupremaFinger.SocketOPEN := False;
+  end;
+  //dmSupremaFinger.Free;
+  L_bFormClose := True;
+  L_bSearchBreak := True;
+  Delay(1000);
+
+  CurriculumCodelist.Free;
+
+
+  fmMain.FORMENABLE(con_FormLectureList,'FALSE');
+
+  Action := caFree;
+end;
+
+procedure TfmLectureList.FormCreate(Sender: TObject);
+begin
+  inherited;
+  CurriculumCodelist:= TStringList.Create;
+  FontSetting;
+  L_bSearchEnd := True;
+  //dmSupremaFinger := TdmSupremaFinger.Create(nil);
+
+end;
+
+procedure TfmLectureList.FormGradeRefresh;
+begin
+  if IsUpdateGrade or IsDeleteGrade then sg_EmployeeList.PopupMenu := pm_Employee
+  else sg_EmployeeList.PopupMenu := nil;
+  pm_EmployeeAdd.Enabled := IsInsertGrade;
+  pm_EmDelete.Enabled := IsDeleteGrade;
+  pm_EmUpdate.Enabled := IsUpdateGrade;
+end;
+
+procedure TfmLectureList.FormIDSetting(aID: string);
+begin
+  L_stMenuID := aID;
+end;
+
+procedure TfmLectureList.FormNameSetting;
+begin
+  AdvOfficePage1.Caption := dmFormFunction.GetFormName('0','2','BUTTONMENU002');
+
+
+  L_stDeleteCaption := dmFormFunction.GetFormName('0','2','BUTTONDEL001');
+  L_stButtonCloseCaption := dmFormFunction.GetFormName('0','2','BUTTONMENU001');
+  L_stCardNoCaption := dmFormFunction.GetFormName('0','2','COMMONCARDNUMBER');
+  pm_EmUpdate.Caption := dmFormFunction.GetFormName('0','2','COMMONUPDATE');
+  L_stAllName := dmFormFunction.GetFormName('0','2','COMMONALLNAME');
+
+  L_stEmCodeCaption := dmFormFunction.GetFormName('0','2','COMMONEMPLOYEECODE');
+  L_stEmNameCaption:= dmFormFunction.GetFormName('0','2','COMMONEMPLOYEENAME');
+  L_stEmHandPhoneCaption:= dmFormFunction.GetFormName('0','2','COMMONEMPLOYEEHANDPHONE');
+  L_stEmCompanyPhoneCaption:= dmFormFunction.GetFormName('0','2','COMMONEMPLOYEECOMPANYPHONE');
+  L_stEmEtcCaption:= dmFormFunction.GetFormName('0','2','COMMONEMPLOYEEETCINFO');
+  lb_Count1.Caption.Text := dmFormFunction.GetFormName('0','2','COMMONCOUNT');
+  lb_SearchCount1.Caption.Text := dmFormFunction.GetFormName('0','2','COMMONSEARCHCOUNT01');
+end;
+
+procedure TfmLectureList.FormResize(Sender: TObject);
+begin
+  inherited;
+
+  btn_Close.Left := AdvOfficePager1.Width - btn_Close.Width - 10;
+  btn_minimize.Left := btn_Close.Left - btn_minimize.Width - 2;
+
+  if Windowstate = wsMaximized then
+  begin
+    btn_minimize.Visible := False;
+    btn_Close.Visible := True;
+  end else
+  begin
+    btn_minimize.Visible := False;
+    btn_Close.Visible := False;
+  end;
+
+  pan_Message.Left := (Width div 2) - (pan_Message.Width div 2);
+  pan_Message.Top := (Height div 2) - (pan_Message.Height div 2);
+
+
+  pan_EmployeeListResize(pan_EmployeeList);
+
+end;
+
+procedure TfmLectureList.FormSearchEnable(aEnabled: Boolean);
+begin
+end;
+
+procedure TfmLectureList.FormShow(Sender: TObject);
+begin
+  inherited;
+  WindowState := wsMaximized;
+
+  FormNameSetting;
+  fmMain.FORMENABLE(con_FormBMOSEMPLOYEE,'TRUE');
+
+  LoadCompanyTreeView('',tv_EmployeeClassList,tv_EmployeeClassCode,con_LocalCompanyImageIndex,'',True);
+  tv_EmployeeClassList.Items[0].Selected := True;
+  //tv_EmployeeClassListDblClick(self);
+  LoadLectureClassTreeView('',tv_LectureClassName,tv_LectureClassCode,con_LocalCompanyImageIndex);
+  tv_LectureClassName.Items[0].Selected := True;
+  tv_LectureClassNameDblClick(self);
+
+
+  if L_bFormClose or G_bApplicationTerminate then Exit;
+
+
+  L_bVisitEditMode := True;
+
+
+
+
+  if Not FileExists(G_stExeFolder + '\Excel-d.png') then
+  begin
+    ExcelDisImage.Picture.SaveToFile(G_stExeFolder + '\Excel-d.png');
+  end;
+//  if G_nReportSearchType = 1 then SearchEmployeeList('');  //tv_ListClick 에서 먼저 조회 함
+end;
+
+procedure TfmLectureList.Form_Close;
+begin
+  Close;
+end;
+
+function TfmLectureList.JpegStartsInBlob(PicField: TBlobField): integer;
+var
+  bS : TADOBlobStream;
+  buffer : Word;
+  hx : string;
+begin
+  Result := -1;
+  bS := TADOBlobStream.Create(PicField, bmRead);
+  try
+    while (Result = -1) and
+      (bS.Position + 1 < bS.Size) do
+    begin
+      bS.ReadBuffer(buffer, 1);
+      hx:=IntToHex(buffer, 2);
+      if hx = 'FF' then begin
+        bS.ReadBuffer(buffer, 1);
+        hx:=IntToHex(buffer, 2);
+        if hx = 'D8' then Result := bS.Position - 2
+        else if hx = 'FF' then
+        bS.Position := bS.Position-1;
+      end; //if
+    end; //while
+  finally
+    bS.Free
+  end; //try
+end;
+
+procedure TfmLectureList.LoadTB_CurriculumCode(aClassCode: string;
+  aStringList: TStringList; cmb_Box: TAdvComboBox; aAll: Boolean;
+  aAllData: string);
+var
+  stSql :string;
+  TempAdoQuery : TADOQuery;
+begin
+  cmb_Box.Clear;
+  aStringList.Clear;
+  if aAll then
+  begin
+    cmb_Box.Items.Add(aAllData);
+    aStringList.Add('');
+    cmb_Box.ItemIndex := 0;
+  end;
+  stSql := 'select * from TB_CurriculumCode ';
+  stSql := stSql + ' Where GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  stSql := stSql + ' AND LC_CODE Like ''' + aClassCode + '%'' ';
+
+  Try
+    CoInitialize(nil);
+    TempAdoQuery := TADOQuery.Create(nil);
+    TempAdoQuery.Connection := dmDataBase.ADOConnection;
+
+    with TempAdoQuery do
+    begin
+      Close;
+      Sql.Clear;
+      Sql.Text := stSql;
+
+      Try
+        Open;
+      Except
+        dmDataBase.DBConnected := False;
+        Exit;
+      End;
+
+      if RecordCount < 1 then  Exit;
+
+      First;
+
+      While Not Eof do
+      begin
+        cmb_Box.Items.Add(FindField('CC_NAME').AsString);
+        aStringList.Add(FindField('CC_CODE').AsString);
+        Next;
+      end;
+    end;
+  Finally
+    TempAdoQuery.Free;
+    CoUninitialize;
+  End;
+end;
+
+procedure TfmLectureList.Pan_EmcodeMouseDown(Sender: TObject; Button: TMouseButton;
+  Shift: TShiftState; X, Y: Integer);
+begin
+  inherited;
+(*    if (Button = mbLeft) and (MouseDowning = False) then
+    begin
+        // DRAG POINT 저장
+        DragOrigin := Point (X,Y);
+        // MOUSE DOWN = TRUE 설정
+        MouseDowning := True;
+    end;
+*)
+end;
+
+procedure TfmLectureList.Pan_EmcodeMouseMove(Sender: TObject; Shift: TShiftState;
+  X, Y: Integer);
+const
+ SC_DragMove = $F012;
+begin
+ ReleaseCapture;
+ (sender as TWinControl).perform(WM_SysCommand, SC_DragMove,0);
+(*  inherited;
+    // MOUSE DOWN = TRUE CHECK
+    if (MouseDowning = True) then
+    begin
+        // IMAGE TOP 위치 설정
+        (Sender as TAdvSmoothPanel).Top := (Sender as TAdvSmoothPanel).Top + Y - DragOrigin.Y;
+        // IMAGE LEFT 위치 설정
+        (Sender as TAdvSmoothPanel).Left := (Sender as TAdvSmoothPanel).Left + X - DragOrigin.X;
+    end;
+ *)
+end;
+
+procedure TfmLectureList.Pan_EmcodeMouseUp(Sender: TObject; Button: TMouseButton;
+  Shift: TShiftState; X, Y: Integer);
+begin
+  inherited;
+    // MOUSE DOWN = FALSE 설정
+//    MouseDowning := False;
+end;
+
+procedure TfmLectureList.pan_emPermitAdminMouseDown(Sender: TObject;
+  Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+const
+ SC_DragMove = $F012;
+begin
+ ReleaseCapture;
+ (sender as TWinControl).perform(WM_SysCommand, SC_DragMove,0);
+
+end;
+
+procedure TfmLectureList.pan_EmployeeListResize(Sender: TObject);
+begin
+  inherited;
+  sg_EmployeeList.Width := pan_EmployeeList.Width - sg_EmployeeList.Left - 20;
+  sg_EmployeeList.Height := pan_EmployeeList.Height - sg_EmployeeList.Top - 50;
+  sg_EmployeeList.ColWidths[4] := sg_EmployeeList.Width - sg_EmployeeList.ColWidths[0] - sg_EmployeeList.ColWidths[1] - sg_EmployeeList.ColWidths[2] - sg_EmployeeList.ColWidths[3] - 10;
+  if sg_EmployeeList.ColWidths[4] < 100 then sg_EmployeeList.ColWidths[4] := 100;
+
+end;
+
+procedure TfmLectureList.pan_employeeMouseMove(Sender: TObject;
+  Shift: TShiftState; X, Y: Integer);
+const
+ SC_DragMove = $F012;
+begin
+ ReleaseCapture;
+ (sender as TWinControl).perform(WM_SysCommand, SC_DragMove,0);
+
+end;
+
+procedure TfmLectureList.pan_FingerMouseDown(Sender: TObject; Button: TMouseButton;
+  Shift: TShiftState; X, Y: Integer);
+const
+ SC_DragMove = $F012;
+begin
+ ReleaseCapture;
+ (sender as TWinControl).perform(WM_SysCommand, SC_DragMove,0);
+end;
+
+procedure TfmLectureList.pan_PositionInfoMouseDown(Sender: TObject;
+  Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+const
+ SC_DragMove = $F012;
+begin
+(* ReleaseCapture;
+ (sender as TWinControl).perform(WM_SysCommand, SC_DragMove,0);
+ *)
+end;
+
+
+
+procedure TfmLectureList.SearchEmployeeList(aCode: string; aTopRow: integer);
+var
+  stSql : string;
+  TempAdoQuery : TADOQuery;
+  nRow : integer;
+  stLectureCode : string;
+  stTemp : string;
+begin
+
+  GridInit(sg_EmployeeList,8,2,False);
+
+  stLectureCode := CurriculumCodelist.Strings[cmb_CurriculumCode.ItemIndex] ;
+
+  stSql := ' Select a.*,b.EM_NAME,b.EM_BIRTHDAY,b.EM_REGDATE,b.EM_ENDDATE,c.CO_COMPANYNAME,d.CC_MONTH,d.CC_NAME,e.LC_CODENAME from TB_EMPLOYEELecture a ';
+  stSql := stSql + ' Left Join TB_EMPLOYEE b ';
+  stSql := stSql + ' ON (a.EM_SEQ = b.EM_SEQ ) ';
+  stSql := stSql + ' Left Join TB_COMPANYCODE c ';
+  stSql := stSql + ' ON (b.GROUP_CODE = c.GROUP_CODE ';
+  stSql := stSql + ' AND b.CO_COMPANYCODE = c.CO_COMPANYCODE ) ';
+  stSql := stSql + ' Left Join TB_CurriculumCode d ';
+  stSql := stSql + ' ON (a.GROUP_CODE = d.GROUP_CODE ';
+  stSql := stSql + ' AND a.CC_CODE = d.CC_CODE ) ';
+  stSql := stSql + ' Left Join TB_LectureClassCode e ';
+  stSql := stSql + ' ON (d.GROUP_CODE = e.GROUP_CODE ';
+  stSql := stSql + ' AND d.LC_CODE = e.LC_CODE ) ';
+  stSql := stSql + ' Where a.GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  stSql := stSql + ' AND a.CC_CODE = ' + stLectureCode + ' ';
+  if ed_SearchName.Text <> '' then
+    stSql := stSql + ' AND b.EM_NAME Like N''%' + ed_SearchName.Text + '%'' ';
+  if ed_SearchPhone.Text <> '' then
+    stSql := stSql + ' AND (b.EM_HANDPHONE Like ''%' + ed_SearchPhone.Text + '%'' OR b.EM_COMPANYPHONE Like ''%' + ed_SearchPhone.Text + '%'' ) ';
+  if chk_CurentEmployee.Checked then stSql := stSql + ' AND a.EL_STATE = 1 ';
+
+  Try
+    if (G_nFormEnable = 1) then FormSearchEnable(False);
+    CoInitialize(nil);
+    TempAdoQuery := TADOQuery.Create(nil);
+    TempAdoQuery.Connection := dmDataBase.ADOConnection;
+
+    with TempAdoQuery do
+    begin
+      Close;
+      sql.Text := stSql;
+      Try
+        Open;
+      Except
+        dmDataBase.DBConnected := False;
+        Exit;
+      End;
+      lb_SearchCount.Caption.Text := FormatFloat('#,##0',recordCount);
+      if recordcount < 1 then Exit;
+
+       pan_Message.Visible := G_bDataLoadingView;
+      AdvProgressBar1.Max := recordcount;
+      AdvProgressBar1.Position := 0;
+      with sg_EmployeeList do
+      begin
+        nRow := 1;
+        RowCount := RecordCount + 1;
+        while Not Eof do
+        begin
+          if L_bSearchBreak then
+          begin
+            Exit;
+          end;
+          if L_bFormClose or G_bApplicationTerminate then Exit;
+(*강의분류
+강의명
+학생분류
+학생명
+생년월일
+등록일
+종료일
+수강상태
+*)
+          cells[0,nRow] := FindField('LC_CODENAME').AsString;  //강의분류
+          cells[1,nRow] := FindField('CC_NAME').AsString;        //강의명
+          cells[2,nRow] := FindField('CO_COMPANYNAME').AsString; //학생 분류
+          cells[3,nRow] := FindField('EM_NAME').AsString;    //학생명
+          cells[4,nRow] := MakeDatetimeStr(FindField('EM_BIRTHDAY').AsString);    //생년월일
+          cells[5,nRow] := MakeDatetimeStr(FindField('EL_REGDATE').AsString); //등록일
+          cells[6,nRow] := MakeDatetimeStr(FindField('EM_ENDDATE').AsString); //종료일
+          if FindField('EL_STATE').AsInteger = 1 then cells[7,nRow] := '수강중'
+          else if FindField('EL_STATE').AsInteger = 2 then cells[7,nRow] := '수강취소'
+          else if FindField('EL_STATE').AsInteger = 3 then cells[7,nRow] := '수강완료';
+
+
+          nRow := nRow + 1;
+          if G_bDataLoadingView then AdvProgressBar1.Position := nRow;
+          Application.ProcessMessages;
+          Next;
+        end;
+        if aTopRow = 0 then
+        begin
+          if Row > (L_nPageListMaxCount - 1) then TopRow := Row - L_nPageListMaxCount;
+        end else
+        begin
+          TopRow := aTopRow;
+        end;
+      end;
+
+    end;
+  Finally
+    L_bSearchEnd := True;
+    FormSearchEnable(True);
+    pan_Message.Visible := False;
+    TempAdoQuery.Free;
+    CoUninitialize;
+  End;
+
+end;
+
+procedure TfmLectureList.SearchTimerTimer(Sender: TObject);
+begin
+  inherited;
+  SearchTimer.Enabled := False;
+end;
+
+
+procedure TfmLectureList.sg_CardCanEditCell(Sender: TObject; ARow, ACol: Integer;
+  var CanEdit: Boolean);
+begin
+  if Not L_bVisitEditMode then Exit;
+  if ACol = 0 then canEDIT := True
+  else  canEDIT := False;
+
+end;
+
+procedure TfmLectureList.sg_EmployeeListResize(Sender: TObject);
+begin
+  inherited;
+  L_nPageListMaxCount := sg_EmployeeList.Height div sg_EmployeeList.DefaultRowHeight;
+end;
+
+procedure TfmLectureList.tv_EmployeeClassListDblClick(Sender: TObject);
+var
+  stCode : string;
+begin
+  inherited;
+  if tv_EmployeeClassList.Selected = nil then tv_EmployeeClassList.Items[0].Selected := True;
+
+  ed_SearchEmployeeClassName.Text := tv_EmployeeClassList.Selected.Text;
+  ed_SerchSelectCompanyCode.Text := tv_EmployeeClassCode.Items.Item[tv_EmployeeClassList.Selected.AbsoluteIndex].Text;
+
+  SearchEmployeeList('');
+  tv_EmployeeClassList.Visible := False;
+
+end;
+
+procedure TfmLectureList.tv_LectureClassNameDblClick(Sender: TObject);
+var
+  stCode : string;
+begin
+  inherited;
+  if tv_LectureClassName.Selected = nil then tv_LectureClassName.Items[0].Selected := True;
+
+  ed_SearchLeactureClassName.Text := tv_LectureClassName.Selected.Text;
+
+  stCode := tv_LectureClassCode.Items.Item[tv_LectureClassName.Selected.AbsoluteIndex].Text;
+
+  if ed_SerchSelectLectureClassCode.Text <> stCode then
+  begin
+    ed_SerchSelectLectureClassCode.Text := stCode;
+    LoadTB_CurriculumCode(ed_SerchSelectLectureClassCode.Text,CurriculumCodelist,cmb_CurriculumCode,True,'전체');
+  end;
+  tv_LectureClassName.Visible := False;
+  SearchEmployeeList('');
+
+end;
+
+
+initialization
+  RegisterClass(TfmLectureList);
+Finalization
+  UnRegisterClass(TfmLectureList);
+
+end.

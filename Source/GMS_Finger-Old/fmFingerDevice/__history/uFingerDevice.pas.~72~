@@ -1,0 +1,857 @@
+﻿unit uFingerDevice;
+
+interface
+
+uses
+  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
+  Vcl.Controls, Vcl.Forms, Vcl.Dialogs,uSubForm, AdvOfficeTabSet,
+  AdvOfficeTabSetStylers, CommandArray, Vcl.Grids, AdvObj, BaseGrid, AdvGrid,
+  Vcl.StdCtrls, AdvEdit, Vcl.Buttons, AdvSmoothLabel, AdvSmoothPanel, W7Classes,
+  W7Panels, AdvGlassButton,ADODB,ActiveX, frmshape, Vcl.Mask, AdvSpin,
+  DBAdvSmoothLabel, AdvSmoothProgressBar, Vcl.ExtCtrls, AdvCombo, Vcl.ComCtrls,
+  Vcl.ImgList, Vcl.Imaging.pngimage;
+
+type
+  TfmFingerDevice = class(TfmASubForm)
+    AdvOfficeTabSetOfficeStyler1: TAdvOfficeTabSetOfficeStyler;
+    W7Panel1: TW7Panel;
+    BodyPanel: TW7Panel;
+    menuTab: TAdvOfficeTabSet;
+    List: TAdvSmoothPanel;
+    lb_SearchName: TAdvSmoothLabel;
+    ed_SearchName: TAdvEdit;
+    sg_List: TAdvStringGrid;
+    btn_Search: TAdvGlassButton;
+    btn_Add: TAdvGlassButton;
+    btn_Delete: TAdvGlassButton;
+    Add: TAdvSmoothPanel;
+    lb_AddNodeIP: TAdvSmoothLabel;
+    ed_Ip: TAdvEdit;
+    btn_AddSave: TAdvGlassButton;
+    lb_AddNodeName: TAdvSmoothLabel;
+    ed_Name: TAdvEdit;
+    pan_Progress: TPanel;
+    AdvSmoothProgressBar1: TAdvSmoothProgressBar;
+    Lb_SaveMessage: TDBAdvSmoothLabel;
+    TimerProgress: TTimer;
+    AdvSmoothLabel1: TAdvSmoothLabel;
+    ed_DeviceName: TAdvEdit;
+    MenuImageList16: TImageList;
+    tv_Code: TTreeView;
+    tv_List: TTreeView;
+    btn_Select: TAdvGlassButton;
+    ed_DeviceID: TAdvEdit;
+    ed_AddSeq: TAdvEdit;
+    ed_ReaderPort: TAdvEdit;
+    procedure menuTabChange(Sender: TObject);
+    procedure FormShow(Sender: TObject);
+    procedure FormClose(Sender: TObject; var Action: TCloseAction);
+    procedure btn_AddSaveClick(Sender: TObject);
+    procedure btn_AddClick(Sender: TObject);
+    procedure FormResize(Sender: TObject);
+    procedure btn_SearchClick(Sender: TObject);
+    procedure FormCreate(Sender: TObject);
+    procedure sg_ListCheckBoxClick(Sender: TObject; ACol, ARow: Integer;
+      State: Boolean);
+    procedure sg_ListDblClick(Sender: TObject);
+    procedure ed_SearchNameChange(Sender: TObject);
+    procedure btn_DeleteClick(Sender: TObject);
+    procedure CommandArrayCommandsTGRADEREFRESHExecute(Command: TCommand;
+      Params: TStringList);
+    procedure CommandArrayCommandsTMENUIDExecute(Command: TCommand;
+      Params: TStringList);
+    procedure ed_IpChange(Sender: TObject);
+    procedure ed_IpKeyPress(Sender: TObject; var Key: Char);
+    procedure TimerProgressTimer(Sender: TObject);
+    procedure CommandArrayCommandsTFORMNAMEExecute(Command: TCommand;
+      Params: TStringList);
+    procedure btn_SelectClick(Sender: TObject);
+    procedure tv_ListDblClick(Sender: TObject);
+  private
+    L_nPageListMaxCount : integer;
+    L_nCheckCount : integer;
+    L_nProgress : integer;
+    L_stMenuID : string;
+    L_stButtonCloseCaption : string;
+    L_stButtonPreCaption : string;
+    L_stNodeAddCaption : string;
+    L_stNodeUpdateCaption : string;
+    L_stWork : string;
+    L_bFingerDeviceChange : Boolean;
+    { Private declarations }
+    Function FormNameSetting:Boolean;
+    Function SearchList(aCurrentCode:string;aTopRow:integer = 0):Boolean;
+    Function AddFingerDevice : Boolean;
+    Function UpdateFingerDevice : Boolean;
+    Function SearchDeviceViewList(aDeviceCode : string):Boolean;
+  private
+    procedure AdvStrinGridSetAllCheck(Sender: TObject;bchkState:Boolean);
+
+  public
+    { Public declarations }
+    procedure FormChangeEvent(aFormName:integer);
+  end;
+
+var
+  fmFingerDevice: TfmFingerDevice;
+
+implementation
+uses
+  uCommonFunction,
+  uCommonVariable,
+  uDataBase,
+  uDBDelete,
+  uDBFormMessage,
+  uDBFunction,
+  uDBInsert,
+  uDBUpdate,
+  uDBSelect,
+  uDBVariable,
+  uFormVariable;
+{$R *.dfm}
+
+function TfmFingerDevice.AddFingerDevice: Boolean;
+var
+  stFingerID : string;
+  stMessage : string;
+  i,j,k : integer;
+  stDate : string;
+  stDeviceID : string;
+  stCPType : string;
+  stNodeNo : string;
+  stEcuID : string;
+  stExtendID : string;
+  stDoorNo : string;
+begin
+  inherited;
+  ed_AddSeq.Text := dmDBFunction.GetNextTB_FINGERDEVICE_ID;
+  stFingerID := ed_AddSeq.Text;
+
+  if dmDBFunction.CheckTB_FINGERDEVICE_IP(ed_Ip.Text,stFingerID) = 1 then
+  begin
+    stMessage := dmFormMessage.GetMessage('DBDATADUP');
+    Application.MessageBox(PChar(stMessage),'Error',MB_OK);
+    Exit;
+  end;
+
+  stDeviceID := '';
+  stCPType := '0';
+  stNodeNo := '0';
+  stEcuID := '00';
+  stExtendID := '0';
+  stDoorNo := '0';
+  if ed_DeviceID.Text <> '' then
+  begin
+    stDeviceID := ed_DeviceID.Text;
+    if stDeviceID[1] = 'A' then stCPType := '2'
+    else if stDeviceID[1] = 'D' then stCPType := '1';
+    stNodeNo := copy(stDeviceID,2,G_nNodeCodeLength);
+    stEcuID := copy(stDeviceID,2 + G_nNodeCodeLength, 2);
+    stExtendID := copy(stDeviceID,2 + G_nNodeCodeLength + 2,2);
+    stDoorNo := copy(stDeviceID,2 + G_nNodeCodeLength + 2 + 2,2);
+  end;
+
+  if Not dmDBInsert.InsertIntoTB_FINGERDEVICE_Value(stFingerID,ed_Ip.Text,ed_Name.Text,ed_ReaderPort.Text,'2',stCPType,stNodeNo,stEcuID,stExtendID,stDoorNo) then
+  begin
+    stMessage := stringReplace(dmFormMessage.GetMessage('DBSAVEERROR'),'$WORK',btn_AddSave.Caption,[rfReplaceAll]);
+    Application.MessageBox(PChar(stMessage),'Error',MB_OK);
+    Exit;
+  end;
+  dmDBUpdate.UpdateTB_CARDPERMITEMPLOYEECODE_DeviceToFingerApply(stNodeNo,stEcuID,stExtendID,stCPType,stDoorNo,'N','1');
+end;
+
+procedure TfmFingerDevice.AdvStrinGridSetAllCheck(Sender: TObject;
+  bchkState: Boolean);
+var
+  i : integer;
+begin
+    for i:= 1 to (Sender as TAdvStringGrid).RowCount - 1  do
+    begin
+      (Sender as TAdvStringGrid).SetCheckBoxState(0,i,bchkState);
+    end;
+end;
+
+procedure TfmFingerDevice.btn_AddClick(Sender: TObject);
+begin
+  inherited;
+  menuTab.ActiveTabIndex := 2;
+  menuTabChange(self);
+end;
+
+procedure TfmFingerDevice.btn_AddSaveClick(Sender: TObject);
+var
+  stNodeNo : string;
+  stEcuID : string;
+  stMessage : string;
+  i,j,k : integer;
+begin
+  inherited;
+    btn_AddSave.Enabled := False;
+    pan_Progress.Visible := True;
+    if Not IsIPTypeCheck(ed_Ip.Text) then
+    begin
+      stMessage := dmFormMessage.GetMessage('DATATYPEFAIL');
+      showmessage(stMessage);
+      Exit;
+    end;
+
+    L_nProgress := 0;
+    TimerProgress.Enabled := True;
+    Lb_SaveMessage.Caption.Text := dmFormMessage.GetMessage('SAVINGMESSAGE');
+    if L_stWork = 'ADD' then AddFingerDevice
+    else if L_stWork = 'UPDATE' then UpdateFingerDevice;
+    TimerProgress.Enabled := False;
+
+    L_bFingerDeviceChange := True;
+
+    menuTab.ActiveTabIndex := 1;
+    menuTabChange(self);
+    SearchList(ed_AddSeq.Text);
+
+    btn_AddSave.Enabled := True;
+    pan_Progress.Visible := False;
+
+end;
+
+procedure TfmFingerDevice.btn_DeleteClick(Sender: TObject);
+var
+  i : integer;
+  bChkState : Boolean;
+  stMessage : string;
+  stClientIP : string;
+  stTime : string;
+begin
+  inherited;
+  stClientIP:= GetLocalIPAddr;
+  stTime := FormatDateTime('yyyymmddhhnnsszzz',now);
+  stMessage := stringReplace(dmFormMessage.GetMessage('SELECTERROR'),'$WORK',btn_Delete.Caption,[rfReplaceAll]);
+  if L_nCheckCount = 0 then
+  begin
+    Application.MessageBox(PChar(stMessage),'Information',MB_OK);
+    Exit;
+  end;
+  stMessage := stringReplace(dmFormMessage.GetMessage('WORKCOUNTINFO'),'$WORK',btn_Delete.Caption,[rfReplaceAll]);
+  stMessage := stringReplace(stMessage,'$COUNT',inttostr(L_nCheckCount),[rfReplaceAll]);
+  if (Application.MessageBox(PChar(stMessage),'Information',MB_OKCANCEL) = IDCANCEL)  then Exit;
+  stMessage := stringReplace(dmFormMessage.GetMessage('NODEDELETEMESSAGE'),'$WORK',btn_Delete.Caption,[rfReplaceAll]);
+  if (Application.MessageBox(PChar(stMessage),'Information',MB_OKCANCEL) = IDCANCEL)  then Exit;
+  With sg_List do
+  begin
+    for i := 1 to RowCount - 1 do
+    begin
+      GetCheckBoxState(0,i, bChkState);
+      if bChkState then
+      begin
+        dmDBDelete.DeleteTB_FINGERDEVICE_Seq(cells[3,i]);
+      end;
+    end;
+  end;
+  SearchList('');
+end;
+
+procedure TfmFingerDevice.btn_SearchClick(Sender: TObject);
+begin
+  inherited;
+  SearchList('');
+end;
+
+procedure TfmFingerDevice.btn_SelectClick(Sender: TObject);
+begin
+  inherited;
+  tv_List.Visible := True;
+end;
+
+procedure TfmFingerDevice.CommandArrayCommandsTFORMNAMEExecute(Command: TCommand;
+  Params: TStringList);
+begin
+  inherited;
+  Caption := Params.Values['CAPTION'];
+
+end;
+
+procedure TfmFingerDevice.CommandArrayCommandsTGRADEREFRESHExecute(
+  Command: TCommand; Params: TStringList);
+begin
+  inherited;
+  menuTab.AdvOfficeTabs.Items[2].Enabled := IsInsertGrade;
+  btn_Add.Enabled := IsInsertGrade;
+  btn_Delete.Enabled := IsDeleteGrade;
+
+end;
+
+procedure TfmFingerDevice.CommandArrayCommandsTMENUIDExecute(Command: TCommand;
+  Params: TStringList);
+begin
+  inherited;
+  L_stMenuID := Params.Values['ID'];
+end;
+
+procedure TfmFingerDevice.ed_IpChange(Sender: TObject);
+begin
+  inherited;
+  if L_stWork = 'ADD' then ed_Name.Text := ed_Ip.Text;
+
+end;
+
+procedure TfmFingerDevice.ed_IpKeyPress(Sender: TObject; var Key: Char);
+begin
+  inherited;
+  if Key = Char(VK_RETURN) then
+      Perform(WM_NEXTDLGCTL,0,0);
+
+end;
+
+procedure TfmFingerDevice.ed_SearchNameChange(Sender: TObject);
+begin
+  inherited;
+  SearchList('');
+end;
+
+procedure TfmFingerDevice.FormChangeEvent(aFormName: integer);
+begin
+//  case aFormName of
+//  end;
+end;
+
+procedure TfmFingerDevice.FormClose(Sender: TObject; var Action: TCloseAction);
+begin
+  inherited;
+
+  if L_bFingerDeviceChange then
+  begin
+    self.FindSubForm('Main').FindCommand('CHANGE').Params.Values['NAME'] := inttostr(conFORMFINGERDEVICE);
+    self.FindSubForm('Main').FindCommand('CHANGE').Execute;
+  end;
+
+  self.FindSubForm('Main').FindCommand('FORMENABLE').Params.Values['NAME'] := inttostr(conFORMFINGERDEVICE);
+  self.FindSubForm('Main').FindCommand('FORMENABLE').Params.Values['VALUE'] := 'FALSE';
+  self.FindSubForm('Main').FindCommand('FORMENABLE').Execute;
+
+  Action := caFree;
+end;
+
+procedure TfmFingerDevice.FormCreate(Sender: TObject);
+begin
+  inherited;
+  L_nPageListMaxCount := 17;
+  FormNameSetting;
+  SearchDeviceViewList('');
+end;
+
+
+function TfmFingerDevice.FormNameSetting: Boolean;
+var
+  stSql : string;
+  nCommonLength : integer;
+  nButtonLength : integer;
+  nMenuLength : integer;
+  TempAdoQuery : TADOQuery;
+begin
+  nButtonLength := length('BUTTON');
+  nCommonLength := length('COMMON');
+  nMenuLength := length(L_stMenuID);
+  stSql := ' Select FN_NAMECODE,FN_NAME' + inttostr(G_nFormLanguageType) + ' AS FORMNAME from TB_FORMNAME ';
+  stSql := stSql + ' Where GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  stSql := stSql + ' AND (FN_PROGRAMGUBUN = ''0'' or FN_PROGRAMGUBUN = ''1'' )'; //프로그램그룹
+  stSql := stSql + ' AND FN_MENUGUBUN = ''2'' '; //화면
+  if G_nDBType = MSSQL then
+  begin
+    stSql := stSql + ' AND ( substring(FN_NAMECODE,1,' + inttostr(nCommonLength) + ') = ''COMMON'' ';
+    stSql := stSql + ' OR substring(FN_NAMECODE,1,' + inttostr(nButtonLength) + ') = ''BUTTON'' ';
+    stSql := stSql + ' OR substring(FN_NAMECODE,1,' + inttostr(nMenuLength) + ') = ''' + L_stMenuID + ''') ';
+  end else if G_nDBType = POSTGRESQL then
+  begin
+    stSql := stSql + ' AND (substr(FN_NAMECODE,1,' + inttostr(nCommonLength) + ') = ''COMMON'' ';
+    stSql := stSql + ' OR substr(FN_NAMECODE,1,' + inttostr(nButtonLength) + ') = ''BUTTON'' ';
+    stSql := stSql + ' OR substr(FN_NAMECODE,1,' + inttostr(nMenuLength) + ') = ''' + L_stMenuID + ''') ';
+  end else if G_nDBType = MDB then
+  begin
+    stSql := stSql + ' AND (LEFT(FN_NAMECODE,' + inttostr(nCommonLength) + ') = ''COMMON'' ';
+    stSql := stSql + ' OR LEFT(FN_NAMECODE,' + inttostr(nButtonLength) + ') = ''BUTTON'' ';
+    stSql := stSql + ' OR LEFT(FN_NAMECODE,' + inttostr(nMenuLength) + ') = ''' + L_stMenuID + ''') ';
+  end else if G_nDBType = FIREBIRD then
+  begin
+    stSql := stSql + ' AND (substring(FN_NAMECODE,1,' + inttostr(nCommonLength) + ') = ''COMMON'' ';
+    stSql := stSql + ' OR substring(FN_NAMECODE,1,' + inttostr(nButtonLength) + ') = ''BUTTON'' ';
+    stSql := stSql + ' OR substring(FN_NAMECODE,1,' + inttostr(nMenuLength) + ') = ''' + L_stMenuID + ''') ';
+  end;
+  Try
+    CoInitialize(nil);
+    TempAdoQuery := TADOQuery.Create(nil);
+    TempAdoQuery.Connection := dmDataBase.ADOConnection;
+    TempAdoQuery.DisableControls;
+
+    with TempAdoQuery do
+    begin
+      Close;
+      sql.Text := stSql;
+      Try
+        Open;
+      Except
+        Exit;
+      End;
+      if recordcount < 1 then Exit;
+      while Not Eof do
+      begin
+        if FindField('FN_NAMECODE').AsString = 'BUTTONMENU001' then
+        begin
+          menuTab.AdvOfficeTabs[0].Caption := FindField('FORMNAME').AsString;
+          L_stButtonCloseCaption := FindField('FORMNAME').AsString;
+        end else if FindField('FN_NAMECODE').AsString = 'BUTTONMENU002' then
+        begin
+          menuTab.AdvOfficeTabs[1].Caption := FindField('FORMNAME').AsString;
+        end else if FindField('FN_NAMECODE').AsString = 'BUTTONMENU003' then
+        begin
+          menuTab.AdvOfficeTabs[2].Caption := FindField('FORMNAME').AsString;
+        end else if FindField('FN_NAMECODE').AsString = 'BUTTONMENU004' then
+        begin
+          L_stButtonPreCaption := FindField('FORMNAME').AsString;
+        end;
+
+        Next;
+      end;
+    end;
+  Finally
+    TempAdoQuery.EnableControls;
+    TempAdoQuery.Free;
+    CoUninitialize;
+  End;
+end;
+
+procedure TfmFingerDevice.FormResize(Sender: TObject);
+begin
+  inherited;
+  BodyPanel.Left := 0;
+  BodyPanel.Top := 0;
+  BodyPanel.Height := Height - menuTab.Height;
+
+end;
+
+procedure TfmFingerDevice.FormShow(Sender: TObject);
+begin
+  inherited;
+  WindowState := wsMaximized;
+
+  self.FindSubForm('Main').FindCommand('FORMENABLE').Params.Values['NAME'] := inttostr(conFORMFINGERDEVICE);
+  self.FindSubForm('Main').FindCommand('FORMENABLE').Params.Values['VALUE'] := 'TRUE';
+  self.FindSubForm('Main').FindCommand('FORMENABLE').Execute;
+
+  menuTab.ActiveTabIndex := 1;
+  menuTabChange(self);
+  SearchList('');
+
+end;
+
+procedure TfmFingerDevice.menuTabChange(Sender: TObject);
+begin
+  inherited;
+  if menuTab.ActiveTabIndex = 0 then //Ȩ
+  begin
+    if menuTab.AdvOfficeTabs.Items[0].Caption = L_stButtonCloseCaption then Close
+    else
+    begin
+      menuTab.ActiveTabIndex := 1;
+      menuTabChange(self);
+    end;
+  end else if menuTab.ActiveTabIndex = 1 then
+  begin
+    menuTab.AdvOfficeTabs.Items[0].Caption := L_stButtonCloseCaption;
+    List.Visible := True;
+    Add.Visible := False;
+    List.Align := alClient;
+  end else if menuTab.ActiveTabIndex = 2 then
+  begin
+    menuTab.AdvOfficeTabs.Items[0].Caption := L_stButtonPreCaption;
+    List.Visible := False;
+    Add.Caption.Text := L_stNodeAddCaption;
+    Add.Visible := True;
+    Add.Align := alClient;
+    L_stWork := 'ADD';
+    ed_Ip.Text := '';
+    ed_ReaderPort.Text := '1471';
+    ed_Name.Text := '';
+    ed_AddSeq.Text := '';
+    ed_DeviceName.Text := '';
+    ed_DeviceID.Text := '';
+  end;
+end;
+
+function TfmFingerDevice.SearchDeviceViewList(aDeviceCode: string): Boolean;
+var
+  aTreeView   : TTreeview;
+  vTreeView : TTreeview;
+  aNode1,aNode2,aNode3   : TTreeNode;
+  vNode1,vNode2,vNode3   : TTreeNode;
+  stSql : string;
+  stParentCode : string;
+  stLocationCaption : string;
+  nIndex : integer;
+  stDeviceID : string;
+  stNodeNo : string;
+  nNodeIndex : integer;
+  nDeviceIndex :integer;
+  TempAdoQuery : TADOQuery;
+begin
+  aTreeView := tv_List;
+  aTreeView.ReadOnly:= True;
+  aTreeView.Items.Clear;
+  vTreeView := tv_Code;
+  vTreeView.ReadOnly:= True;
+  vTreeView.Items.Clear;
+
+
+  Try
+    CoInitialize(nil);
+    TempAdoQuery := TADOQuery.Create(nil);
+    TempAdoQuery.Connection := dmDataBase.ADOConnection;
+    TempAdoQuery.DisableControls;
+
+    stSql := dmDBSelect.SelectTB_NODE_Name('','');
+
+    with TempAdoQuery do
+    begin
+      Close;
+      Sql.Clear;
+      Sql.Text := stSql;
+
+      Try
+        Open;
+      Except
+        Exit;
+      End;
+
+      if RecordCount < 1 then Exit;
+      First;
+      While Not Eof do
+      begin
+        stNodeNo := FillZeroNumber(FindField('ND_NODENO').AsInteger,G_nNodeCodeLength);
+        stLocationCaption := stNodeNo + ':' + FindField('ND_NODENAME').AsString;
+        aNode1:= aTreeView.Items.AddChild(nil,stNodeNo + ':' + FindField('ND_NODENAME').AsString);
+        aNode1.ImageIndex := 0;
+        aNode1.SelectedIndex := 0;
+        vNode1:= vTreeView.Items.AddChild(nil,'N' + stNodeNo);
+        Application.ProcessMessages;
+        Next;
+      end;
+    end;
+
+    stSql := dmDBSelect.SelectTB_DEVICE_List('','');
+
+    with TempAdoQuery do
+    begin
+      Close;
+      Sql.Clear;
+      Sql.Text := stSql;
+
+      Try
+        Open;
+      Except
+        Exit;
+      End;
+
+      if RecordCount < 1 then Exit;
+      First;
+      While Not Eof do
+      begin
+        stNodeNo := FillZeroNumber(FindField('ND_NODENO').AsInteger,G_nNodeCodeLength);
+        stDeviceID := stNodeNo + FindField('DE_ECUID').asstring;
+        stLocationCaption := FindField('DE_ECUID').asstring;
+        vNode1:= GetNodeByText(vTreeView,'N' + stNodeNo,True);
+        if vNode1 <> nil then
+        begin
+          aNode1 := aTreeView.Items.Item[vNode1.AbsoluteIndex];
+          if aNode1 <> nil then
+          begin
+            aNode2 := aTreeView.Items.AddChild(aNode1,stLocationCaption);
+            aNode2.ImageIndex := 1;
+            aNode2.SelectedIndex := 1;
+            vNode2 := vTreeView.Items.AddChild(vNode1,'E' + stDeviceID);
+          end;
+        end;
+        Application.ProcessMessages;
+        Next;
+      end;
+    end;
+
+    stSql := dmDBSelect.SelectTB_DOOR_Name('','');
+
+    with TempAdoQuery do
+    begin
+      Close;
+      Sql.Clear;
+      Sql.Text := stSql;
+
+      Try
+        Open;
+      Except
+        Exit;
+      End;
+
+      if RecordCount < 1 then Exit;
+      First;
+      While Not Eof do
+      begin
+        stNodeNo := FillZeroNumber(FindField('ND_NODENO').AsInteger,G_nNodeCodeLength);
+        stDeviceID := stNodeNo + FindField('DE_ECUID').asstring + FillZeroNumber(FindField('DE_EXTENDID').AsInteger,2) + FillZeroNumber(FindField('DO_DOORNO').AsInteger,2);
+        stLocationCaption := FindField('DO_DOORNAME').asstring;
+        vNode1:= GetNodeByText(vTreeView,'E' + stNodeNo + FindField('DE_ECUID').asstring,True);
+        if vNode1 <> nil then
+        begin
+          aNode1 := aTreeView.Items.Item[vNode1.AbsoluteIndex];
+          if aNode1 <> nil then
+          begin
+            aNode2 := aTreeView.Items.AddChild(aNode1,stLocationCaption);
+            aNode2.ImageIndex := 3;
+            aNode2.SelectedIndex := 3;
+            vNode2 := vTreeView.Items.AddChild(vNode1,'D' + stDeviceID);
+          end;
+        end;
+        Application.ProcessMessages;
+        Next;
+      end;
+    end;
+
+    stSql := dmDBSelect.SelectTB_ARMAREA_BuildingCode('');
+
+    with TempAdoQuery do
+    begin
+      Close;
+      Sql.Clear;
+      Sql.Text := stSql;
+
+      Try
+        Open;
+      Except
+        Exit;
+      End;
+
+      if RecordCount < 1 then Exit;
+      First;
+      While Not Eof do
+      begin
+        stNodeNo := FillZeroNumber(FindField('ND_NODENO').AsInteger,G_nNodeCodeLength);
+        stDeviceID := stNodeNo + FindField('DE_ECUID').asstring + FillZeroNumber(FindField('DE_EXTENDID').AsInteger,2) + FillZeroNumber(FindField('AR_ARMAREANO').AsInteger,2);
+        stLocationCaption := FindField('AR_ARMAREANAME').asstring;
+        vNode1:= GetNodeByText(vTreeView,'E' + stNodeNo + FindField('DE_ECUID').asstring,True);
+        if vNode1 <> nil then
+        begin
+          aNode1 := aTreeView.Items.Item[vNode1.AbsoluteIndex];
+          if aNode1 <> nil then
+          begin
+            aNode2 := aTreeView.Items.AddChild(aNode1,stLocationCaption);
+            aNode2.ImageIndex := 2;
+            aNode2.SelectedIndex := 2;
+            vNode2 := vTreeView.Items.AddChild(vNode1,'A' + stDeviceID);
+          end;
+        end;
+        Application.ProcessMessages;
+        Next;
+      end;
+    end;
+
+  Finally
+    TempAdoQuery.EnableControls;
+    TempAdoQuery.Free;
+    CoUninitialize;
+  End;
+
+end;
+
+function TfmFingerDevice.SearchList(aCurrentCode:string;aTopRow:integer = 0): Boolean;
+var
+  stSql : string;
+  TempAdoQuery : TADOQuery;
+  nRow : integer;
+begin
+  GridInit(sg_List,3,2,true);
+  stSql := dmDBSelect.SelectTB_FINGERDEVICE_Name(ed_SearchName.Text);
+  L_nCheckCount := 0;
+
+  Try
+    CoInitialize(nil);
+    TempAdoQuery := TADOQuery.Create(nil);
+    TempAdoQuery.Connection := dmDataBase.ADOConnection;
+    TempAdoQuery.DisableControls;
+
+    with TempAdoQuery do
+    begin
+      Close;
+      sql.Text := stSql;
+      Try
+        Open;
+      Except
+        Exit;
+      End;
+      if recordcount < 1 then Exit;
+      with sg_List do
+      begin
+        nRow := 1;
+        RowCount := RecordCount + 1;
+        while Not Eof do
+        begin
+          AddCheckBox(0,nRow,False,False);
+          cells[1,nRow] := FindField('FN_DEVICEIP').AsString;
+          cells[2,nRow] := FindField('FN_DEVICENAME').AsString;
+          cells[3,nRow] := FindField('FN_DEVICESEQ').AsString;
+          cells[4,nRow] := FindField('CP_TYPE').AsString + FillZeroNumber(FindField('ND_NODENO').AsInteger,G_nNodeCodeLength) + FindField('DE_ECUID').AsString + FillZeroNumber(FindField('DE_EXTENDID').AsInteger,2) + FillZeroNumber(FindField('DO_DOORNO').AsInteger,2) ;
+          if cells[3,nRow] = aCurrentCode then
+          begin
+            SelectRows(nRow,1);
+          end;
+
+          nRow := nRow + 1;
+          Next;
+        end;
+        if aTopRow = 0 then
+        begin
+          if Row > (L_nPageListMaxCount - 1) then TopRow := Row - L_nPageListMaxCount;
+        end else
+        begin
+          TopRow := aTopRow;
+        end;
+      end;
+
+    end;
+  Finally
+    TempAdoQuery.EnableControls;
+    TempAdoQuery.Free;
+    CoUninitialize;
+  End;
+end;
+
+
+procedure TfmFingerDevice.sg_ListCheckBoxClick(Sender: TObject; ACol,
+  ARow: Integer; State: Boolean);
+begin
+  inherited;
+  if ARow = 0 then //전체선택 또는 해제
+  begin
+    if State then L_nCheckCount := (Sender as TAdvStringGrid).RowCount - 1
+    else L_nCheckCount := 0;
+    AdvStrinGridSetAllCheck(Sender,State);
+  end else
+  begin
+    if State then L_nCheckCount := L_nCheckCount + 1
+    else L_nCheckCount := L_nCheckCount - 1 ;
+  end;
+end;
+
+procedure TfmFingerDevice.sg_ListDblClick(Sender: TObject);
+var
+  stTemp : string;
+  aNode1 : TTreeNode;
+  vNode1 : TTreeNode;
+begin
+  inherited;
+  L_stWork := 'UPDATE';
+  with sg_List do
+  begin
+    if Not isDigit(cells[3,Row]) then Exit;
+    ed_Ip.Text := cells[1,Row];
+    ed_Name.Text := cells[2,Row];
+    ed_AddSeq.Text := cells[3,Row];
+    stTemp := cells[4,Row];
+    if stTemp <> '' then
+    begin
+      if stTemp[1] = '1' then ed_DeviceID.Text := 'D'+copy(stTemp,2,G_nNodeCodeLength + 6)
+      else if stTemp[1] = '2' then ed_DeviceID.Text := 'A'+copy(stTemp,2,G_nNodeCodeLength + 6);
+      vNode1:= GetNodeByText(tv_Code,ed_DeviceID.Text,True);
+      if vNode1 <> nil then
+      begin
+        aNode1 := tv_List.Items.Item[vNode1.AbsoluteIndex];
+        aNode1.Selected := True;
+        ed_DeviceName.Text := aNode1.Text;
+      end;
+    end;
+  end;
+  menuTab.AdvOfficeTabs.Items[0].Caption := L_stButtonPreCaption;
+  List.Visible := False;
+  Add.Caption.Text := '수정';
+  Add.Visible := True;
+  Add.Align := alClient;
+
+end;
+
+procedure TfmFingerDevice.TimerProgressTimer(Sender: TObject);
+begin
+  inherited;
+  L_nProgress := L_nProgress + 1;
+  if L_nProgress > 10 then L_nProgress := 0;
+
+  AdvSmoothProgressBar1.Maximum := 10;
+  AdvSmoothProgressBar1.Position := L_nProgress;
+
+end;
+
+procedure TfmFingerDevice.tv_ListDblClick(Sender: TObject);
+begin
+  inherited;
+  tv_List.Visible := False;
+  ed_DeviceID.Text := tv_Code.Items.Item[tv_List.Selected.AbsoluteIndex].Text;
+  if ed_DeviceID.Text <> '' then
+  begin
+    if (ed_DeviceID.Text[1] <> 'A') AND (ed_DeviceID.Text[1] <> 'D') then
+    begin
+      showmessage(AdvSmoothLabel1.Caption.Text + '는 방범구역과 출입문만 선택이 가능합니다.');
+      ed_DeviceID.Text := '';
+      Exit;
+    end;
+  end;
+  ed_DeviceName.Text := tv_List.Selected.Text;
+
+end;
+
+function TfmFingerDevice.UpdateFingerDevice: Boolean;
+var
+  stFingerSeq : string;
+  stMessage : string;
+  stDeviceID : string;
+  stCPType : string;
+  stNodeNo : string;
+  stEcuID : string;
+  stExtendID : string;
+  stDoorNo : string;
+begin
+  inherited;
+  stFingerSeq := ed_AddSeq.Text;
+
+  if dmDBFunction.CheckTB_FINGERDEVICE_IP(ed_Ip.Text,stFingerSeq) = 1 then
+  begin
+    stMessage := dmFormMessage.GetMessage('DBDATADUP');
+    Application.MessageBox(PChar(stMessage),'Error',MB_OK);
+    Exit;
+  end;
+
+  stDeviceID := '';
+  stCPType := '0';
+  stNodeNo := '0';
+  stEcuID := '00';
+  stExtendID := '0';
+  stDoorNo := '0';
+  if ed_DeviceID.Text <> '' then
+  begin
+    stDeviceID := ed_DeviceID.Text;
+    if stDeviceID[1] = 'A' then stCPType := '2'
+    else if stDeviceID[1] = 'D' then stCPType := '1';
+    stNodeNo := copy(stDeviceID,2,G_nNodeCodeLength);
+    stEcuID := copy(stDeviceID,2 + G_nNodeCodeLength, 2);
+    stExtendID := copy(stDeviceID,2 + G_nNodeCodeLength + 2,2);
+    stDoorNo := copy(stDeviceID,2 + G_nNodeCodeLength + 2 + 2,2);
+  end;
+
+  if Not dmDBUpdate.UpdateTB_FINGERDEVICE_Value(stFingerSeq,ed_Ip.Text,ed_Name.Text,ed_ReaderPort.Text,'2',stCPType,stNodeNo,stEcuID,stExtendID,stDoorNo) then
+  begin
+    stMessage := stringReplace(dmFormMessage.GetMessage('DBSAVEERROR'),'$WORK',btn_AddSave.Caption,[rfReplaceAll]);
+    Application.MessageBox(PChar(stMessage),'Error',MB_OK);
+    Exit;
+  end;
+  dmDBUpdate.UpdateTB_CARDPERMITEMPLOYEECODE_DeviceToFingerApply(stNodeNo,stEcuID,stExtendID,stCPType,stDoorNo,'N');
+end;
+
+
+initialization
+  RegisterClass(TfmFingerDevice);
+Finalization
+  UnRegisterClass(TfmFingerDevice);
+
+end.

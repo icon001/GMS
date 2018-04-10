@@ -1,0 +1,871 @@
+﻿unit uTuitionOFF;
+
+interface
+
+uses
+  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
+  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, uSubForm, CommandArray, AdvGlassButton,
+  Vcl.Grids, AdvObj, BaseGrid, AdvGrid, Vcl.StdCtrls, AdvEdit, AdvSmoothLabel,
+  AdvSmoothPanel, AdvOfficeTabSet, W7Classes, W7Panels,ActiveX,ADODB,
+  Vcl.ComCtrls, Vcl.Menus, Vcl.ExtCtrls, AdvSmoothTabPager, Vcl.ImgList,
+  AdvOfficeTabSetStylers, AdvToolBar, AdvToolBarStylers, AdvAppStyler, AdvPanel,
+  AdvOfficePager, AdvGlowButton, AdvOfficePagerStylers, Vcl.Imaging.pngimage,
+  AdvGroupBox, AdvOfficeButtons;
+
+const
+  con_LocalCompanyImageIndex = 0;
+  con_LocalEmployeeImageIndex = 1;
+  con_LocalBuildingImageIndex = 2;
+
+type
+  TfmTuitionOFF = class(TfmASubForm)
+    MenuImageList16: TImageList;
+    AdvFormStyler1: TAdvFormStyler;
+    AdvOfficeTabSetOfficeStyler1: TAdvOfficeTabSetOfficeStyler;
+    BodyPanel: TW7Panel;
+    List: TAdvSmoothPanel;
+    AdvPanelStyler1: TAdvPanelStyler;
+    AdvOfficePager1: TAdvOfficePager;
+    btn_minimize: TAdvGlowButton;
+    btn_Close: TAdvGlowButton;
+    AdvOfficePage1: TAdvOfficePage;
+    ImageListNew16: TImageList;
+    AdvOfficePagerOfficeStyler1: TAdvOfficePagerOfficeStyler;
+    btn_Add: TAdvGlowButton;
+    btn_Update: TAdvGlowButton;
+    btn_Delete: TAdvGlowButton;
+    lb_List: TLabel;
+    pm_Work: TPopupMenu;
+    pm_Add: TMenuItem;
+    pm_UpdateCode: TMenuItem;
+    sg_List: TAdvStringGrid;
+    Pan_code: TAdvSmoothPanel;
+    lb_WorkType: TLabel;
+    lb_Name: TAdvSmoothLabel;
+    ed_Name: TAdvEdit;
+    ed_SelectCode: TAdvEdit;
+    btn_Save: TAdvGlowButton;
+    btn_Cancel: TAdvGlowButton;
+    rg_gubun: TAdvOfficeRadioGroup;
+    AdvSmoothLabel1: TAdvSmoothLabel;
+    ed_Value: TAdvEdit;
+    lb_gubun: TAdvSmoothLabel;
+    procedure FormClose(Sender: TObject; var Action: TCloseAction);
+    procedure FormResize(Sender: TObject);
+    procedure FormShow(Sender: TObject);
+    procedure pm_UpdateCodeClick(Sender: TObject);
+    procedure btn_SaveClick(Sender: TObject);
+    procedure ed_CompanyNameKeyPress(Sender: TObject; var Key: Char);
+    procedure FormCreate(Sender: TObject);
+    procedure sg_NotPermitDoorCheckBoxClick(Sender: TObject; ACol,
+      ARow: Integer; State: Boolean);
+    procedure sg_PermitDoorCheckBoxClick(Sender: TObject; ACol, ARow: Integer;
+      State: Boolean);
+    procedure sg_NotPermitAlarmCheckBoxClick(Sender: TObject; ACol,
+      ARow: Integer; State: Boolean);
+    procedure sg_PermitAlarmCheckBoxClick(Sender: TObject; ACol, ARow: Integer;
+      State: Boolean);
+    procedure btn_PermitDoorAddClick(Sender: TObject);
+    procedure btn_PermitArmAreaAddClick(Sender: TObject);
+    procedure btn_PermitArmAreaDeleteClick(Sender: TObject);
+    procedure btn_PermitDoorDeleteClick(Sender: TObject);
+    procedure pm_ParentCompanyGradeClick(Sender: TObject);
+    procedure btn_minimizeClick(Sender: TObject);
+    procedure FormActivate(Sender: TObject);
+    procedure btn_UpdateClick(Sender: TObject);
+    procedure btn_CloseClick(Sender: TObject);
+    procedure sg_ListResize(Sender: TObject);
+    procedure pm_AddClick(Sender: TObject);
+    procedure rg_gubunClick(Sender: TObject);
+    procedure btn_AddClick(Sender: TObject);
+    procedure btn_CancelClick(Sender: TObject);
+    procedure sg_ListDblClick(Sender: TObject);
+    procedure sg_ListCheckBoxClick(Sender: TObject; ACol, ARow: Integer;
+      State: Boolean);
+    procedure btn_DeleteClick(Sender: TObject);
+  private
+    BuildingArmAreaCodeList : TStringList; //빌딩별 방범구역 코드 리스트를 가지고 있자.
+    BuildingDoorCodeList : TStringList; //빌딩별 출입문 코드 리스트를 가지고 있자.
+    GradeArmAreaCodeList : TStringList;
+    GradeDoorCodeList : TStringList;
+    NotGradeArmAreaCodeList : TStringList; //방범권한이 없는 방범리스트
+    NotGradeDoorCodeList : TStringList;  //출입권한이 없는 리스트
+    L_nPermitArmAreaCheckCount : integer;           //삭제시 방범구역 선택 갯수
+    L_nNotPermitArmAreaCheckCount : integer;        //등록시 방범구역 선택 갯수
+    L_nPermitDoorCheckCount : integer;           //삭제시 출입문 선택 갯수
+    L_nNotPermitDoorCheckCount : integer;        //등록시 출입문 선택 갯수
+    L_stMenuID : string;
+    L_stButtonCloseCaption : string;
+    L_stWork : string;
+  private
+    procedure FormNameSetting;
+    procedure FontSetting;
+    function ChangeCompanyCode(aOrgCode,aCode,aDeepSeq,aViewSeq:string):Boolean;
+    procedure AdvStrinGridSetAllCheck(Sender: TObject;bchkState:Boolean);
+  private
+    L_nPageListMaxCount : integer;
+    L_nCheckCount : integer;
+    { Private declarations }
+    procedure SearchCodeList(aCode:string;aTopRow:integer = 0);
+  public
+    IsInsertGrade : Boolean;
+    IsUpdateGrade : Boolean;
+    IsDeleteGrade : Boolean;
+    { Public declarations }
+    procedure Form_Close;
+    procedure FormChangeEvent(aNumber:integer);
+    procedure FormGradeRefresh;
+    procedure FormIDSetting(aID:string);
+  end;
+
+var
+  fmTuitionOFF: TfmTuitionOFF;
+
+implementation
+uses
+  uCommonFunction,
+  uComboBoxCodeLoad,
+  uCommonVariable,
+  uFormFunction,
+  uFormVariable,
+  uDataBase,
+  uDBCardPermit,
+  uDBDelete,
+  uDBFormMessage,
+  uDBFunction,
+  uDBInsert,
+  uDBSelect,
+  uDBUpdate,
+  uFormUtil,
+  uMain;
+{$R *.dfm}
+
+procedure TfmTuitionOFF.AdvStrinGridSetAllCheck(Sender: TObject;
+  bchkState: Boolean);
+var
+  i : integer;
+begin
+    for i:= 1 to (Sender as TAdvStringGrid).RowCount - 1  do
+    begin
+      (Sender as TAdvStringGrid).SetCheckBoxState(0,i,bchkState);
+    end;
+end;
+
+procedure TfmTuitionOFF.btn_AddClick(Sender: TObject);
+begin
+  inherited;
+  pm_AddClick(pm_Add);
+end;
+
+procedure TfmTuitionOFF.btn_CancelClick(Sender: TObject);
+begin
+  inherited;
+  Pan_Code.Visible := False;
+end;
+
+procedure TfmTuitionOFF.btn_CloseClick(Sender: TObject);
+begin
+  Close;
+end;
+
+procedure TfmTuitionOFF.btn_DeleteClick(Sender: TObject);
+var
+  stMessage : string;
+begin
+  inherited;
+  if L_nCheckCount < 1 then
+  begin
+    stMessage := dmFormMessage.GetMessage('SELECTERROR');
+    stMessage := stringReplace(stMessage,'$WORK',btn_Delete.Caption,[rfReplaceAll]);
+    showmessage(stMessage);
+    Exit;
+  end;
+
+end;
+
+procedure TfmTuitionOFF.btn_minimizeClick(Sender: TObject);
+begin
+  inherited;
+  windowState := wsNormal;
+end;
+
+procedure TfmTuitionOFF.btn_PermitArmAreaAddClick(Sender: TObject);
+var
+  stMessage : string;
+  i : integer;
+  bCheckState : Boolean;
+  stTime : string;
+  stClientIP : string;
+begin
+  inherited;
+(*  stClientIP:= GetLocalIPAddr;
+  stTime := FormatDateTime('yyyymmddhhnnsszzz',now);
+
+  stMessage := stringReplace(dmFormMessage.GetMessage('NOTSELECTDATA'),'$WORK',btn_PermitArmAreaAdd.Caption,[rfReplaceAll]);
+  if L_nNotPermitArmAreaCheckCount = 0 then
+  begin
+    Application.MessageBox(PChar(stMessage),'Information',MB_OK);
+    Exit;
+  end;
+
+  with sg_NotPermitAlarm do
+  begin
+    for i := RowCount - 1 downto 1 do
+    begin
+      GetCheckBoxState(0,i, bCheckState);
+      if bCheckState then
+      begin
+        dmDBCardPermit.CompanyArmAreaPermitAdd(ed_GradeCompanyCode.Text,Cells[2,i],Cells[3,i],Cells[4,i],Cells[5,i]);
+        dmDBInsert.InsertIntoTB_SYSTEMLOG_All(copy(stTime,1,8),copy(stTime,9,6),stClientIP,G_stAdminUserID,Cells[2,i],Cells[3,i],'O' + ed_GradeCompanyCode.Text,Cells[5,i],con_ComLogTYPE_ARMAREA,L_stMenuID + '(' + Caption + '):Permit Add');
+
+        PermitArmAreaListAdd(Cells[1,i],Cells[2,i],Cells[3,i],Cells[4,i],Cells[5,i],Cells[6,i],Cells[7,i]);
+        NotPermitArmAreaListDelete(Cells[6,i]);
+      end;
+    end;
+  end;
+  dmDBUpdate.UpdateTB_CARDPERMITCOMPANYGROUP_CompanyLikeApply(ed_GradeCompanyCode.Text,'N'); //자회사 코드의 데이터도 모두 적용 'N' 상태로 해야 됨
+  CompanyGradeToEmployeeGrade;
+*)
+end;
+
+procedure TfmTuitionOFF.btn_PermitArmAreaDeleteClick(Sender: TObject);
+var
+  stMessage : string;
+  i : integer;
+  bCheckState : Boolean;
+  stTime : string;
+  stClientIP : string;
+begin
+  inherited;
+(*  stClientIP:= GetLocalIPAddr;
+  stTime := FormatDateTime('yyyymmddhhnnsszzz',now);
+
+  stMessage := stringReplace(dmFormMessage.GetMessage('NOTSELECTDATA'),'$WORK',btn_PermitArmAreaDelete.Caption,[rfReplaceAll]);
+  if L_nPermitArmAreaCheckCount = 0 then
+  begin
+    Application.MessageBox(PChar(stMessage),'Information',MB_OK);
+    Exit;
+  end;
+
+  with sg_PermitAlarm do
+  begin
+    for i := RowCount - 1 downto 1 do
+    begin
+      GetCheckBoxState(0,i, bCheckState);
+      if bCheckState then
+      begin
+        dmDBCardPermit.CompanyArmAreaPermitDelete(ed_GradeCompanyCode.Text,Cells[2,i],Cells[3,i],Cells[4,i],Cells[5,i]);
+        dmDBInsert.InsertIntoTB_SYSTEMLOG_All(copy(stTime,1,8),copy(stTime,9,6),stClientIP,G_stAdminUserID,Cells[2,i],Cells[3,i],'O' + ed_GradeCompanyCode.Text,Cells[5,i],con_ComLogTYPE_ARMAREA,L_stMenuID + '(' + Caption + '):Permit Delete');
+
+        NotPermitArmAreaListAdd(Cells[1,i],Cells[2,i],Cells[3,i],Cells[4,i],Cells[5,i],Cells[6,i],Cells[7,i]);
+        PermitArmAreaListDelete(Cells[6,i]);
+      end;
+    end;
+  end;
+  dmDBUpdate.UpdateTB_CARDPERMITCOMPANYGROUP_CompanyLikeApply(ed_GradeCompanyCode.Text,'N'); //자회사 코드의 데이터도 모두 적용 'N' 상태로 해야 됨
+  CompanyGradeToEmployeeGrade;
+*)
+end;
+
+procedure TfmTuitionOFF.btn_PermitDoorAddClick(Sender: TObject);
+var
+  stMessage : string;
+  i : integer;
+  bCheckState : Boolean;
+  stTime : string;
+  stClientIP : string;
+begin
+  inherited;
+(*  stClientIP:= GetLocalIPAddr;
+  stTime := FormatDateTime('yyyymmddhhnnsszzz',now);
+
+  stMessage := stringReplace(dmFormMessage.GetMessage('NOTSELECTDATA'),'$WORK',btn_PermitDoorAdd.Caption,[rfReplaceAll]);
+  if L_nNotPermitDoorCheckCount = 0 then
+  begin
+    Application.MessageBox(PChar(stMessage),'Information',MB_OK);
+    Exit;
+  end;
+
+  with sg_NotPermitDoor do
+  begin
+    for i := RowCount - 1 downto 1 do
+    begin
+      GetCheckBoxState(0,i, bCheckState);
+      if bCheckState then
+      begin
+        dmDBCardPermit.CompanyDoorPermitAdd(ed_GradeCompanyCode.Text,Cells[2,i],Cells[3,i],Cells[4,i],Cells[5,i]);
+        dmDBInsert.InsertIntoTB_SYSTEMLOG_All(copy(stTime,1,8),copy(stTime,9,6),stClientIP,G_stAdminUserID,Cells[2,i],Cells[3,i],'O' + ed_GradeCompanyCode.Text,Cells[5,i],con_ComLogTYPE_DOOR,L_stMenuID + '(' + Caption + '):Permit Add');
+
+        PermitDoorListAdd(Cells[1,i],Cells[2,i],Cells[3,i],Cells[4,i],Cells[5,i],Cells[6,i],Cells[7,i]);
+        NotPermitDoorListDelete(Cells[6,i]);
+      end;
+    end;
+  end;
+  dmDBUpdate.UpdateTB_CARDPERMITCOMPANYGROUP_CompanyLikeApply(ed_GradeCompanyCode.Text,'N'); //자회사 코드의 데이터도 모두 적용 'N' 상태로 해야 됨
+  CompanyGradeToEmployeeGrade;
+*)
+end;
+
+procedure TfmTuitionOFF.btn_PermitDoorDeleteClick(Sender: TObject);
+var
+  stMessage : string;
+  i : integer;
+  bCheckState : Boolean;
+  stTime : string;
+  stClientIP : string;
+begin
+  inherited;
+(*  stClientIP:= GetLocalIPAddr;
+  stTime := FormatDateTime('yyyymmddhhnnsszzz',now);
+
+  stMessage := stringReplace(dmFormMessage.GetMessage('NOTSELECTDATA'),'$WORK',btn_PermitDoorDelete.Caption,[rfReplaceAll]);
+  if L_nPermitDoorCheckCount = 0 then
+  begin
+    Application.MessageBox(PChar(stMessage),'Information',MB_OK);
+    Exit;
+  end;
+
+  with sg_PermitDoor do
+  begin
+    for i := RowCount - 1 downto 1 do
+    begin
+      GetCheckBoxState(0,i, bCheckState);
+      if bCheckState then
+      begin
+        dmDBCardPermit.CompanyDoorPermitDelete(ed_GradeCompanyCode.Text,Cells[2,i],Cells[3,i],Cells[4,i],Cells[5,i]);
+        dmDBInsert.InsertIntoTB_SYSTEMLOG_All(copy(stTime,1,8),copy(stTime,9,6),stClientIP,G_stAdminUserID,Cells[2,i],Cells[3,i],'O' + ed_GradeCompanyCode.Text,Cells[5,i],con_ComLogTYPE_DOOR,L_stMenuID + '(' + Caption + '):Permit Delete');
+
+        NotPermitDoorListAdd(Cells[1,i],Cells[2,i],Cells[3,i],Cells[4,i],Cells[5,i],Cells[6,i],Cells[7,i]);
+        PermitDoorListDelete(Cells[6,i]);
+      end;
+    end;
+  end;
+  dmDBUpdate.UpdateTB_CARDPERMITCOMPANYGROUP_CompanyLikeApply(ed_GradeCompanyCode.Text,'N'); //자회사 코드의 데이터도 모두 적용 'N' 상태로 해야 됨
+  CompanyGradeToEmployeeGrade;
+*)
+end;
+
+procedure TfmTuitionOFF.btn_SaveClick(Sender: TObject);
+var
+  stMessage : string;
+  stParentCode : string;
+  stCode,stDeepSeq,stViewSeq : string;
+begin
+  inherited;
+  if Not isDigit(ed_Value.Text) then
+  begin
+    showmessage('할인율은 숫자로 입력 되어야 합니다.');
+    Exit;
+  end;
+  if L_stWork = 'ADD' then
+  begin
+    stCode := dmDBFunction.GetNextTB_TuitionOFFCode;
+    dmDBInsert.InsertIntoTB_TuitionOFFCode_Value(stCode,ed_Name.Text,inttostr(rg_gubun.ItemIndex),ed_Value.Text);
+  end else if L_stWork = 'UPDATE' then
+  begin
+    stCode := ed_SelectCode.Text;
+    dmDBUpdate.UpdateTB_TuitionOFFCode_Value(stCode,ed_Name.Text,inttostr(rg_gubun.ItemIndex),ed_Value.Text);
+  end;
+  SearchCodeList(stCode,sg_List.TopRow);
+  Pan_Code.Visible := False;
+end;
+
+procedure TfmTuitionOFF.btn_UpdateClick(Sender: TObject);
+begin
+  pm_UpdateCodeClick(pm_UpdateCode);
+end;
+
+function TfmTuitionOFF.ChangeCompanyCode(aOrgCode, aCode, aDeepSeq,
+  aViewSeq: string): Boolean;
+var
+  stSql : string;
+  TempAdoQuery : TADOQuery;
+  stChildCode,stDeepSeq,stViewSeq : string;
+  stOrgDeepSeq : string;
+begin
+  stOrgDeepSeq := dmDBFunction.GetTB_COMPANYCODE_CurrentDeepSeq(aOrgCode);
+  stSql := ' Update TB_COMPANYCODE Set ';
+  stSql := stSql + ' CO_COMPANYCODE = ''' + aCode + ''',';
+  stSql := stSql + ' CO_DEEPSEQ = ' + aDeepSeq + ',';
+  stSql := stSql + ' CO_VIEWSEQ = ' + aViewSeq + ' ';
+  stSql := stSql + ' Where GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  stSql := stSql + ' AND CO_COMPANYCODE = ''' + aOrgCode + ''' ';
+
+  result := dmDataBase.ProcessExecSQL(stSql);
+
+  //여기서 회사코드별 카드권한 테이블 변경
+  stSql := ' Update TB_CARDPERMITCOMPANYGROUP set CO_COMPANYCODE = ''' + aCode + ''' ';
+  stSql := stSql + ' Where GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  stSql := stSql + ' AND CO_COMPANYCODE = ''' + aOrgCode + ''' ';
+  result := dmDataBase.ProcessExecSQL(stSql);
+
+  //여기서 사원테이블 정보를 변경 하자
+  stSql := ' Update TB_EMPLOYEE set CO_COMPANYCODE = ''' + aCode + ''' ';
+  stSql := stSql + ' Where GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  stSql := stSql + ' AND CO_COMPANYCODE = ''' + aOrgCode + ''' ';
+  result := dmDataBase.ProcessExecSQL(stSql);
+
+  Try
+    CoInitialize(nil);
+    TempAdoQuery := TADOQuery.Create(nil);
+    TempAdoQuery.Connection := dmDataBase.ADOConnection;
+    TempAdoQuery.DisableControls;
+
+    stSql := 'Select * from TB_COMPANYCODE ';
+    stSql := stSql + ' Where GROUP_CODE = ''' + G_stGroupCode + ''' ';
+    stSql := stSql + ' AND CO_COMPANYCODE Like ''' + aOrgCode + '%'' ';
+    stSql := stSql + ' AND CO_DEEPSEQ = ' + inttostr(strtoint(stOrgDeepSeq) + 1) + '';
+    with TempAdoQuery do
+    begin
+      Close;
+      sql.Text := stSql;
+      Try
+        Open;
+      Except
+        dmDataBase.DBConnected := False;
+        Exit;
+      End;
+      if recordcount < 1 then Exit;
+      while Not Eof do
+      begin
+        dmDBFunction.GetNextTB_COMPANYCODE_ChildCompanyCode(aCode,stChildCode,stDeepSeq,stViewSeq); //신규 코드가 부모가 됨
+        ChangeCompanyCode(FindField('CO_COMPANYCODE').AsString,stChildCode,stDeepSeq,stViewSeq);
+        Next;
+      end;
+    end;
+  Finally
+    TempAdoQuery.EnableControls;
+    TempAdoQuery.Free;
+    CoUninitialize;
+  End;
+
+end;
+(*
+procedure TfmCompany.CompanyGradeToEmployeeGrade;
+var
+  stSql : string;
+  TempAdoQuery : TADOQuery;
+  stCompanyCode : string;
+begin
+  stSql := ' Select CO_DEEPSEQ,CO_COMPANYCODE ';
+  stSql := stSql + ' from TB_CARDPERMITCOMPANYGROUP ';
+  stSql := stSql + ' Where GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  stSql := stSql + ' AND CP_APPLY <> ''Y'' ';
+  stSql := stSql + ' GROUP BY CO_DEEPSEQ,CO_COMPANYCODE ';
+  stSql := stSql + ' Order by CO_DEEPSEQ,CO_COMPANYCODE ';
+  Try
+    CoInitialize(nil);
+    TempAdoQuery := TADOQuery.Create(nil);
+    TempAdoQuery.Connection := dmDataBase.ADOConnection;
+    TempAdoQuery.DisableControls;
+    with TempAdoQuery  do
+    begin
+      Close;
+      //SQL.Clear;
+      SQL.Text := stSql;
+
+      Try
+        Open;
+      Except
+        Exit;
+      End;
+      if recordcount < 1 then Exit;
+      while Not Eof do
+      begin
+        stCompanyCode := FindField('CO_COMPANYCODE').AsString;
+        if dmDBCardPermit.CompanyGradeToEmployeeEachApply(stCompanyCode) then
+           dmDBUpdate.UpdateTB_CARDPERMITCOMPANYGROUP_CompanyCodeApply(stCompanyCode,'Y');
+        Next;
+      end;
+    end;
+  Finally
+    TempAdoQuery.EnableControls;
+    TempAdoQuery.Free;
+    CoUninitialize;
+  End;
+
+end;
+*)
+
+procedure TfmTuitionOFF.ed_CompanyNameKeyPress(Sender: TObject; var Key: Char);
+begin
+  inherited;
+  if Key = #13 then
+  begin
+    Key := #0;
+    btn_SaveClick(self);
+  end;
+end;
+
+procedure TfmTuitionOFF.FontSetting;
+begin
+//  dmFormUtil.TravelFormFontSetting(self,G_stFontName,inttostr(G_nFontSize));
+//  dmFormUtil.TravelAdvOfficeTabSetOfficeStylerFontSetting(AdvOfficeTabSetOfficeStyler1, G_stFontName,inttostr(G_nFontSize));
+//  dmFormUtil.FormAdvOfficeTabSetOfficeStylerSetting(AdvOfficeTabSetOfficeStyler1,G_stFormStyle);
+//  dmFormUtil.FormAdvToolBarOfficeStylerSetting(AdvToolBarOfficeStyler1,G_stFormStyle);
+//  dmFormUtil.FormStyleSetting(self,AdvToolBarOfficeStyler1);
+end;
+
+procedure TfmTuitionOFF.FormActivate(Sender: TObject);
+begin
+  WindowState := wsNormal;
+end;
+
+procedure TfmTuitionOFF.FormChangeEvent(aNumber: integer);
+begin
+
+end;
+
+procedure TfmTuitionOFF.FormClose(Sender: TObject; var Action: TCloseAction);
+begin
+  inherited;
+  BuildingDoorCodeList.Free;
+  BuildingArmAreaCodeList.Free;
+  GradeArmAreaCodeList.Free;
+  GradeDoorCodeList.Free;
+  NotGradeArmAreaCodeList.Free; //방범권한이 없는 방범리스트
+  NotGradeDoorCodeList.Free;  //출입권한이 없는 리스트
+
+  fmMain.FORMENABLE(con_FormBMOSCOMPANYCODE,'FALSE');
+
+  Action := caFree;
+end;
+
+procedure TfmTuitionOFF.FormCreate(Sender: TObject);
+begin
+  inherited;
+  if G_nFormLanguageType = 1 then
+  begin
+//    ed_CompanyName.ImeMode := imSHanguel;// imHanguel;
+//    ed_CompanyName.ImeName := '';
+  end else if G_nFormLanguageType = 2 then
+  begin
+//    ed_CompanyName.ImeMode := imAlpha;
+//    ed_CompanyName.ImeName := '';
+  end;
+  BuildingDoorCodeList := TStringList.Create;
+  BuildingArmAreaCodeList := TStringList.Create;
+  GradeArmAreaCodeList := TStringList.Create;
+  GradeDoorCodeList := TStringList.Create;
+  NotGradeArmAreaCodeList := TStringList.Create; //방범권한이 없는 방범리스트
+  NotGradeDoorCodeList := TStringList.Create;  //출입권한이 없는 리스트
+  FontSetting;
+end;
+
+procedure TfmTuitionOFF.FormGradeRefresh;
+begin
+  Try
+    if IsInsertGrade or IsUpdateGrade or IsDeleteGrade then PopupMenu := pm_Work;
+    btn_Add.Enabled := IsInsertGrade;
+    pm_Add.Enabled := IsInsertGrade;
+    btn_Delete.Enabled := False;
+    btn_Update.Enabled := IsUpdateGrade;
+    pm_UpdateCode.Enabled := IsUpdateGrade;
+  Except
+    Exit;
+  End;
+end;
+
+procedure TfmTuitionOFF.FormIDSetting(aID: string);
+begin
+  L_stMenuID := aID;
+end;
+
+procedure TfmTuitionOFF.FormNameSetting;
+begin
+  AdvOfficePage1.Caption := dmFormFunction.GetFormName('0','2','BUTTONMENU002');
+  pm_Add.Caption := dmFormFunction.GetFormName('0','2','COMMONADD');
+  btn_Add.Caption := dmFormFunction.GetFormName('0','2','COMMONADD');
+  btn_Delete.Caption := dmFormFunction.GetFormName('0','2','BUTTONDEL001');
+  pm_UpdateCode.Caption := dmFormFunction.GetFormName('0','2','BUTTONUPDATE001');
+  btn_Update.Caption := dmFormFunction.GetFormName('0','2','BUTTONUPDATE001');
+//  btn_Save.Caption := dmFormFunction.GetFormName('0','2','BUTTONSAVE001');
+//  btn_Cancel.Caption := dmFormFunction.GetFormName('0','2','BUTTONCANCEL001');
+
+end;
+
+procedure TfmTuitionOFF.FormResize(Sender: TObject);
+begin
+  inherited;
+//  BodyPanel.Left := 0;
+//  BodyPanel.Top := 0;
+//  BodyPanel.Height := Height - menuTab.Height;
+  btn_Close.Left := AdvOfficePager1.Width - btn_Close.Width - 10;
+  btn_minimize.Left := btn_Close.Left - btn_minimize.Width - 2;
+
+  if Windowstate = wsMaximized then
+  begin
+    btn_minimize.Visible := True;
+    btn_Close.Visible := True;
+  end else
+  begin
+    btn_minimize.Visible := False;
+    btn_Close.Visible := False;
+  end;
+
+  sg_List.Width := List.width - (sg_List.Left * 2) ;
+  sg_List.ColWidths[4] := sg_List.Width - (sg_List.ColWidths[0] + sg_List.ColWidths[1] + sg_List.ColWidths[2] + sg_List.ColWidths[3] + 10);
+  if sg_List.ColWidths[4] < 100 then sg_List.ColWidths[4] := 100;
+
+  sg_List.Height := List.Height - sg_List.Top - 20;
+
+  sg_ListResize(sg_List);
+end;
+
+procedure TfmTuitionOFF.FormShow(Sender: TObject);
+begin
+  inherited;
+  FormNameSetting;
+  fmMain.FORMENABLE(con_FormBMOSCOMPANYCODE,'TRUE');
+  WindowState := wsMaximized;
+
+  FormResize(self);
+  SearchCodeList('');
+  Left := 0;
+  Top := 0;
+end;
+
+procedure TfmTuitionOFF.Form_Close;
+begin
+  Close;
+end;
+
+procedure TfmTuitionOFF.pm_AddClick(Sender: TObject);
+var
+  stMessage : string;
+begin
+  inherited;
+  Pan_code.Visible := True;
+  lb_WorkType.Caption := btn_Add.Caption;
+  L_stWork := 'ADD';
+  ed_Name.Text := '';
+  ed_Name.SetFocus;
+end;
+
+procedure TfmTuitionOFF.pm_ParentCompanyGradeClick(Sender: TObject);
+var
+  stCompanyCode : string;
+  stParentCompanyCode : string;
+  stMessage : string;
+begin
+  inherited;
+(*  stCompanyCode := tv_CompanyCode.Items.Item[tv_CompanyList.Selected.AbsoluteIndex].Text;
+  if stCompanyCode = '0' then Exit;
+  stMessage := dmFormMessage.GetMessage('PARENTCOMPNYGRADE');//stringReplace(dmFormMessage.GetMessage('WORKMESSAGE'),'$WORK',pm_DeleteCode.Caption,[rfReplaceAll]);
+  if (Application.MessageBox(PChar(stMessage),'Information',MB_OKCANCEL) = IDCANCEL)  then Exit;
+  stParentCompanyCode := copy(stCompanyCode,1,Length(stCompanyCode) - G_nCompanyCodeLength);
+  dmDBDelete.DeleteTB_CARDPERMITCOMPANYGROUP_CompanyCode(stCompanyCode);
+  dmDBUpdate.UpdateTB_CARDPERMITCOMPANYGROUP_CompanyLikeApply(stParentCompanyCode,'N'); //자회사 코드의 데이터도 모두 적용 'N' 상태로 해야 됨
+  CompanyGradeToEmployeeGrade;
+*)
+
+end;
+
+procedure TfmTuitionOFF.pm_UpdateCodeClick(Sender: TObject);
+var
+  stMessage : string;
+begin
+  inherited;
+  L_stWork := 'UPDATE';
+  with sg_List do
+  begin
+    ed_SelectCode.Text := Cells[1,Row];
+    ed_Name.Text := Cells[2,Row];
+    rg_gubun.ItemIndex := strtoint(Cells[3,Row]);
+    ed_Value.Text := Cells[4,Row];
+  end;
+end;
+
+procedure TfmTuitionOFF.rg_gubunClick(Sender: TObject);
+begin
+  inherited;
+  if rg_gubun.ItemIndex = 0 then lb_gubun.Caption.Text := '퍼센트'
+  else lb_gubun.Caption.Text := '원';
+
+end;
+
+procedure TfmTuitionOFF.SearchCodeList(aCode: string; aTopRow: integer);
+var
+  stSql : string;
+  TempAdoQuery : TADOQuery;
+  nRow : integer;
+  stCompanyCode : string;
+  stPosiCode : string;
+  stEmployeeGubun : string;
+  stEmCode : string;
+  stEmName : string;
+  stEmHandPhone : string;
+  stEmCompanyPhone : string;
+  stEtcInfo : string;
+  stCardNo : string;
+  stCardState : string;
+begin
+
+  GridInit(sg_List,5,2,True);
+
+  stSql := 'select * from TB_TuitionOFF';
+
+  Try
+    CoInitialize(nil);
+    TempAdoQuery := TADOQuery.Create(nil);
+    TempAdoQuery.Connection := dmDataBase.ADOConnection;
+
+    with TempAdoQuery do
+    begin
+      Close;
+      sql.Text := stSql;
+      Try
+        Open;
+      Except
+        dmDataBase.DBConnected := False;
+        Exit;
+      End;
+      if recordcount < 1 then Exit;
+
+      with sg_List do
+      begin
+        nRow := 1;
+        RowCount := RecordCount + 1;
+        while Not Eof do
+        begin
+
+          AddCheckBox(0,nRow,False,False);
+
+          cells[1,nRow] := FindField('TO_CODE').AsString;
+          cells[2,nRow] := FindField('TO_NAME').AsString;
+          cells[3,nRow] := FindField('TO_GUBUN').AsString;
+          cells[4,nRow] := FindField('TO_VALUE').AsString;
+
+          if FindField('TO_CODE').AsString  = aCode then
+          begin
+            SelectRows(nRow,1);
+          end;
+
+
+          nRow := nRow + 1;
+          Application.ProcessMessages;
+          Next;
+        end;
+        if aTopRow = 0 then
+        begin
+          if Row > (L_nPageListMaxCount - 1) then TopRow := Row - L_nPageListMaxCount;
+        end else
+        begin
+          TopRow := aTopRow;
+        end;
+      end;
+
+    end;
+  Finally
+    TempAdoQuery.Free;
+    CoUninitialize;
+  End;
+
+end;
+
+procedure TfmTuitionOFF.sg_ListCheckBoxClick(Sender: TObject; ACol,
+  ARow: Integer; State: Boolean);
+begin
+  inherited;
+  if ARow = 0 then //전체선택 또는 해제
+  begin
+    if State then L_nCheckCount := (Sender as TAdvStringGrid).RowCount - 1
+    else L_nCheckCount := 0;
+    AdvStrinGridSetAllCheck(Sender,State);
+  end else
+  begin
+    if State then L_nCheckCount := L_nCheckCount + 1
+    else L_nCheckCount := L_nCheckCount - 1 ;
+  end;
+
+  if(L_nCheckCount >0) then btn_Delete.Enabled := IsDeleteGrade
+  else btn_Delete.Enabled := False;
+
+end;
+
+procedure TfmTuitionOFF.sg_ListDblClick(Sender: TObject);
+begin
+  inherited;
+  pm_UpdateCodeClick(self);
+end;
+
+procedure TfmTuitionOFF.sg_ListResize(Sender: TObject);
+begin
+  inherited;
+  L_nPageListMaxCount := sg_List.Height div sg_List.DefaultRowHeight;
+end;
+
+procedure TfmTuitionOFF.sg_NotPermitAlarmCheckBoxClick(Sender: TObject; ACol,
+  ARow: Integer; State: Boolean);
+begin
+  inherited;
+  if ARow = 0 then //전체선택 또는 해제
+  begin
+    if State then L_nNotPermitArmAreaCheckCount := (Sender as TAdvStringGrid).RowCount - 1
+    else L_nNotPermitArmAreaCheckCount := 0;
+    AdvStrinGridSetAllCheck(Sender,State);
+  end else
+  begin
+    if State then L_nNotPermitArmAreaCheckCount := L_nNotPermitArmAreaCheckCount + 1
+    else L_nNotPermitArmAreaCheckCount := L_nNotPermitArmAreaCheckCount - 1 ;
+  end;
+
+end;
+
+procedure TfmTuitionOFF.sg_NotPermitDoorCheckBoxClick(Sender: TObject; ACol,
+  ARow: Integer; State: Boolean);
+begin
+  inherited;
+  if ARow = 0 then //전체선택 또는 해제
+  begin
+    if State then L_nNotPermitDoorCheckCount := (Sender as TAdvStringGrid).RowCount - 1
+    else L_nNotPermitDoorCheckCount := 0;
+    AdvStrinGridSetAllCheck(Sender,State);
+  end else
+  begin
+    if State then L_nNotPermitDoorCheckCount := L_nNotPermitDoorCheckCount + 1
+    else L_nNotPermitDoorCheckCount := L_nNotPermitDoorCheckCount - 1 ;
+  end;
+
+end;
+
+procedure TfmTuitionOFF.sg_PermitAlarmCheckBoxClick(Sender: TObject; ACol,
+  ARow: Integer; State: Boolean);
+begin
+  inherited;
+  if ARow = 0 then //전체선택 또는 해제
+  begin
+    if State then L_nPermitArmAreaCheckCount := (Sender as TAdvStringGrid).RowCount - 1
+    else L_nPermitArmAreaCheckCount := 0;
+    AdvStrinGridSetAllCheck(Sender,State);
+  end else
+  begin
+    if State then L_nPermitArmAreaCheckCount := L_nPermitArmAreaCheckCount + 1
+    else L_nPermitArmAreaCheckCount := L_nPermitArmAreaCheckCount - 1 ;
+  end;
+
+end;
+
+procedure TfmTuitionOFF.sg_PermitDoorCheckBoxClick(Sender: TObject; ACol,
+  ARow: Integer; State: Boolean);
+begin
+  inherited;
+  if ARow = 0 then //전체선택 또는 해제
+  begin
+    if State then L_nPermitDoorCheckCount := (Sender as TAdvStringGrid).RowCount - 1
+    else L_nPermitDoorCheckCount := 0;
+    AdvStrinGridSetAllCheck(Sender,State);
+  end else
+  begin
+    if State then L_nPermitDoorCheckCount := L_nPermitDoorCheckCount + 1
+    else L_nPermitDoorCheckCount := L_nPermitDoorCheckCount - 1 ;
+  end;
+
+end;
+
+initialization
+  RegisterClass(TfmTuitionOFF);
+Finalization
+  UnRegisterClass(TfmTuitionOFF);
+
+end.

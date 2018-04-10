@@ -1,0 +1,129 @@
+unit uFinger;
+
+interface
+
+uses
+  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
+  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.ExtCtrls,Winapi.ShellAPI;
+
+type
+  TfmFinger = class(TForm)
+    Panel1: TPanel;
+    Timer1: TTimer;
+    procedure FormActivate(Sender: TObject);
+    procedure Timer1Timer(Sender: TObject);
+  private
+    FAppWnd: DWORD;
+    { Private declarations }
+  public
+    { Public declarations }
+    property AppWnd : DWORD read FAppWnd write FAppWnd;
+  end;
+
+var
+  fmFinger: TfmFinger;
+
+implementation
+
+uses
+  uCommonFunction,
+  uCommonVariable;
+
+{$R *.dfm}
+
+procedure TfmFinger.FormActivate(Sender: TObject);
+begin
+  Timer1.Enabled := True;
+
+end;
+
+procedure TfmFinger.Timer1Timer(Sender: TObject);
+var
+  exInfo : TShellExecuteInfo;
+  Ph : DWORD;
+  RetryCount : integer;
+  ProcessList : TStringList;
+  i : integer;
+  HInstance : LongInt;
+begin
+  Timer1.Enabled := False;
+  FillChar( exInfo, Sizeof(exInfo), 0 );
+  with exInfo do
+  begin
+    cbSize:= Sizeof( exInfo );
+    //fMask := SEE_MASK_NOCLOSEPROCESS or SEE_MASK_FLAG_DDEWAIT;
+    fMask := SEE_MASK_NOCLOSEPROCESS;
+    Wnd := Panel1.Handle;
+    ExInfo.lpVerb := 'runas';
+    ExInfo.lpParameters := PChar('');
+    lpFile:= PChar(G_stExeFolder + '\frmFPControl.exe');
+    nShow := SW_HIDE;
+  end;
+  Try
+    ProcessList := TStringList.Create;
+    FAppWnd := 0;
+    repeat
+      ProcessList.Clear;
+      Process32List(ProcessList);
+      for i := ProcessList.Count - 1 downto 0 do
+      begin
+        if ProcessList.Strings[i] = ExtractFileName(Application.ExeName) then  //실행 되고 있으면
+        begin
+          FAppWnd := DWORD(ProcessList.Objects[i]);
+          break;
+        end;
+      end;
+    until (FAppWnd <> 0) or (RetryCount > 10);
+  Finally
+    ProcessList.Clear;
+    ProcessList.Free;
+  End;
+
+  //HInstance := ShellExecute(Self.Handle,'runas',PChar(G_stExeFolder + '\frmFPControl.exe'),nil,nil,SW_ShowNormal);// ShellExecuteEx(@exInfo);
+(*  if ShellExecuteEx(@exInfo) then
+  begin
+    Ph := exInfo.HProcess;
+
+    // 실행 후 바로 찾을 수 없어 윈도우 핸들 찾기 재시도
+    RetryCount := 0;
+    repeat
+      GetWindowThreadProcessId(Ph, @FAppWnd);
+      //FAppWnd := GetWinHandle(HInstance);//GetWindowFromProcessID(Ph);
+      Sleep(100);
+      Inc(RetryCount);
+    until (FAppWnd <> 0) or (RetryCount > 10);
+  end
+  else
+  begin
+    exit;
+  end;
+*)
+
+// 부모설정, 테두리제거, 최대화
+    if FAppWnd <> 0 then
+    begin
+      WinAPI.Windows.SetParent(FAppWnd, exInfo.Wnd);
+      SetWindowLong(FAppWnd, GWL_STYLE,
+              GetWindowLong(Handle, GWL_STYLE)
+// 기존 스타일에서
+          and not WS_BORDER
+// 크기조정 테두리 - 제거
+          and not WS_THICKFRAME
+// 두꺼운 프레임 - 제거
+          and not WS_DLGFRAME
+// 이중 테두리 - 제거
+      );
+      ShowWindow(FAppWnd, SW_SHOWMAXIMIZED);
+    end;
+
+  //SetWindowPos(FAppWnd, 0, 0, 0, Panel1.Width, Panel1.Height, SWP_ASYNCWINDOWPOS)
+
+  while WaitForSingleObject(ExInfo.hProcess, 50) <> WAIT_OBJECT_0 do
+    Application.ProcessMessages;
+  CloseHandle(Ph);
+  Close;
+
+
+end;
+
+end.

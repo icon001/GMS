@@ -1,0 +1,75 @@
+inherited fmBuildingArmAreaMonitoring: TfmBuildingArmAreaMonitoring
+  Left = 117
+  Top = 294
+  Anchors = [akLeft]
+  BorderIcons = [biMinimize, biMaximize]
+  Caption = 'fmBuildingArmAreaMonitoring'
+  ClientHeight = 203
+  ClientWidth = 381
+  DockSite = True
+  DragKind = dkDock
+  DragMode = dmAutomatic
+  Font.Height = -10
+  Font.Name = 'MS Sans Serif'
+  OnClose = FormClose
+  OnCreate = FormCreate
+  OnDockOver = FormDockOver
+  OnShow = FormShow
+  PixelsPerInch = 96
+  TextHeight = 13
+  object W7Panel1: TW7Panel [0]
+    Left = 0
+    Top = 0
+    Width = 381
+    Height = 203
+    Version = '1.0.1.2'
+    Caption = 'W7Panel1'
+    Font.Charset = DEFAULT_CHARSET
+    Font.Color = clWindowText
+    Font.Height = -12
+    Font.Name = 'Segoe UI'
+    Font.Style = []
+    SolidColor = clBlack
+    InnerBorders = [wpbLeft, wpbTop, wpbRight, wpbBottom]
+    OuterBorders = [wpbLeft, wpbTop, wpbRight, wpbBottom]
+    Style = wpsCustom
+    FillStyle = pfsGradient
+    ColorC = clBlack
+    ColorD = clBlack
+    Align = alClient
+    ParentFont = False
+    TabOrder = 0
+    object PageBuilding: TAdvPageControl
+      Left = 0
+      Top = 0
+      Width = 381
+      Height = 203
+      ActiveFont.Charset = DEFAULT_CHARSET
+      ActiveFont.Color = clWindowText
+      ActiveFont.Height = -11
+      ActiveFont.Name = 'Tahoma'
+      ActiveFont.Style = []
+      Align = alClient
+      DockSite = True
+      DefaultTabColor = clWhite
+      ActiveColor = clWhite
+      ActiveColorTo = clHighlight
+      TabBackGroundColor = clBtnFace
+      TabMargin.RightMargin = 0
+      TabOverlap = 0
+      Version = '2.0.0.3'
+      PersistPagesState.Location = plRegistry
+      PersistPagesState.Enabled = False
+      TabOrder = 0
+    end
+  end
+  inherited CommandArray: TCommandArray
+    Commands = <
+      item
+        CommandName = 'BUILDINGCHANGE'
+        CommandKind = 0
+        Name = 'TBUILDINGCHANGE'
+        OnExecute = CommandArrayCommandsTBUILDINGCHANGEExecute
+      end>
+  end
+end

@@ -1,0 +1,34 @@
+unit uCommonFunction;
+
+interface
+
+Function FindCharCopy(SourceStr : String; Index : integer; aChar:Char) : String;
+
+implementation
+
+Function FindCharCopy(SourceStr : String; Index : integer; aChar:Char) : String;
+Var
+  a, b : Integer;
+  st   : String;
+begin
+  a := 0;
+  b := 1;
+  st := '';
+  if (Length(SourceStr) < 1) then begin result:= ''; exit;  end;
+  for b:=1 to Length(SourceStr) do
+  begin
+    if a = index then break;
+    if SourceStr[b] = aChar then Inc(a);
+  end;
+  if (a = Index) then
+  begin
+    while (b <= Length(SourceStr)) and (SourceStr[b] <> aChar) do
+    begin
+      st := st + SourceStr[b];
+      Inc(b);
+    end;
+  end;
+  Result := st;
+end;
+
+end.

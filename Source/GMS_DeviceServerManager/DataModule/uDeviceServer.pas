@@ -1,0 +1,319 @@
+(*
+2014.12.30 LHK
+주장치에서 Decoder 쪽으로 데이터 송신 한 것을 수신 하는 부분...
+*)
+
+unit uDeviceServer;
+
+interface
+
+uses
+  System.SysUtils, System.Classes,Winapi.Messages,Winapi.WinSock,
+  uCommonVariable;
+
+const
+  wm_asynch_nodeselect= wm_User;
+  NodeMAXSOCKCOUNT = 10000;
+
+type
+  TdmDeviceServer = class(TDataModule)
+    procedure DataModuleCreate(Sender: TObject);
+    procedure DataModuleDestroy(Sender: TObject);
+  private
+    L_wsa_data: twsaData;
+    L_server_socket_handle:tSocket;
+    L_c_server_client_socket_list: TStringList;
+    procedure NodePacket(Sender: TObject;aTxRx:string;aPacketData:RawBytestring);
+    procedure NodeConnected(Sender: TObject;aValue:Boolean);
+  private
+    //Handle 생성 부분
+    FHandle : THandle;
+    function HandleAllocated : Boolean;
+    procedure HandleNeeded;
+    procedure WndProc ( var Message : TMessage ); virtual;
+    function GetHandle: THandle;
+  private
+    { Private declarations }
+    FServerPort: integer;
+    FServerStart: Boolean;
+    FStart: Boolean;
+    FOnNodePacket: TNodePacket;
+    procedure SetServerStart(const Value: Boolean);
+    procedure handle_wm_async_select(var Msg: TMessage); message wm_asynch_nodeselect;
+    procedure handle_fd_accept_notification(p_socket: tSocket);
+    procedure handle_fd_close_notification(p_socket: Integer);
+    procedure handle_fd_read_notification(p_socket: tSocket);
+    procedure handle_fd_write_notification(p_socket: Integer);
+  public
+    { Public declarations }
+  published
+    property Handle : THandle read GetHandle;
+    property ServerPort : integer read FServerPort write FServerPort;
+    property ServerStart : Boolean read FServerStart write SetServerStart;
+    property Start : Boolean read FStart write FStart;
+  published
+    property OnNodePacket : TNodePacket read FOnNodePacket write FOnNodePacket;
+  end;
+
+var
+  dmDeviceServer: TdmDeviceServer;
+
+implementation
+
+uses
+  uDeviceNode;
+
+{%CLASSGROUP 'Vcl.Controls.TControl'}
+
+{$R *.dfm}
+
+{ TdmDeviceServer }
+
+procedure TdmDeviceServer.DataModuleCreate(Sender: TObject);
+begin
+  L_c_server_client_socket_list := TStringList.Create;
+end;
+
+procedure TdmDeviceServer.DataModuleDestroy(Sender: TObject);
+var
+  i : integer;
+begin
+  if L_c_server_client_socket_list.Count > 0 then
+  begin
+    for i := L_c_server_client_socket_list.Count - 1 downto 0 do
+    begin
+      TNode(L_c_server_client_socket_list.Objects[i]).Free;
+    end;
+  end;
+  L_c_server_client_socket_list.Free;
+end;
+
+function TdmDeviceServer.GetHandle: THandle;
+begin
+  HandleNeeded;
+  Result := FHandle;
+end;
+
+function TdmDeviceServer.HandleAllocated: Boolean;
+begin
+  Result := ( FHandle <> 0 );
+end;
+
+procedure TdmDeviceServer.HandleNeeded;
+begin
+  if not HandleAllocated
+   then FHandle := AllocateHWND ( WndProc );
+end;
+
+procedure TdmDeviceServer.handle_fd_accept_notification(p_socket: tSocket);
+var
+  l_address_socket_in: tSockAddrIn;
+  l_address_size: Integer;
+  l_server_client_socket: tSocket;
+  nIndex : integer;
+  oNodeSocket : TNode;
+  l_address_in: tSockAddrIn;
+  l_size: Integer;
+  nResult : integer;
+begin
+  l_address_size:= sizeof(l_address_socket_in);
+  l_server_client_socket:= Accept(p_socket, @l_address_socket_in, @l_address_size);
+  nIndex := L_c_server_client_socket_list.IndexOf(inttostr(l_server_client_socket));
+  if nIndex < 0 then
+  begin
+    oNodeSocket := TNode.Create(nil);
+    oNodeSocket.WinSocket := l_server_client_socket;
+    oNodeSocket.OnNodeConnected := NodeConnected;
+    oNodeSocket.NodeConnected := nwConnected;
+    l_size := sizeof(tSockAddr);
+   (* nResult:= GetSockName(l_server_client_socket, tSockAddr(l_address_in), l_size);
+    if nResult = 0 then
+      oClientSocket.ClientPCIP :=  inet_ntoa(l_address_in.sin_addr);  //어느것을 사용해도 문제 없음 *)
+    GetPeerName(l_server_client_socket, tSockAddr(l_address_in), l_size);
+    oNodeSocket.ConnectIP :=  inet_ntoa(l_address_in.sin_addr);
+    oNodeSocket.OnNodePacket := NodePacket;
+    L_c_server_client_socket_list.AddObject(inttostr(l_server_client_socket),oNodeSocket);
+  end;
+end;
+
+procedure TdmDeviceServer.handle_fd_close_notification(p_socket: Integer);
+var l_status: Integer;
+    l_linger: TLinger;
+    l_absolute_linger: array[0..3] of char absolute l_linger;
+
+    nIndex : Integer;
+begin
+  if p_socket <> L_server_socket_handle then
+  begin
+    nIndex:= L_c_server_client_socket_list.IndexOf(inttostr(p_socket));
+  end;
+  if WSAIsBlocking then WSACancelBlockingCall;
+  ShutDown(p_socket, 2);
+  Try
+    SetSockOpt(p_socket, Sol_Socket, So_Linger,
+              pAnsichar(AnsiString(l_absolute_linger)), sizeof(l_linger));  // l_absolute_linger[0] ->  AnsiString(l_absolute_linger) 으로 변경
+  Except
+  End;
+  l_status:= CloseSocket(p_socket);
+  if nIndex > -1 then
+  begin
+    TNode(L_c_server_client_socket_list.Objects[nIndex]).Free;
+    L_c_server_client_socket_list.Delete(nIndex);
+  end;
+end;
+
+procedure TdmDeviceServer.handle_fd_read_notification(p_socket: tSocket);
+var nIndex : integer;
+begin
+  if p_socket= L_server_socket_handle then
+  begin
+    //server should not receive much
+  end else
+  begin
+    nIndex := L_c_server_client_socket_list.IndexOf(inttostr(p_socket));
+    if nIndex > -1 then
+    begin
+      TNode(L_c_server_client_socket_list.Objects[nIndex]).ServerSocketRead;
+    end;
+  end;
+end;
+
+procedure TdmDeviceServer.handle_fd_write_notification(p_socket: Integer);
+var nIndex : integer;
+    l_remaining: Integer;
+    l_pt_start_reception: Pointer;
+begin
+  if p_socket <> L_server_socket_handle then
+  begin
+    nIndex := L_c_server_client_socket_list.IndexOf(inttostr(p_socket));
+    if nIndex > -1 then
+    begin
+      with TNode(L_c_server_client_socket_list.Objects[nIndex]) do
+      begin
+        TNode(L_c_server_client_socket_list.Objects[nIndex]).WriteNotification;
+      end;
+    end;
+  end;
+end;
+
+procedure TdmDeviceServer.handle_wm_async_select(var Msg: TMessage);
+var
+  l_param: Integer;
+  l_error, l_notification: Integer;
+  l_socket_handle: Integer;
+begin
+  l_param:= Msg.lParam;
+  l_socket_handle:= Msg.wParam;
+  l_error:= wsaGetSelectError(l_param);
+  l_notification:= wsaGetSelectEvent(l_param);
+
+  if l_error<= wsaBaseErr then
+  begin
+    case l_notification of
+      FD_ACCEPT: handle_fd_accept_notification(l_socket_handle);
+      FD_CONNECT: begin end; //display('no server fd_connect');
+      FD_WRITE: handle_fd_write_notification(l_socket_handle);
+      FD_READ: handle_fd_read_notification(l_socket_handle);
+      FD_CLOSE: handle_fd_close_notification(l_socket_handle);
+    end // case
+  end else begin
+    if l_notification= FD_CLOSE then handle_fd_close_notification(l_socket_handle);
+  end;
+end;
+
+procedure TdmDeviceServer.NodeConnected(Sender: TObject; aValue: Boolean);
+var
+  nIndex : integer;
+begin
+  if Not aValue then   //노드가 끊긴 경우
+  begin
+    nIndex := L_c_server_client_socket_list.IndexOf(inttostr(TNode(Sender).WinSocket));
+    if nIndex > -1 then
+    begin
+      TNode(Sender).Free;
+      L_c_server_client_socket_list.Delete(nIndex);
+    end;
+  end;
+end;
+
+procedure TdmDeviceServer.NodePacket(Sender: TObject;aTxRx:string;aPacketData:RawBytestring);
+begin
+  if G_bApplicationTerminate then Exit;
+
+  if Assigned(FOnNodePacket) then
+  begin
+    OnNodePacket(Self,aTxRx,aPacketData);
+  end;
+end;
+
+procedure TdmDeviceServer.SetServerStart(const Value: Boolean);
+var
+  l_result : integer;
+  l_address_socket_in: tSockAddrIn;
+  i : integer;
+begin
+
+  if FServerStart = Value then Exit;
+  FServerStart := Value;
+
+  if Value then
+  begin
+    l_result := wsaStartup($0101, l_wsa_data);
+    if l_result <> 0 then
+    begin
+      ServerStart := False;
+      Exit;  //소켓생성 실패 시에 Open False
+    end;
+    L_server_socket_handle:= Socket(PF_INET, SOCK_STREAM, IPPROTO_IP);
+    if L_server_socket_handle= INVALID_SOCKET then
+    begin
+      ServerStart := False;
+      Exit;  //소켓생성 실패 시에 Open False
+    end;
+    l_result:= wsaAsyncSelect(L_server_socket_handle, Handle,wm_asynch_nodeselect,FD_ACCEPT+ FD_READ+ FD_WRITE+ FD_CLOSE);
+    if l_result<> 0 then
+    begin
+      ServerStart := False;
+      Exit;  //소켓생성 실패 시에 Open False
+    end;
+    FillChar(l_address_socket_in, sizeof(l_address_socket_in), 0);
+    with l_address_socket_in do
+    begin
+      sin_family:= af_Inet;
+      sin_port:= hToNs(ServerPort);
+      sin_addr.s_addr:= InAddr_Any; // $00000000
+    end;
+    l_result:= Bind(L_server_socket_handle, l_address_socket_in,
+        sizeof(l_address_socket_in));
+    if l_result <> 0 then
+    begin
+      ServerStart := False;
+      Exit;  //소켓생성 실패 시에 Open False
+    end;
+    l_result:= Listen(L_server_socket_handle, NodeMAXSOCKCOUNT);
+    if l_result <> 0 then
+    begin
+      ServerStart := False;
+      Exit;  //소켓생성 실패 시에 Open False
+    end;
+  end else
+  begin
+    for i := L_c_server_client_socket_list.Count - 1 downto 0 do
+    begin
+      TNode(L_c_server_client_socket_list.Objects[i]).ServerSocketClose;
+      TNode(L_c_server_client_socket_list.Objects[i]).Free;
+    end;
+    if L_server_socket_handle <> INVALID_SOCKET then
+    begin
+      l_result:= CloseSocket(L_server_socket_handle);
+      if l_result = 0 then L_server_socket_handle:= INVALID_SOCKET;
+    end;
+  end;
+end;
+
+procedure TdmDeviceServer.WndProc(var Message: TMessage);
+begin
+  Dispatch ( Message );
+end;
+
+end.

@@ -1,0 +1,12 @@
+unit uCommonVariable;
+
+interface
+
+
+var
+  G_stExeFolder : string;
+
+implementation
+
+
+end.

@@ -1,0 +1,152 @@
+unit uFormVariable;
+
+interface
+uses  System.Classes;
+
+const
+  con_CMDArmAreaName = 1;
+  con_CMDArmAreaUsed = 2;
+  con_CMDArmAreaArmMode = 3;
+
+const
+  MAXFORMCOUNT  = 200;
+  MAX_LISTCOUNT = 100; //리스트 출력 count
+
+  //Common
+  conFORMPCCOMMONITORING = 1;
+  conFormREMOTECONTROL = 2;
+
+  //BMSSever
+  conFORMCONFIG = 4;
+  conFORMNODEADMIN = 5;
+  conFORMDEVICECOMMONITORING = 6;
+
+  //BMSMonitoring
+  con_FormBMOSEMGROUPCODE = 10;
+  con_FormBMOSCOMPANYCODE = 11;
+  con_FormBMOSBUILDINGCODE = 12;
+  con_FormBMOSDECODERMANAGER = 13;
+  con_FormBMOSDEVICEMANAGER = 14;
+  con_FormBMOSDOORCODE = 15;
+  con_FormBMOSARMAREACODE = 16;
+  con_FormBMOSPOSICODE = 17;
+  con_FormBMOSEMPLOYEE = 18;
+  con_FormBMOSEMPLOYEEGUBUN = 19;
+  con_FormBMOSACCESSMONITOR = 20;
+  con_FormBMOSMONITOR = 21;
+  con_FormBMOSNODEMANAGER = 22;
+  con_FormBMOSSECURITYMONITOR = 23;
+  con_FormBMOSFOODMONITOR = 24;
+  con_FormBMOSMAPMONITOR = 25;
+  con_FormBMOSACCESSREPORT = 30;
+  con_FormBMOSACCESSHISREPORT = 31;
+  con_FormBMOSALARMEVENTREPORT = 32;
+  con_FormBMOSArmAreaACCESSREPORT = 33;
+  con_FormBMOSDoorMangementREPORT = 34;
+  con_FormBMOSMERGEMONITOR = 35;
+  con_FormBMOSMAPSECURITYMONITOR = 36;
+  con_FormBMOSMAPSECURITYACCESS = 37;
+  con_FormBMOSMAPACCESS = 38;
+  con_FormBMOSATREPORT = 39;
+  con_FormBMOSDeviceVersionREPORT = 50;
+  con_FormBMOSArmAreaMangementREPORT = 51;
+  con_FormBMOSACCESSTIME = 52;
+  con_FormBMOSEMGROUPGRADE = 53;
+  con_FormBMOSCOMPANYGRADE = 54;
+  con_FormBMOSDOORMAP = 55;
+  con_FormBMOSARMAREAMAP = 56;
+  con_FormBMOSBUILDINGMAP = 57;
+  con_FormBMOSFOODEVENTREPORT = 58;
+  con_FormBMOSFOODSTATEREPORT = 59;
+  con_FormBMOSFOODDEPARTSTATEREPORT = 60;
+
+  con_FormBMOSZONECODE = 70;
+  con_FormBMOSHOLIDAYADMIN = 71;
+  con_FormBMOSDOORSCHEDULEADMIN = 72;
+  con_FormBMOSTIMECODEADMIN = 73;
+
+  con_FormBMOSADMINCLASSCODE = 80;
+  con_FormBMOSADMINCLASSGRADE = 81;
+  con_FormBMOSADMINUSERID = 82;
+
+  //AFServer
+  con_FormAFSConfig = 1;
+  con_FormAFSATReader = 2;
+  con_FormAFSFoodReader = 3;
+
+  //FingerServer
+  conFORMFINGERDEVICE = 1;
+  conFORMFINGERDEVICESTATE = 2;
+  conFORMFINGERCOMMONITORING = 3;
+
+type
+  TMyData=record
+    BuildingID:string[50];
+    BuildingName:string[50];
+    ArmAreaID:string[50];
+    ArmAreaName:string[50];
+    NormalColor : integer;
+    AlarmColor : integer;
+
+    DisArmColor : integer;
+    SelectDisArmColor : integer;
+    ArmColor : integer;
+    SelectArmColor : integer;
+  end;
+  PMyData=^TMyData;
+
+  TAlarmDeviceType = class(TComponent)
+  private
+    FAlarmDeviceTypeCode: string;
+    FAlarmDeviceTypeName: string;
+  public
+    property AlarmDeviceTypeCode : string read FAlarmDeviceTypeCode write FAlarmDeviceTypeCode;
+    property AlarmDeviceTypeName : string read FAlarmDeviceTypeName write FAlarmDeviceTypeName;
+  end;
+
+  TAlarmMode = class(TComponent)
+  private
+    FAlarmModeCode: string;
+    FAlarmModeName: string;
+  public
+    property AlarmModeCode : string read FAlarmModeCode write FAlarmModeCode;
+    property AlarmModeName : string read FAlarmModeName write FAlarmModeName;
+  end;
+
+  TCardNo = class(TComponent)
+  private
+    FCOMPANYNAME: string;
+    FCOMPANYCODE: string;
+    FEMSEQ: integer;
+    FPOSINAME: string;
+    FEMCODE: string;
+    FPOSICODE: string;
+    FCARDNO: string;
+    FEMNAME: string;
+  public
+    property CARDNO : string read FCARDNO write FCARDNO;
+    property EMSEQ : integer read FEMSEQ write FEMSEQ;
+    property EMCODE : string read FEMCODE write FEMCODE;
+    property EMNAME : string read FEMNAME write FEMNAME;
+    property COMPANYCODE : string read FCOMPANYCODE write FCOMPANYCODE;
+    property COMPANYNAME : string read FCOMPANYNAME write FCOMPANYNAME;
+    property POSICODE : string read FPOSICODE write FPOSICODE;
+    property POSINAME : string read FPOSINAME write FPOSINAME;
+  end;
+
+var
+  AlarmDeviceTypeCodeList : TStringList;
+  AlarmModeCodeList : TStringList;
+  CardList : TStringList;
+
+  G_bFormEnabled: Array [0..MAXFORMCOUNT] of Boolean;     //폼 활성화 여부
+  G_MonitoringBuildingList : TStringList; //빌딩별 리스트
+//  G_MonitoringNodeList : TStringList; //모니터링노드리스트
+  G_DoorBuildingList : TStringList;   //해당 출입문의 빌딩코드 리스트
+  G_ArmAreaBuildingList : TStringList;   //해당 방범구역의 빌딩코드 리스트
+
+
+
+implementation
+
+end.

@@ -1,0 +1,9 @@
+unit uBMSServerFormVariable;
+
+interface
+const
+  conNODEADMIN = 1;
+
+implementation
+
+end.

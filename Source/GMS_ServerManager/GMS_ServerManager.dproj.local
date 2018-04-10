@@ -1,0 +1,51 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<BorlandProject>
+	<Transactions>
+    <Transaction>1899-12-30 00:00:00.000.554,=C:\Users\icon001\Documents\RAD Studio\Projects\ItemDetail1.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.750,=Y:\[프로젝트]\[DELXE3]\[GMS]_GateManagerSystem\Lib\Device\Winsockunits\u_display_hex_2.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.469,=C:\Users\icon001\Documents\RAD Studio\Projects\ItemDetail1.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.940,=Y:\[프로젝트]\[DELXE3]\[GMS]_GateManagerSystem\Lib\DataBase\uDBDelete.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.096,=Y:\[프로젝트]\[DELXE3]\[GMS]_GateManagerSystem\Lib\Date\uSolarLunar.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.945,=Y:\[프로젝트]\[DELXE3]\[GMS]_GateManagerSystem\Lib\DataBase\uDBInsert.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.523,=C:\Users\icon001\Documents\RAD Studio\Projects\Unit1.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.674,=C:\Users\icon001\Documents\RAD Studio\Projects\Unit1.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.121,Y:\[프로젝트]\[DELXE3]\[GMS]_GateManagerSystem\Lib\Device\Winsockclasses\u_c_byte_buffer.pas=</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.550,=Y:\[프로젝트]\[DELXE3]\[GMS]_GateManagerSystem\Lib\Device\Winsockclasses\u_c_byte_buffer.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.500,=Y:\[프로젝트]\[DELXE3]\[GMS]_GateManagerSystem\Lib\Device\Winsockclasses\u_c_byte_buffer.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.646,Y:\[프로젝트]\[DELXE3]\[GMS]_GateManagerSystem\Lib\DataBase\uDBDelete.pas=</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.681,=Y:\[프로젝트]\[DELXE3]\[GMS]_GateManagerSystem\Lib\DataBase\uDBCardPermit.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.313,=Y:\[프로젝트]\[DELXE3]\[GMS]_GateManagerSystem\Lib\DataBase\uDBUpdate.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.962,=Y:\[프로젝트]\[DELXE3]\[GMS]_GateManagerSystem\Lib\Device\Winsockunits\u_types_constants.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.500,=Y:\[프로젝트]\[DELXE3]\[GMS]_GateManagerSystem\Lib\Device\Winsockclasses\u_c_basic_object.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.504,=Y:\[프로젝트]\[DELXE3]\[GMS]_GateManagerSystem\Lib\Device\uDeviceVariable.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.630,=Y:\[프로젝트]\[DELXE3]\[GMS]_GateManagerSystem\Lib\DataBase\uDataBaseConfig.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.843,=Y:\[프로젝트]\[DELXE3]\[GMS]_GateManagerSystem\Lib\Common\uCommonVariable.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.609,=Y:\[프로젝트]\[DELXE3]\[GMS]_GateManagerSystem\Lib\DataBase\uDBDelete.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.642,=Y:\[프로젝트]\[DELXE3]\[GMS]_GateManagerSystem\Lib\Device\Winsockclasses\u_c_log.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.028,=Y:\[프로젝트]\[DELXE3]\[GMS]_GateManagerSystem\Lib\Device\Winsocket\u_winsock.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.172,=Y:\[프로젝트]\[DELXE3]\[GMS]_GateManagerSystem\Lib\Common\uCommonFunction.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.225,C:\Users\icon001\Documents\RAD Studio\Projects\Unit1.dfm=Y:\[프로젝트]\[DELXE3]\[GMS]_GateManagerSystem\Source\GMS_ServerManager\fmMain\uMain.dfm</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.855,C:\Users\icon001\Documents\RAD Studio\Projects\Project1.dproj=Y:\[프로젝트]\[DELXE3]\[GMS]_GateManagerSystem\Source\GMS_ServerManager\GMS_ServerManager.dproj</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.383,=Y:\[프로젝트]\[DELXE3]\[MIAMS]_MultiIntigrationAlarmMonitoringSystem\Source\MIAMS_AccessMonitoring\ItemDetail1.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.560,=Y:\[프로젝트]\[DELXE3]\[GMS]_GateManagerSystem\Lib\DataBase\uDataBase.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.735,=Y:\[프로젝트]\[DELXE3]\[GMS]_GateManagerSystem\Lib\DataBase\uDBFunction.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.556,=Y:\[프로젝트]\[DELXE3]\[GMS]_GateManagerSystem\Lib\DataBase\uDBFormMessage.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.290,=Y:\[프로젝트]\[DELXE3]\[GMS]_GateManagerSystem\Lib\Common\uCommonEvent.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.229,=Y:\[프로젝트]\[DELXE3]\[GMS]_GateManagerSystem\Lib\Common\SharedMemory\uSharedMemory.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.244,Y:\[프로젝트]\[DELXE3]\[GMS]_GateManagerSystem\Source\GMS_ServerManager\Unit1.dfm=Y:\[프로젝트]\[DELXE3]\[GMS]_GateManagerSystem\Source\GMS_ServerManager\fmConfig\uConfig.dfm</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.167,=Y:\[프로젝트]\[DELXE3]\[GMS]_GateManagerSystem\Source\GMS_ServerManager\Unit1.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.244,Y:\[프로젝트]\[DELXE3]\[GMS]_GateManagerSystem\Source\GMS_ServerManager\Unit1.pas=Y:\[프로젝트]\[DELXE3]\[GMS]_GateManagerSystem\Source\GMS_ServerManager\fmConfig\uConfig.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.645,=Y:\[프로젝트]\[DELXE3]\[GMS]_GateManagerSystem\Lib\DataBase\uDBCreate.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.887,=Y:\[프로젝트]\[DELXE3]\[GMS]_GateManagerSystem\Lib\Device\Winsockunits\u_strings.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.598,=Y:\[프로젝트]\[DELXE3]\[GMS]_GateManagerSystem\Lib\Device\Winsockclasses\u_c_display.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.616,=Y:\[프로젝트]\[DELXE3]\[GMS]_GateManagerSystem\Lib\Device\Winsockunits\u_characters.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.444,=C:\Users\icon001\Documents\RAD Studio\Projects\Unit1.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.225,C:\Users\icon001\Documents\RAD Studio\Projects\Unit1.pas=Y:\[프로젝트]\[DELXE3]\[GMS]_GateManagerSystem\Source\GMS_ServerManager\fmMain\uMain.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.233,=Y:\[프로젝트]\[DELXE3]\[MIAMS]_MultiIntigrationAlarmMonitoringSystem\Source\MIAMS_AccessMonitoring\GroupedItems1.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.812,=Y:\[프로젝트]\[DELXE3]\[GMS]_GateManagerSystem\Lib\Device\Winsockunits\u_file.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.196,=Y:\[프로젝트]\[DELXE3]\[GMS]_GateManagerSystem\Lib\DataBase\uDBFormName.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.696,=Y:\[프로젝트]\[DELXE3]\[GMS]_GateManagerSystem\Lib\Device\Winsockunits\u_dir.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.413,=C:\Users\icon001\Documents\RAD Studio\Projects\GroupedItems1.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.335,=C:\Users\icon001\Documents\RAD Studio\Projects\GroupedItems1.pas</Transaction>
+  </Transactions>
+</BorlandProject>
