@@ -542,7 +542,7 @@ inherited fmNodeManager: TfmNodeManager
           Height = 385
           Cursor = crDefault
           Hint = #49688#51221#49884#50640#45716' '#54644#45817#49472#51012' '#45908#48660#53364#47533#54616#49464#50836'.'
-          ColCount = 11
+          ColCount = 13
           DrawingStyle = gdsClassic
           FixedCols = 0
           RowCount = 17
@@ -656,6 +656,8 @@ inherited fmNodeManager: TfmNodeManager
             189
             190
             121
+            64
+            64
             64
             64
             64
@@ -1308,9 +1310,8 @@ inherited fmNodeManager: TfmNodeManager
           object lb_AddNodeIP: TAdvSmoothLabel
             Left = 32
             Top = 60
-            Width = 16
+            Width = 118
             Height = 19
-            AutoSize = True
             Fill.ColorMirror = clNone
             Fill.ColorMirrorTo = clNone
             Fill.GradientType = gtVertical
@@ -1806,6 +1807,7 @@ inherited fmNodeManager: TfmNodeManager
             LabelFont.Style = []
             ParentFont = False
             TabOrder = 8
+            OnChange = cmb_ServerNoChange
           end
           object ed_AddBuildingName: TAdvEditBtn
             Left = 157
@@ -1865,6 +1867,32 @@ inherited fmNodeManager: TfmNodeManager
             TabOrder = 10
             Text = ''
             Visible = False
+            Version = '3.3.2.0'
+          end
+          object ed_AddDeviceID: TAdvEdit
+            Left = 156
+            Top = 61
+            Width = 161
+            Height = 21
+            EmptyTextStyle = []
+            LabelFont.Charset = DEFAULT_CHARSET
+            LabelFont.Color = clWindowText
+            LabelFont.Height = -11
+            LabelFont.Name = 'Tahoma'
+            LabelFont.Style = []
+            Lookup.Font.Charset = DEFAULT_CHARSET
+            Lookup.Font.Color = clWindowText
+            Lookup.Font.Height = -11
+            Lookup.Font.Name = 'Arial'
+            Lookup.Font.Style = []
+            Lookup.Separator = ';'
+            Color = clWindow
+            ImeName = 'Microsoft Office IME 2007'
+            TabOrder = 11
+            Text = ''
+            Visible = False
+            OnChange = ed_NodeIpChange
+            OnKeyPress = ed_NodeIpKeyPress
             Version = '3.3.2.0'
           end
         end
@@ -2306,7 +2334,7 @@ inherited fmNodeManager: TfmNodeManager
     Left = 824
     Top = 344
     Bitmap = {
-      494C010103009400300210001000FFFFFF00FF10FFFFFFFFFFFFFFFF424D3600
+      494C010103009400340210001000FFFFFF00FF10FFFFFFFFFFFFFFFF424D3600
       0000000000003600000028000000400000001000000001002000000000000010
       000000000000000000000000000000000000FAFAFA00DDDDDD00D8D8D800D8D8
       D800D8D8D800D8D8D800D8D8D800D8D8D800D8D8D800D8D8D800D8D8D800D8D8

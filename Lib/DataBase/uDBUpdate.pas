@@ -204,7 +204,7 @@ type
     function UpdateTB_NODE_AllMemLoadInit(aState:string):Boolean;
     Function UpdateTB_NODE_Field_IntValue(aNodeNo,aFieldName,aData:string):Boolean;
     Function UpdateTB_NODE_Field_StringValue(aNodeNo,aFieldName,aData:string):Boolean;
-    Function UpdateTB_NODE_NodeIP(aNodeNo,aNodeIp,aNodeName,aServerNo:string;aDeviceType:string='';aBuildingCode:string=''):Boolean;
+    Function UpdateTB_NODE_NodeIP(aNodeNo,aNodeIp,aNodeName,aServerNo:string;aDeviceType:string='';aBuildingCode:string='';aDeviceID:string=''):Boolean;
     Function UpdateTB_NODE_TelphoneOfficeNodeIP(aNodeNo,aNodeIp,aNodeName,aDeviceType,aServerNo,aBuildingCode,aTelNumber,aAddr,aAddDate:string):Boolean;
     Function UpdateTB_NODERCV_Field_StringValue(aNodeNo,aFieldName,aData:string):Boolean;
     Function UpdateTB_POSICODE_Field_StringValue(aPosiCode,aFieldName,aData:string):Boolean;
@@ -3505,7 +3505,7 @@ begin
 end;
 
 function TdmDBUpdate.UpdateTB_NODE_NodeIP(aNodeNo, aNodeIp,
-  aNodeName,aServerNo: string;aDeviceType:string='';aBuildingCode:string=''): Boolean;
+  aNodeName,aServerNo: string;aDeviceType:string='';aBuildingCode:string='';aDeviceID:string=''): Boolean;
 var
   stSql : string;
 begin
@@ -3516,6 +3516,7 @@ begin
   stSql := stSql + ' ,ND_MEMLOAD = ''N'' ';
   if isDigit(aDeviceType) then stSql := stSql + ' ,ND_DEVICETYPE = ' + aDeviceType + '  ';
   if aBuildingCode <> '' then stSql := stSql + ' ,BC_BUILDINGCODE = ''' + aBuildingCode + '''  ';
+  if aDeviceID <> '' then stSql := stSql + ' ,ND_DEVICEID = ''' + aDeviceID + '''  ';
 
   stSql := stSql + ' Where GROUP_CODE = ''' + G_stGroupCode + ''' ';
   stSql := stSql + ' AND ND_NODENO = ' + aNodeNo + ' ';

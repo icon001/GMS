@@ -3,7 +3,7 @@
         <ProjectGuid>{9A972138-3323-4B1F-9799-974C2E3C4258}</ProjectGuid>
         <MainSource>GMS_Manager.dpr</MainSource>
         <Base>True</Base>
-        <Config Condition="'$(Config)'==''">Release</Config>
+        <Config Condition="'$(Config)'==''">Debug</Config>
         <TargetedPlatforms>1</TargetedPlatforms>
         <AppType>Application</AppType>
         <FrameworkType>VCL</FrameworkType>

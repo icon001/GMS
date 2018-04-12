@@ -95,6 +95,7 @@ type
     function CheckTB_HOLIDAY_Date(aDate:string):integer;
     function CheckTB_LecturePaymentSummary_Key(aMonth,aEmSeq:string):integer;
     function CheckTB_NODE_DeviceID(aSockType,aDeviceID:string;var aNodeNo:string):integer;
+    function CheckTB_NODE_NodeDeviceID(aDeviceID,aNodeNo:string):integer;
     function CheckTB_NODE_NodeIP(aNodeIP,aNodeNo:string):integer;
     function CheckTB_POSICODE_PosiName(aCompanyCode,aPosiName:string):integer;
     function CheckTB_Tuition_LikeCompanyCode(aSeq,aCompanyCode:string):integer;
@@ -181,6 +182,7 @@ type
     function GetTB_CompanyCode_ViewSeq(aCompanyCode:string):string;
     function GetTB_CONFIG_Value(aGroup,aCode:string):string;
     function GetTB_consultinggroupphonenum_GroupNum(aNumber:string;var aGroupNum:string):integer;
+    function GetTB_DECODER_ServerType(aServerNo:string):integer;
     function GetTB_DEVICE_BuildingCode(aNodeNo,aEcuID,aExtendID:string):string;
     function GetTB_DEVICE_DeviceInfo(aNodeNo,aEcuID:string; var aEcuName,aEcuUse,aArmAreaUse:string):Boolean;
     function GetTB_DEVICE_Version(aNodeNo,aEcuID:string):string;
@@ -3716,6 +3718,46 @@ begin
   End;
 end;
 
+function TdmDBFunction.CheckTB_NODE_NodeDeviceID(aDeviceID,
+  aNodeNo: string): integer;
+var
+  stSql : string;
+  TempAdoQuery :TADOQuery;
+begin
+  result := -1;
+  stSql := 'select * from TB_NODE ';
+  stSql := stSql + ' Where  GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  stSql := stSql + ' AND ND_DEVICEID = ''' + aDeviceID + ''' ';
+  stSql := stSql + ' AND ND_NODENO <> ' + aNodeNo + '';
+
+  Try
+    CoInitialize(nil);
+    TempAdoQuery := TADOQuery.Create(nil);
+    TempAdoQuery.Connection := dmDataBase.ADOConnection;
+    TempAdoQuery.DisableControls;
+
+    with TempAdoQuery do
+    begin
+      Close;
+      Sql.Clear;
+      Sql.Text := stSql;
+
+      Try
+        Open;
+      Except
+        dmDataBase.DBConnected := False;
+        Exit;
+      End;
+      if recordcount = 0 then result := 0
+      else result := 1;
+    end;
+  Finally
+    TempAdoQuery.EnableControls;
+    TempAdoQuery.Free;
+    CoUninitialize;
+  End;
+end;
+
 function TdmDBFunction.CheckTB_NODE_NodeIP(aNodeIP, aNodeNo: string): integer;
 var
   stSql : string;
@@ -7076,6 +7118,41 @@ begin
       if recordCount < 1 then Exit;
       aGroupNum := FindField('cg_num').AsString;
       result := 1;
+    end;
+  Finally
+    TempAdoQuery.EnableControls;
+    TempAdoQuery.Free;
+    CoUninitialize;
+  End;
+end;
+
+function TdmDBFunction.GetTB_DECODER_ServerType(aServerNo: string): integer;
+var
+  stSql : string;
+  TempAdoQuery :TADOQuery;
+begin
+  result := -1;
+  stSql := 'select * from TB_DECODER ';
+  stSql := stSql + ' Where GROUP_CODE = ''' + G_stGroupCode + ''' ';
+  stSql := stSql + ' AND ND_DECODERNO = ' + aServerNo + ' ';
+  Try
+    CoInitialize(nil);
+    TempAdoQuery := TADOQuery.Create(nil);
+    TempAdoQuery.Connection := dmDataBase.ADOConnection;
+    TempAdoQuery.DisableControls;
+    with TempAdoQuery do
+    begin
+      Close;
+      Sql.Clear;
+      Sql.Text := stSql;
+      Try
+        Open;
+      Except
+        dmDataBase.DBConnected := False;
+        Exit;
+      End;
+      if recordCount < 1 then Exit;
+      result := FindField('ND_DECODERSOCKTYPE').AsInteger;
     end;
   Finally
     TempAdoQuery.EnableControls;

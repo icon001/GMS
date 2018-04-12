@@ -80,6 +80,7 @@ type
     tv_AddbuildingCode: TTreeView;
     tv_AddbuildingName: TTreeView;
     tv_buildingName: TTreeView;
+    ed_AddDeviceID: TAdvEdit;
     procedure FormShow(Sender: TObject);
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
     procedure btn_AddClick(Sender: TObject);
@@ -116,6 +117,7 @@ type
     procedure tv_buildingNameDblClick(Sender: TObject);
     procedure ed_AddBuildingNameClickBtn(Sender: TObject);
     procedure btn_ExcelClick(Sender: TObject);
+    procedure cmb_ServerNoChange(Sender: TObject);
   private
     L_nPageListMaxCount : integer;
     L_nCheckCount : integer;
@@ -175,14 +177,14 @@ var
   stMessage : string;
   i,j,k : integer;
   stDate : string;
-  stDeviceID : string;
   stServerNo : string;
   stDeviceType : string;
   nViewDoor : integer;
+  nServerType : integer;
 begin
   inherited;
   stNodeNo := dmDBFunction.GetNextNodeNo;
-  stDeviceID := FillZeroNumber(0,G_nIDLength);
+
   if G_nProgramType = 2 then nViewDoor := 4
   else nViewDoor := 2;
 
@@ -194,14 +196,32 @@ begin
   if cmb_DeviceType.ItemIndex > -1 then
     stDeviceType := NodeDeviceTypeCodeList.Strings[cmb_DeviceType.ItemIndex];
 
-  if dmDBFunction.CheckTB_NODE_NodeIP(ed_NodeIp.Text,stNodeNo) = 1 then
+  nServerType := dmDBFunction.GetTB_DECODER_ServerType(stServerNo);
+  if nServerType = 1 then
   begin
-    stMessage := dmFormMessage.GetMessage('DBDATADUP');
-    Application.MessageBox(PChar(stMessage),'Error',MB_OK);
-    Exit;
+    if Not IsIPTypeCheck(ed_NodeIp.Text) then
+    begin
+      stMessage := dmFormMessage.GetMessage('DATATYPEFAIL');
+      showmessage(stMessage);
+      Exit;
+    end;
+    if dmDBFunction.CheckTB_NODE_NodeIP(ed_NodeIp.Text,stNodeNo) = 1 then
+    begin
+      stMessage := dmFormMessage.GetMessage('DBDATADUP');
+      Application.MessageBox(PChar(stMessage),'Error',MB_OK);
+      Exit;
+    end;
+  end else
+  begin
+    if dmDBFunction.CheckTB_NODE_NodeDeviceID(ed_AddDeviceID.Text,stNodeNo) = 1 then
+    begin
+      stMessage := dmFormMessage.GetMessage('DBDATADUP');
+      Application.MessageBox(PChar(stMessage),'Error',MB_OK);
+      Exit;
+    end;
   end;
 
-  if Not dmDBInsert.InsertIntoTB_NODE_NodeIp(stNodeNo,'1',stDeviceID,ed_NodeIp.Text,ed_NodeName.Text,stDeviceType,stServerNo,ed_AddBuildingCode.Text) then
+  if Not dmDBInsert.InsertIntoTB_NODE_NodeIp(stNodeNo,'1',ed_AddDeviceID.Text,ed_NodeIp.Text,ed_NodeName.Text,stDeviceType,stServerNo,ed_AddBuildingCode.Text) then
   begin
     stMessage := stringReplace(dmFormMessage.GetMessage('DBSAVEERROR'),'$WORK',btn_Save.Caption,[rfReplaceAll]);
     Application.MessageBox(PChar(stMessage),'Error',MB_OK);
@@ -376,7 +396,9 @@ end;
 procedure TfmNodeManager.btn_AddClick(Sender: TObject);
 begin
   inherited;
+  ed_AddDeviceID.Text := FillZeroNumber(0,G_nIDLength);
   pm_CodeAddClick(pm_CodeAdd);
+  cmb_ServerNoChange(cmb_ServerNo);
 end;
 
 procedure TfmNodeManager.btn_CancelClick(Sender: TObject);
@@ -420,24 +442,24 @@ begin
       GetCheckBoxState(0,i, bChkState);
       if bChkState then
       begin
-        dmDBDelete.DeleteTB_ARMAREA_NodeAll(cells[4,i]);
-        dmDBDelete.DeleteTB_CARDPERMIT_NodeAll(cells[4,i]);
-        dmDBDelete.DeleteTB_CARDPERMITCOMPANYGROUP_NodeAll(cells[4,i]);
-        dmDBDelete.DeleteTB_CARDPERMITEMPLOYEECODE_NodeAll(cells[4,i]);
-        dmDBDelete.DeleteTB_CARDPERMITEMPLOYEEGROUP_NodeAll(cells[4,i]);
-        dmDBDelete.DeleteTB_DEVICE_NodeAll(cells[4,i]);
-        dmDBDelete.DeleteTB_DEVICERCV_NodeAll(cells[4,i]);
-        dmDBDelete.DeleteTB_DOOR_NodeAll(cells[4,i]);
-        dmDBDelete.DeleteTB_DOORRCV_NodeAll(cells[4,i]);
-        dmDBDelete.DeleteTB_HOLIDAYDEVICE_NodeAll(cells[4,i]);
-        dmDBDelete.DeleteTB_NODE_NodeAll(cells[4,i]);
-        dmDBDelete.DeleteTB_NODERCV_NodeAll(cells[4,i]);
-        dmDBDelete.DeleteTB_READER_NodeAll(cells[4,i]);
-        dmDBDelete.DeleteTB_READERRCV_NodeAll(cells[4,i]);
-        dmDBDelete.DeleteTB_TIMECODEDEVICE_NodeAll(cells[4,i]);
-        dmDBDelete.DeleteTB_ZONE_NodeAll(cells[4,i]);
-        dmDBDelete.DeleteTB_ZONERCV_NodeAll(cells[4,i]);
-        dmDBDelete.DeleteTB_ZONEEXTENTION_NodeAll(cells[4,i]);
+        dmDBDelete.DeleteTB_ARMAREA_NodeAll(cells[5,i]);
+        dmDBDelete.DeleteTB_CARDPERMIT_NodeAll(cells[5,i]);
+        dmDBDelete.DeleteTB_CARDPERMITCOMPANYGROUP_NodeAll(cells[5,i]);
+        dmDBDelete.DeleteTB_CARDPERMITEMPLOYEECODE_NodeAll(cells[5,i]);
+        dmDBDelete.DeleteTB_CARDPERMITEMPLOYEEGROUP_NodeAll(cells[5,i]);
+        dmDBDelete.DeleteTB_DEVICE_NodeAll(cells[5,i]);
+        dmDBDelete.DeleteTB_DEVICERCV_NodeAll(cells[5,i]);
+        dmDBDelete.DeleteTB_DOOR_NodeAll(cells[5,i]);
+        dmDBDelete.DeleteTB_DOORRCV_NodeAll(cells[5,i]);
+        dmDBDelete.DeleteTB_HOLIDAYDEVICE_NodeAll(cells[5,i]);
+        dmDBDelete.DeleteTB_NODE_NodeAll(cells[5,i]);
+        dmDBDelete.DeleteTB_NODERCV_NodeAll(cells[5,i]);
+        dmDBDelete.DeleteTB_READER_NodeAll(cells[5,i]);
+        dmDBDelete.DeleteTB_READERRCV_NodeAll(cells[5,i]);
+        dmDBDelete.DeleteTB_TIMECODEDEVICE_NodeAll(cells[5,i]);
+        dmDBDelete.DeleteTB_ZONE_NodeAll(cells[5,i]);
+        dmDBDelete.DeleteTB_ZONERCV_NodeAll(cells[5,i]);
+        dmDBDelete.DeleteTB_ZONEEXTENTION_NodeAll(cells[5,i]);
         Application.ProcessMessages;
       end;
     end;
@@ -537,7 +559,7 @@ begin
       GetCheckBoxState(0,i, bChkState);
       if bChkState then
       begin
-        dmDBUpdate.UpdateTB_NODE_Field_StringValue(cells[4,i],'FG_GROUPCODE',stFireGroupCode);
+        dmDBUpdate.UpdateTB_NODE_Field_StringValue(cells[5,i],'FG_GROUPCODE',stFireGroupCode);
       end;
     end;
   end;
@@ -564,12 +586,6 @@ begin
   btn_Add.Enabled := False;
   btn_Save.Enabled := False;
   pan_Progress.Visible := True;
-  if Not IsIPTypeCheck(ed_NodeIp.Text) then
-  begin
-    stMessage := dmFormMessage.GetMessage('DATATYPEFAIL');
-    showmessage(stMessage);
-    Exit;
-  end;
 
   L_nProgress := 0;
   TimerProgress.Enabled := True;
@@ -605,6 +621,30 @@ procedure TfmNodeManager.btn_UpdateClick(Sender: TObject);
 begin
   inherited;
   sg_ListDblClick(sg_List);
+end;
+
+procedure TfmNodeManager.cmb_ServerNoChange(Sender: TObject);
+var
+  nServerType : integer;
+  stServerNo : string;
+begin
+  inherited;
+  if cmb_ServerNo.ItemIndex > -1 then
+  begin
+    stServerNo := ServerNoList.Strings[cmb_ServerNo.ItemIndex];
+    nServerType := dmDBFunction.GetTB_DECODER_ServerType(stServerNo);
+    if nServerType = 1 then
+    begin
+      lb_AddNodeIP.Caption.Text := dmFormFunction.GetFormName('0','2','COMMONNODEIP01');
+      ed_AddDeviceID.Visible := False;
+      ed_NodeIp.Visible := True;
+    end else
+    begin
+      lb_AddNodeIP.Caption.Text := dmFormFunction.GetFormName('2','2','BM3_012DeviceID');
+      ed_AddDeviceID.Visible := True;
+      ed_NodeIp.Visible := False;
+    end;
+  end;
 end;
 
 procedure TfmNodeManager.CommandArrayCommandsTFORMNAMEExecute(Command: TCommand;
@@ -746,12 +786,15 @@ begin
   lb_AddNodeName.Caption.Text := dmFormFunction.GetFormName('0','2','COMMONNODENAME01');
   lb_SearchNodeName.Caption.Text := dmFormFunction.GetFormName('0','2','COMMONNODENAME01');
 
-  sg_List.Cells[2,0] := dmFormFunction.GetFormName('0','2','COMMONNODENAME01');
+  sg_List.Cells[1,0] := dmFormFunction.GetFormName('0','2','COMMONNODEIP01');
+  sg_List.Cells[2,0] := dmFormFunction.GetFormName('2','2','BM3_012DeviceID');
+  sg_List.Cells[3,0] := dmFormFunction.GetFormName('0','2','COMMONNODENAME01');
+  sg_List.Cells[4,0] := dmFormFunction.GetFormName('0','2','COMMONFIREGROUP');
+  sg_List.Cells[5,0] := dmFormFunction.GetFormName('0','2','COMMONNODENO');
   lb_AddEcuCount.Caption.Text := dmFormFunction.GetFormName('0','2','COMMONDEVICECOUNT');
   lb_AddNodeIP.Caption.Text := dmFormFunction.GetFormName('0','2','COMMONNODEIP01');
   lb_SearchNodeIP.Caption.Text := dmFormFunction.GetFormName('0','2','COMMONNODEIP01');
 
-  sg_List.Cells[1,0] := dmFormFunction.GetFormName('0','2','COMMONNODEIP01');
   L_stNodeAddCaption := dmFormFunction.GetFormName('0','2','COMMONNODELIST02');
   L_stNodeUpdateCaption := dmFormFunction.GetFormName('0','2','COMMONNODELIST03');
   L_stButtonCloseCaption := dmFormFunction.GetFormName('0','2','BUTTONMENU001');
@@ -788,7 +831,7 @@ begin
   sg_List.Left := 10;
   sg_List.Width := BodyPanel.Width - (sg_List.Left * 2);
   sg_List.Height := BodyPanel.Height - (sg_List.Top + 10);
-  sg_List.ColWidths[3] := sg_List.Width - (sg_List.ColWidths[0] + sg_List.ColWidths[1] + sg_List.ColWidths[2] + sg_List.ColWidths[4]);
+  sg_List.ColWidths[4] := sg_List.Width - (sg_List.ColWidths[0] + sg_List.ColWidths[1] + sg_List.ColWidths[2] + sg_List.ColWidths[3] + sg_List.ColWidths[5]);
   btn_FireGroup.Left := sg_List.Left + sg_List.Width - btn_FireGroup.Width;
 
   Add.Left := (BodyPanel.Width div 2) - (Add.Width div 2);
@@ -850,7 +893,7 @@ var
   nRow : integer;
   stBuildingCode : string;
 begin
-  GridInit(sg_List,5,2,true);
+  GridInit(sg_List,6,2,true);
   stBuildingCode := '';
   stSql := dmDBSelect.SelectTB_NODE_Name(ed_BuildingCode.Text,ed_SearchName.Text,ed_SearchIP.Text);
 //  memo1.Text := stSql;
@@ -893,17 +936,19 @@ begin
         begin
           AddCheckBox(0,nRow,False,False);
           cells[1,nRow] := FindField('ND_NODEIP').AsString;
-          cells[2,nRow] := FindField('ND_NODENAME').AsString;
-          cells[3,nRow] := FindField('FG_GROUPCODENAME').AsString;
-          cells[4,nRow] := FillZeroNumber(FindField('ND_NODENO').AsInteger,G_nNodeCodeLength);
-          cells[5,nRow] := FindField('ND_NODEPORT').AsString;
-          cells[6,nRow] := FindField('FG_GROUPCODE').AsString;
-          cells[7,nRow] := FindField('ND_DEVICETYPE').AsString;
-          cells[8,nRow] := FindField('ND_DECODERNO').AsString;
-          cells[9,nRow] := FindField('BC_BUILDINGCODE').AsString;
-          cells[10,nRow] := FindField('ND_LASTNETSTATE').AsString;
+          cells[2,nRow] := FindField('ND_DEVICEID').AsString;
+          cells[3,nRow] := FindField('ND_NODENAME').AsString;
+          cells[4,nRow] := FindField('FG_GROUPCODENAME').AsString;
+          cells[5,nRow] := FillZeroNumber(FindField('ND_NODENO').AsInteger,G_nNodeCodeLength);
+          cells[6,nRow] := FindField('ND_NODEPORT').AsString;
+          cells[7,nRow] := FindField('FG_GROUPCODE').AsString;
+          cells[8,nRow] := FindField('ND_DEVICETYPE').AsString;
+          cells[9,nRow] := FindField('ND_DECODERNO').AsString;
+          cells[10,nRow] := FindField('BC_BUILDINGCODE').AsString;
+          cells[11,nRow] := FindField('ND_LASTNETSTATE').AsString;
+          cells[12,nRow] := FindField('ND_DEVICEID').AsString;
 
-          if cells[4,nRow] = aCurrentCode then
+          if cells[5,nRow] = aCurrentCode then
           begin
             SelectRows(nRow,1);
           end;
@@ -955,16 +1000,17 @@ begin
   L_stWork := 'UPDATE';
   with sg_List do
   begin
-    if Not isDigit(cells[4,Row]) then Exit;
+    if Not isDigit(cells[5,Row]) then Exit;
     ed_NodeIp.Text := cells[1,Row];
-    ed_NodeName.Text := cells[2,Row];
-    ed_NodeNo.Text := cells[4,Row];
-    if cells[7,Row] = '' then cells[7,Row] := '0';
-    nIndex := NodeDeviceTypeCodeList.IndexOf(cells[7,Row]);
+    ed_AddDeviceID.Text := cells[12,Row];
+    ed_NodeName.Text := cells[3,Row];
+    ed_NodeNo.Text := cells[5,Row];
+    if cells[8,Row] = '' then cells[8,Row] := '0';
+    nIndex := NodeDeviceTypeCodeList.IndexOf(cells[8,Row]);
     cmb_DeviceType.ItemIndex := nIndex;
-    nIndex := ServerNoList.IndexOf(cells[8,Row]);
+    nIndex := ServerNoList.IndexOf(cells[9,Row]);
     cmb_ServerNo.ItemIndex := nIndex;
-    ed_AddBuildingCode.text := cells[9,Row];
+    ed_AddBuildingCode.text := cells[10,Row];
   end;
   if ed_AddBuildingCode.text = '' then ed_AddBuildingCode.text := '0';
 
@@ -976,6 +1022,7 @@ begin
     tv_AddbuildingNameDblClick(tv_AddbuildingName);
   end;
 
+  cmb_ServerNoChange(cmb_ServerNo);
   lb_WorkType.Caption := L_stNodeUpdateCaption;
   Add.Visible := True;
 
@@ -1021,21 +1068,41 @@ var
   stMessage : string;
   stDate : string;
   stServerNo : string;
+  nServerType : integer;
 begin
   inherited;
   stNodeNo := ed_NodeNo.Text;
 
-  if dmDBFunction.CheckTB_NODE_NodeIP(ed_NodeIp.Text,stNodeNo) = 1 then
-  begin
-    stMessage := dmFormMessage.GetMessage('DBDATADUP');
-    Application.MessageBox(PChar(stMessage),'Error',MB_OK);
-    Exit;
-  end;
-
   if cmb_ServerNo.ItemIndex > -1 then
     stServerNo := ServerNoList.Strings[cmb_ServerNo.ItemIndex];
 
-  if Not dmDBUpdate.UpdateTB_NODE_NodeIP(stNodeNo,ed_NodeIp.Text,ed_NodeName.Text,stServerNo,inttostr(cmb_DeviceType.ItemIndex),ed_AddBuildingCode.Text) then
+  nServerType := dmDBFunction.GetTB_DECODER_ServerType(stServerNo);
+  if nServerType = 1 then
+  begin
+    if Not IsIPTypeCheck(ed_NodeIp.Text) then
+    begin
+      stMessage := dmFormMessage.GetMessage('DATATYPEFAIL');
+      showmessage(stMessage);
+      Exit;
+    end;
+    if dmDBFunction.CheckTB_NODE_NodeIP(ed_NodeIp.Text,stNodeNo) = 1 then
+    begin
+      stMessage := dmFormMessage.GetMessage('DBDATADUP');
+      Application.MessageBox(PChar(stMessage),'Error',MB_OK);
+      Exit;
+    end;
+  end else
+  begin
+    if dmDBFunction.CheckTB_NODE_NodeDeviceID(ed_AddDeviceID.Text,stNodeNo) = 1 then
+    begin
+      stMessage := dmFormMessage.GetMessage('DBDATADUP');
+      Application.MessageBox(PChar(stMessage),'Error',MB_OK);
+      Exit;
+    end;
+  end;
+
+
+  if Not dmDBUpdate.UpdateTB_NODE_NodeIP(stNodeNo,ed_NodeIp.Text,ed_NodeName.Text,stServerNo,inttostr(cmb_DeviceType.ItemIndex),ed_AddBuildingCode.Text,ed_AddDeviceID.Text) then
   begin
     stMessage := stringReplace(dmFormMessage.GetMessage('DBSAVEERROR'),'$WORK',btn_Save.Caption,[rfReplaceAll]);
     Application.MessageBox(PChar(stMessage),'Error',MB_OK);
