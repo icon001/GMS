@@ -727,7 +727,6 @@ begin
   if nIndex < 0 then
   begin
     oNodeSocket := TNode.Create(nil);
-    oNodeSocket.No := -1;
     oNodeSocket.WinSocket := l_server_client_socket;
     oNodeSocket.SocketType := 2;
     l_size := sizeof(tSockAddr);

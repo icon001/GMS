@@ -50,7 +50,28 @@ type
     procedure ZONEEXTENDTYPEChange(Sender: TObject;  aNodeNo : integer;aEcuID,aExtendID,aNumber:string; aData:string);
     procedure ZonePacketChange(Sender: TObject;  aCmd,aNodeNo : integer;aEcuID,aExtendID,aNumber:string; aData:string);
   private
+    L_bCardDownLoading :Boolean;
+    L_bFireEvent : Boolean;
+    L_bRcvChecking : Boolean;
+    L_bSocketWriting : Boolean;
+    L_bStateChecking : Boolean;
+    L_n1stCount : integer;
+    L_n2ndCount : integer;
+    L_n3rdCount : integer;
+    L_n4thCount : integer;
+    L_nCardDownLoadEcuSeq : integer;
     L_nDebugCnt : integer;
+    L_nDeviceSearchIndex : integer;
+    L_nNodeSearchIndex : integer;
+    L_nNodeUpdateIndex : integer;
+    L_nSendDelayCount : integer;
+    L_nSendMsgNo : integer;
+    L_nStateCheckCount : integer;
+    L_nStateCheckEcuSeq : integer;
+    L_stComBuffer : string;
+    L_stDeviceVer : string;
+    L_stReceivedLastpacket : string;
+    L_wsa_data : twsaData;
     FTCSDeviceSender : TCriticalSection;
     //Handle 생성 부분
     FHandle : THandle;
@@ -437,15 +458,15 @@ var
 begin
   if G_bApplicationTerminate then Exit;
 
-  if G_bCardDownLoading[NO] then Exit;
+  if L_bCardDownLoading then Exit;
   if NodeDestory then Exit;
   Try
-    G_bCardDownLoading[NO] := True;
+    L_bCardDownLoading := True;
     //여기서 카드데이터 다운로드 하자.
-    if G_nCardDownLoadEcuSeq[NO] > NodeDeviceList.Count - 1 then G_nCardDownLoadEcuSeq[NO] := 0;
+    if L_nCardDownLoadEcuSeq > NodeDeviceList.Count - 1 then L_nCardDownLoadEcuSeq := 0;
 
     Try
-      for i := G_nCardDownLoadEcuSeq[NO] to NodeDeviceList.Count - 1 do
+      for i := L_nCardDownLoadEcuSeq to NodeDeviceList.Count - 1 do
       begin
         if NodeDestory then Exit;
         if (TDevice(NodeDeviceList.Objects[i]).DEVICECONNECTED = csConnected) and Not TDevice(NodeDeviceList.Objects[i]).CardDownloadRCV then
@@ -456,10 +477,10 @@ begin
             OnAutoDownLoadStart(self,NO,TDevice(NodeDeviceList.Objects[i]).EcuId + ' CardDownLoad Start ');
 
           break;
-        end else G_nCardDownLoadEcuSeq[NO] := i;
+        end else L_nCardDownLoadEcuSeq := i;
       end;
 
-(*      if G_nCardDownLoadEcuSeq[NO] = NodeDeviceList.Count - 1 then
+(*      if L_nCardDownLoadEcuSeq = NodeDeviceList.Count - 1 then
       begin
         for i := 0 to NodeDeviceList.Count - 1 do
         begin
@@ -472,13 +493,13 @@ begin
         //if bResult then CardDownLoadTimer.Enabled := False;  //전체 다운로드 완료시 타이머 스톱
       end;
 *)
-      G_nCardDownLoadEcuSeq[NO] := G_nCardDownLoadEcuSeq[NO] + 1;
+      L_nCardDownLoadEcuSeq := L_nCardDownLoadEcuSeq + 1;
     Except
-      G_nCardDownLoadEcuSeq[NO] := G_nCardDownLoadEcuSeq[NO] + 1;
+      L_nCardDownLoadEcuSeq := L_nCardDownLoadEcuSeq + 1;
       LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.CardDownLoadTimerTimer');
     End;
   Finally
-    G_bCardDownLoading[NO] := False;
+    L_bCardDownLoading := False;
   End;
 end;
 
@@ -624,7 +645,7 @@ begin
   FTPComplete := True;
   FireReceive := 0;
 
-  G_nSendMsgNo[NO] := 0;
+  L_nSendMsgNo := 0;
   for i := 0 to HIGH(L_cNodeRCVSTATE) do
   begin
     L_cNodeRCVSTATE[i] := 'Y';
@@ -658,7 +679,7 @@ procedure TNode.CurrentAlarmEvent(Sender: TObject; aNodeNo, aECUID, aCmd,
 begin
   if (aZoneState <> 'N') and (aAlarmStateCode = G_stFireStateCode) then
   begin
-    G_bFireEvent[NO] := True;
+    L_bFireEvent := True;
     if FireReceive = 1 then FireReceive := 2; //송신중이면 수신으로 처리하자.
   end;
 
@@ -928,7 +949,7 @@ begin
   if FireGubunCode = '' then Exit; //화재그룹 사용 안하는 경우
   if (aFireGubunCode <> '999') and (FireGubunCode <> aFireGubunCode) then Exit;
   if FireReceive = 0 then FireReceive := 1;  //화재 발생 하지 않은것으로 설정 되어 있으면 화재발생 수신해야 한다.
-  G_bFireEvent[NO] := True;
+  L_bFireEvent := True;
   SendPacket('00','R',GetSendMsgNo,GetDeviceVer, 'SM2900Fire',1);
   LogSave(G_stLogDirectory + '\Fire' + FormatDateTime('yyyymmdd',now) + '.log',NODEIP + ' Fire ');
 end;
@@ -936,7 +957,7 @@ end;
 procedure TNode.FireRecovery;
 begin
   FireReceive := 0; //화재 복구로 무조건 처리하자.
-  G_bFireEvent[NO] := False;
+  L_bFireEvent := False;
   SendPacket('00','R',GetSendMsgNo,GetDeviceVer, 'SM2699RSM2500',1);
   LogSave(G_stLogDirectory + '\Fire' + FormatDateTime('yyyymmdd',now) + '.log',NODEIP + ' Fire Recovery');
 
@@ -964,7 +985,7 @@ begin
        (TDevice(NodeDeviceList.Objects[i]).FireEvent) then bResult := True;
   end;
 
-  if bResult and Not G_bFireEvent[NO] then FireRecovery;
+  if bResult and Not L_bFireEvent then FireRecovery;
 
   FireEvent := bResult;
 end;
@@ -1480,9 +1501,10 @@ end;
 
 function TNode.GetDeviceVer: string;
 begin
-  if G_stDeviceVer[NO] = '' then G_stDeviceVer[NO] := 'K1';
 
-  Result := G_stDeviceVer[NO];
+  if L_stDeviceVer = '' then L_stDeviceVer := 'K1';
+
+  Result := L_stDeviceVer;
 end;
 
 function TNode.GetHandle: THandle;
@@ -1575,9 +1597,9 @@ end;
 
 function TNode.GetSendMsgNo: char;
 begin
-  result := inttostr(G_nSendMsgNo[NO])[1];
-  G_nSendMsgNo[NO] := G_nSendMsgNo[NO] + 1;
-  if G_nSendMsgNo[NO] > 9 then G_nSendMsgNo[NO] := 0;
+  result := inttostr(L_nSendMsgNo)[1];
+  L_nSendMsgNo := L_nSendMsgNo + 1;
+  if L_nSendMsgNo > 9 then L_nSendMsgNo := 0;
 end;
 
 function TNode.HandleAllocated: Boolean;
@@ -1678,7 +1700,7 @@ end;
 
 procedure TNode.handle_fd_write_notification(p_socket: Integer);
 begin
-  G_bSocketWriting[NO] := False; //전송 완료
+  if NO>=0 then L_bSocketWriting := False; //전송 완료
 end;
 
 procedure TNode.handle_wm_async_select(var Msg: TMessage);
@@ -1757,25 +1779,25 @@ begin
     chCMD:= stTemp[1];
     stTemp := copy(stPacket,G_nIDLength + 11,1);
     chMsgNo:= stTemp[1];
-    G_stDeviceVer[NO] := copy(stPacket,6,2);
+    L_stDeviceVer := copy(stPacket,6,2);
     if Assigned(FOnNodePacket) then
     begin
-      OnNodePacket(Self,No,NodeName,stECUID,chCMD,chMsgNo,G_stDeviceVer[NO],stPacket,'RX');
+      OnNodePacket(Self,No,NodeName,stECUID,chCMD,chMsgNo,L_stDeviceVer,stPacket,'RX');
     end;
     //066*SK000000000Arn20140113144756MN0000d00***160000000000******81
 
     stRealData := Copy(stPacket,G_nIDLength + 12,Length(stPacket)-(G_nIDLength + 14));
 
-    if G_stReceivedLastpacket[NO] = stPacket then
+    if L_stReceivedLastpacket = stPacket then
     begin
       if (chCMD <> 'c') AND (chCMD <> 'A') then   //알람 데이터 또는 출입이벤트가 아니면 Ack 전송
       begin
-        SendPacket(stECUID,'a',chMsgNo,G_stDeviceVer[NO], 'w000', 0); //Ack 전송
+        SendPacket(stECUID,'a',chMsgNo,L_stDeviceVer, 'w000', 0); //Ack 전송
       end;
       //최종 패킷과 현재 패킷이 같으면 무시하자
       Exit;
     end;
-    G_stReceivedLastpacket[NO] := stPacket;
+    L_stReceivedLastpacket := stPacket;
 
     //if (pos('Bad Command',aPacketData) > 0) or (pos('COMM ERROR',aPacketData) > 0 ) or (pos('UNUSED',aPacketData) > 0 ) then
     if (pos('COMM ERROR',stPacket) > 0 ) then
@@ -1813,20 +1835,20 @@ begin
     if nIndex > -1 then
     begin
       case chCMD of
-        'A','o':{알람}      begin  TDevice(NodeDeviceList.Objects[nIndex]).ReceiveDeviceAlarmData(stECUID,G_stDeviceVer[NO],chMsgNo,chCMD,stRealData)         end;
-        'i':{Initial}       begin  TDevice(NodeDeviceList.Objects[nIndex]).ReceiveDeviceRegDataProcess(stECUID,G_stDeviceVer[NO],chMsgNo,stRealData)             end;
-        'R':{Remote}        begin  TDevice(NodeDeviceList.Objects[nIndex]).ReceiveDeviceRemoteDataProcess(stECUID,G_stDeviceVer[NO],chMsgNo,stRealData)          end;
-        'r':{Remote Answer} begin  TDevice(NodeDeviceList.Objects[nIndex]).ReceiveDeviceRemoteDataProcess(stECUID,G_stDeviceVer[NO],chMsgNo,stRealData)          end;
-        'c':{출입통제}      begin  TDevice(NodeDeviceList.Objects[nIndex]).ReceiveDeviceAccessDataProcess(stECUID,G_stDeviceVer[NO],chMsgNo,stRealData)          end;
-        'f':{펌웨어}        begin  TDevice(NodeDeviceList.Objects[nIndex]).ReceiveDeviceFirmwareProcess(stECUID,G_stDeviceVer[NO],chMsgNo,stRealData)            end;
-        'F':{펌웨어}        begin  TDevice(NodeDeviceList.Objects[nIndex]).ReceiveDeviceFirmwareProcess2(stECUID,G_stDeviceVer[NO],chMsgNo,stRealData)           end;
-        '*':{브로드캐스트}  begin  TDevice(NodeDeviceList.Objects[nIndex]).ReceiveDeviceBroadCastProcess(stECUID,G_stDeviceVer[NO],chMsgNo,stRealData)           end;
-        'E':{ERROR}         begin  TDevice(NodeDeviceList.Objects[nIndex]).ReceiveDeviceErrorDataProcess(stECUID,G_stDeviceVer[NO],chMsgNo,stRealData)       end;
-        'm':{관제데이터 모니터링 } begin TDevice(NodeDeviceList.Objects[nIndex]).ReceiveDevicePTMonitoringProcess(stECUID,G_stDeviceVer[NO],chMsgNo,stRealData)  end;
-        'M':{메세지참조 }   begin TDevice(NodeDeviceList.Objects[nIndex]).ReceiveDeviceMessageProcess(stECUID,G_stDeviceVer[NO],chMsgNo,stRealData)  end;
-        '#':{게이지 값 모니터링} begin TDevice(NodeDeviceList.Objects[nIndex]).ReceiveDeviceGageMonitor(stECUID,G_stDeviceVer[NO],chMsgNo,stRealData)            end;
+        'A','o':{알람}      begin  TDevice(NodeDeviceList.Objects[nIndex]).ReceiveDeviceAlarmData(stECUID,L_stDeviceVer,chMsgNo,chCMD,stRealData)         end;
+        'i':{Initial}       begin  TDevice(NodeDeviceList.Objects[nIndex]).ReceiveDeviceRegDataProcess(stECUID,L_stDeviceVer,chMsgNo,stRealData)             end;
+        'R':{Remote}        begin  TDevice(NodeDeviceList.Objects[nIndex]).ReceiveDeviceRemoteDataProcess(stECUID,L_stDeviceVer,chMsgNo,stRealData)          end;
+        'r':{Remote Answer} begin  TDevice(NodeDeviceList.Objects[nIndex]).ReceiveDeviceRemoteDataProcess(stECUID,L_stDeviceVer,chMsgNo,stRealData)          end;
+        'c':{출입통제}      begin  TDevice(NodeDeviceList.Objects[nIndex]).ReceiveDeviceAccessDataProcess(stECUID,L_stDeviceVer,chMsgNo,stRealData)          end;
+        'f':{펌웨어}        begin  TDevice(NodeDeviceList.Objects[nIndex]).ReceiveDeviceFirmwareProcess(stECUID,L_stDeviceVer,chMsgNo,stRealData)            end;
+        'F':{펌웨어}        begin  TDevice(NodeDeviceList.Objects[nIndex]).ReceiveDeviceFirmwareProcess2(stECUID,L_stDeviceVer,chMsgNo,stRealData)           end;
+        '*':{브로드캐스트}  begin  TDevice(NodeDeviceList.Objects[nIndex]).ReceiveDeviceBroadCastProcess(stECUID,L_stDeviceVer,chMsgNo,stRealData)           end;
+        'E':{ERROR}         begin  TDevice(NodeDeviceList.Objects[nIndex]).ReceiveDeviceErrorDataProcess(stECUID,L_stDeviceVer,chMsgNo,stRealData)       end;
+        'm':{관제데이터 모니터링 } begin TDevice(NodeDeviceList.Objects[nIndex]).ReceiveDevicePTMonitoringProcess(stECUID,L_stDeviceVer,chMsgNo,stRealData)  end;
+        'M':{메세지참조 }   begin TDevice(NodeDeviceList.Objects[nIndex]).ReceiveDeviceMessageProcess(stECUID,L_stDeviceVer,chMsgNo,stRealData)  end;
+        '#':{게이지 값 모니터링} begin TDevice(NodeDeviceList.Objects[nIndex]).ReceiveDeviceGageMonitor(stECUID,L_stDeviceVer,chMsgNo,stRealData)            end;
         'e':{ENQ}           begin {ErrorDataProcess(stECUID,G_stDeviceVer,stRealData) }           end;
-        else {error 발생: [E003]정의 되지 않은 커맨드}  begin TDevice(NodeDeviceList.Objects[nIndex]).ReceiveDeviceErrorDataProcess(stECUID,G_stDeviceVer[NO],chMsgNo,stRealData) end;
+        else {error 발생: [E003]정의 되지 않은 커맨드}  begin TDevice(NodeDeviceList.Objects[nIndex]).ReceiveDeviceErrorDataProcess(stECUID,L_stDeviceVer,chMsgNo,stRealData) end;
       end;
     end else
     begin
@@ -1835,26 +1857,26 @@ begin
       if nIndex > -1 then
       begin
         case chCMD of
-          'A','o':{알람}      begin  TDevice(NodeDeviceList.Objects[nIndex]).ReceiveDeviceAlarmData(stECUID,G_stDeviceVer[NO],chMsgNo,chCMD,stRealData)         end;
-          'i':{Initial}       begin  TDevice(NodeDeviceList.Objects[nIndex]).ReceiveDeviceRegDataProcess(stECUID,G_stDeviceVer[NO],chMsgNo,stRealData)             end;
-          'R':{Remote}        begin  TDevice(NodeDeviceList.Objects[nIndex]).ReceiveDeviceRemoteDataProcess(stECUID,G_stDeviceVer[NO],chMsgNo,stRealData)          end;
-          'r':{Remote Answer} begin  TDevice(NodeDeviceList.Objects[nIndex]).ReceiveDeviceRemoteDataProcess(stECUID,G_stDeviceVer[NO],chMsgNo,stRealData)          end;
-          'c':{출입통제}      begin  TDevice(NodeDeviceList.Objects[nIndex]).ReceiveDeviceAccessDataProcess(stECUID,G_stDeviceVer[NO],chMsgNo,stRealData)          end;
-          'f':{펌웨어}        begin  TDevice(NodeDeviceList.Objects[nIndex]).ReceiveDeviceFirmwareProcess(stECUID,G_stDeviceVer[NO],chMsgNo,stRealData)            end;
-          'F':{펌웨어}        begin  TDevice(NodeDeviceList.Objects[nIndex]).ReceiveDeviceFirmwareProcess2(stECUID,G_stDeviceVer[NO],chMsgNo,stRealData)           end;
-          '*':{브로드캐스트}  begin  TDevice(NodeDeviceList.Objects[nIndex]).ReceiveDeviceBroadCastProcess(stECUID,G_stDeviceVer[NO],chMsgNo,stRealData)           end;
-          'E':{ERROR}         begin  TDevice(NodeDeviceList.Objects[nIndex]).ReceiveDeviceErrorDataProcess(stECUID,G_stDeviceVer[NO],chMsgNo,stRealData)       end;
-          'm':{관제데이터 모니터링 } begin TDevice(NodeDeviceList.Objects[nIndex]).ReceiveDevicePTMonitoringProcess(stECUID,G_stDeviceVer[NO],chMsgNo,stRealData)  end;
-          'M':{메세지참조 }   begin TDevice(NodeDeviceList.Objects[nIndex]).ReceiveDeviceMessageProcess(stECUID,G_stDeviceVer[NO],chMsgNo,stRealData)  end;
-          '#':{게이지 값 모니터링} begin TDevice(NodeDeviceList.Objects[nIndex]).ReceiveDeviceGageMonitor(stECUID,G_stDeviceVer[NO],chMsgNo,stRealData)            end;
+          'A','o':{알람}      begin  TDevice(NodeDeviceList.Objects[nIndex]).ReceiveDeviceAlarmData(stECUID,L_stDeviceVer,chMsgNo,chCMD,stRealData)         end;
+          'i':{Initial}       begin  TDevice(NodeDeviceList.Objects[nIndex]).ReceiveDeviceRegDataProcess(stECUID,L_stDeviceVer,chMsgNo,stRealData)             end;
+          'R':{Remote}        begin  TDevice(NodeDeviceList.Objects[nIndex]).ReceiveDeviceRemoteDataProcess(stECUID,L_stDeviceVer,chMsgNo,stRealData)          end;
+          'r':{Remote Answer} begin  TDevice(NodeDeviceList.Objects[nIndex]).ReceiveDeviceRemoteDataProcess(stECUID,L_stDeviceVer,chMsgNo,stRealData)          end;
+          'c':{출입통제}      begin  TDevice(NodeDeviceList.Objects[nIndex]).ReceiveDeviceAccessDataProcess(stECUID,L_stDeviceVer,chMsgNo,stRealData)          end;
+          'f':{펌웨어}        begin  TDevice(NodeDeviceList.Objects[nIndex]).ReceiveDeviceFirmwareProcess(stECUID,L_stDeviceVer,chMsgNo,stRealData)            end;
+          'F':{펌웨어}        begin  TDevice(NodeDeviceList.Objects[nIndex]).ReceiveDeviceFirmwareProcess2(stECUID,L_stDeviceVer,chMsgNo,stRealData)           end;
+          '*':{브로드캐스트}  begin  TDevice(NodeDeviceList.Objects[nIndex]).ReceiveDeviceBroadCastProcess(stECUID,L_stDeviceVer,chMsgNo,stRealData)           end;
+          'E':{ERROR}         begin  TDevice(NodeDeviceList.Objects[nIndex]).ReceiveDeviceErrorDataProcess(stECUID,L_stDeviceVer,chMsgNo,stRealData)       end;
+          'm':{관제데이터 모니터링 } begin TDevice(NodeDeviceList.Objects[nIndex]).ReceiveDevicePTMonitoringProcess(stECUID,L_stDeviceVer,chMsgNo,stRealData)  end;
+          'M':{메세지참조 }   begin TDevice(NodeDeviceList.Objects[nIndex]).ReceiveDeviceMessageProcess(stECUID,L_stDeviceVer,chMsgNo,stRealData)  end;
+          '#':{게이지 값 모니터링} begin TDevice(NodeDeviceList.Objects[nIndex]).ReceiveDeviceGageMonitor(stECUID,L_stDeviceVer,chMsgNo,stRealData)            end;
           'e':{ENQ}           begin {ErrorDataProcess(stECUID,G_stDeviceVer,stRealData) }           end;
-          else {error 발생: [E003]정의 되지 않은 커맨드}  begin TDevice(NodeDeviceList.Objects[nIndex]).ReceiveDeviceErrorDataProcess(stECUID,G_stDeviceVer[NO],chMsgNo,stRealData) end;
+          else {error 발생: [E003]정의 되지 않은 커맨드}  begin TDevice(NodeDeviceList.Objects[nIndex]).ReceiveDeviceErrorDataProcess(stECUID,L_stDeviceVer,chMsgNo,stRealData) end;
         end;
       end
     end;
     if (chCMD <> 'c') then
     begin
-      SendPacket(stECUID,'a',chMsgNo,G_stDeviceVer[NO], 'w000', 0); //Ack 전송
+      SendPacket(stECUID,'a',chMsgNo,L_stDeviceVer, 'w000', 0); //Ack 전송
     end;
 
     Result:= True;
@@ -1875,18 +1897,18 @@ begin
   Try
     bLoop := False;
     repeat
-      if Trim(G_stComBuffer[NO]) = '' then Exit;
-      nFormat := dmDevicePacket.PacketFormatCheck(G_stComBuffer[NO],G_nProgramType,stLeavePacketData,stPacketData);
+      if Trim(L_stComBuffer) = '' then Exit;
+      nFormat := dmDevicePacket.PacketFormatCheck(L_stComBuffer,G_nProgramType,stLeavePacketData,stPacketData);
       if nFormat < 0 then
       begin
-        if G_stComBuffer[NO] = '' then break;
+        if L_stComBuffer = '' then break;
         if nFormat = -1 then  //비정상 전문 인경우
         begin
-           Delete(G_stComBuffer[NO],1,1);
+           Delete(L_stComBuffer,1,1);
            continue;
         end else break;   //포맷 길이가 작게 들어온 경우
       end;
-      G_stComBuffer[NO]:= stLeavePacketData;
+      L_stComBuffer:= stLeavePacketData;
       bDecoderFormat := False;
       if nFormat = 1 then bDecoderFormat := False
       else if nFormat = 2 then bDecoderFormat := True
@@ -1903,7 +1925,7 @@ begin
         NodeDataPacketProcess(stPacketData);
       end;
 
-      if pos(ETX,G_stComBuffer[NO]) = 0 then bLoop := True
+      if pos(ETX,L_stComBuffer) = 0 then bLoop := True
       else bLoop := False;
       Application.ProcessMessages;
     until bLoop;
@@ -2162,15 +2184,16 @@ var
   nCardDelayCount : integer;
 begin
   if G_bApplicationTerminate then Exit;
-  if G_bSocketWriting[NO] then
+
+  if L_bSocketWriting then
   begin
     if Assigned(FOnNodePacket) then
     begin
       OnNodePacket(Self,No,NodeName,'00','c','0','Er',stPacket,'rTX');
     end;
-    G_nSendDelayCount[NO] := G_nSendDelayCount[NO] + 1;
+    L_nSendDelayCount := L_nSendDelayCount + 1;
 
-    if (G_nSendDelayCount[NO] > 100) then SocketOpen := False;
+    if (L_nSendDelayCount > 100) then SocketOpen := False;
 
     Exit; //전송 중에는 보내지 말자.  => 전송 완료 메시지 이벤트가 발생 안되어 무용지물
   end;
@@ -2189,14 +2212,14 @@ begin
       L_nDebugCnt := 0;
     end;
 
-    G_nSendDelayCount[NO] := G_nSendDelayCount[NO] + 1;
+    L_nSendDelayCount := L_nSendDelayCount + 1;
     stPacket := '';
-    if (Send1stDataList.Count > 0) and (G_n1stCount[NO] < 5) then
+    if (Send1stDataList.Count > 0) and (L_n1stCount < 5) then
     begin
-      if G_nSendDelayCount[NO] > nCardDelayCount then G_nSendDelayCount[NO] := 0;
+      if L_nSendDelayCount > nCardDelayCount then L_nSendDelayCount := 0;
       stPacket := Send1stDataList.Strings[0];
       Send1stDataList.Delete(0);
-      inc(G_n1stCount[NO]);
+      inc(L_n1stCount);
       G_nDebugSendPacketCount := G_nDebugSendPacketCount - 1;
       if Assigned(FOnNodePacket) then
       begin
@@ -2207,13 +2230,13 @@ begin
         LogSave(G_stLogDirectory + '\NodeSendPacketTimer' + FormatDateTime('yyyymmdd',now) + '.log',inttostr(No) + ' Send1stDataList(' + inttostr(Send2ndDataList.Count) + '/' + inttostr(Send3rdDataList.Count) + '/' + inttostr(Send4thDataList.Count) + ')' );
         L_nDebugCnt := 0;
       end;
-    end else if (Send2ndDataList.Count > 0) and (G_n2ndCount[NO] < 5) then
+    end else if (Send2ndDataList.Count > 0) and (L_n2ndCount < 5) then
     begin
-      G_n1stCount[NO] := 0;
-      if G_nSendDelayCount[NO] > nCardDelayCount then G_nSendDelayCount[NO] := 0;
+      L_n1stCount := 0;
+      if L_nSendDelayCount > nCardDelayCount then L_nSendDelayCount := 0;
       stPacket := Send2ndDataList.Strings[0];
       Send2ndDataList.Delete(0);
-      inc(G_n2ndCount[NO]);
+      inc(L_n2ndCount);
       G_nDebugSendPacketCount := G_nDebugSendPacketCount - 1;
       if Assigned(FOnNodePacket) then
       begin
@@ -2224,14 +2247,14 @@ begin
         LogSave(G_stLogDirectory + '\NodeSendPacketTimer' + FormatDateTime('yyyymmdd',now) + '.log',inttostr(No) + ' Send2ndDataList(' + inttostr(Send2ndDataList.Count) + '/' + inttostr(Send3rdDataList.Count) + '/' + inttostr(Send4thDataList.Count) + ')');
         L_nDebugCnt := 0;
       end;
-    end else if (Send3rdDataList.Count > 0) and (G_n3rdCount[NO] < 5) then
+    end else if (Send3rdDataList.Count > 0) and (L_n3rdCount < 5) then
     begin
-      G_n1stCount[NO] := 0;
-      G_n2ndCount[NO] := 0;
-      if G_nSendDelayCount[NO] > nCardDelayCount then G_nSendDelayCount[NO] := 0;
+      L_n1stCount := 0;
+      L_n2ndCount := 0;
+      if L_nSendDelayCount > nCardDelayCount then L_nSendDelayCount := 0;
       stPacket := Send3rdDataList.Strings[0];
       Send3rdDataList.Delete(0);
-      inc(G_n3rdCount[NO]);
+      inc(L_n3rdCount);
       G_nDebugSendPacketCount := G_nDebugSendPacketCount - 1;
       if Assigned(FOnNodePacket) then
       begin
@@ -2242,16 +2265,16 @@ begin
         LogSave(G_stLogDirectory + '\NodeSendPacketTimer' + FormatDateTime('yyyymmdd',now) + '.log',inttostr(No) + ' Send3ndDataList(' + inttostr(Send2ndDataList.Count) + '/' + inttostr(Send3rdDataList.Count) + '/' + inttostr(Send4thDataList.Count) + ')');
         L_nDebugCnt := 0;
       end;
-    end else if (Send4thDataList.Count > 0) and (G_n4thCount[NO] < 5) then
+    end else if (Send4thDataList.Count > 0) and (L_n4thCount < 5) then
     begin
-      G_n1stCount[NO] := 0;
-      G_n2ndCount[NO] := 0;
-      G_n3rdCount[NO] := 0;
-      if G_nSendDelayCount[NO] < nCardDelayCount then Exit;       //카드데이터 다운로드시 200ms 에 하나씩 전송 하기 위해서 400ms 안된 경우 전송 하지 말자.
-      G_nSendDelayCount[NO] := 0;
+      L_n1stCount := 0;
+      L_n2ndCount := 0;
+      L_n3rdCount := 0;
+      if L_nSendDelayCount < nCardDelayCount then Exit;       //카드데이터 다운로드시 200ms 에 하나씩 전송 하기 위해서 400ms 안된 경우 전송 하지 말자.
+      L_nSendDelayCount := 0;
       stPacket := Send4thDataList.Strings[0];
       Send4thDataList.Delete(0);
-      inc(G_n4thCount[NO]);
+      inc(L_n4thCount);
       G_nDebugSendPacketCount := G_nDebugSendPacketCount - 1;
       if Assigned(FOnNodePacket) then
       begin
@@ -2264,10 +2287,10 @@ begin
       end;
     end else
     begin
-      G_n1stCount[NO] := 0;
-      G_n2ndCount[NO] := 0;
-      G_n3rdCount[NO] := 0;
-      G_n4thCount[NO] := 0;
+      L_n1stCount := 0;
+      L_n2ndCount := 0;
+      L_n3rdCount := 0;
+      L_n4thCount := 0;
     end;
     if stPacket <> '' then
     begin
@@ -2311,7 +2334,7 @@ begin
         begin
           if l_result = wsaEWouldBlock  then
           begin
-            G_bSocketWriting[NO] := True;  //Socket에 Full 나면 Write
+            L_bSocketWriting := True;  //Socket에 Full 나면 Write
           end else
           begin
             SocketError(self,WSAGetLastError);
@@ -2338,23 +2361,23 @@ begin
   if G_bApplicationTerminate then Exit;
   if Not (NodeConnected = csConnected) then Exit; //노드가 연결되어 있지 않으면 빠져 나감
 
-  if G_bRcvChecking[NO] or G_bStateChecking[NO] then Exit; //작업 중이면 일단 빠져 나감
+  if L_bRcvChecking or L_bStateChecking then Exit; //작업 중이면 일단 빠져 나감
   if NodeDestory then Exit;
   if Not ReciveStateChange  then Exit; //상태 변경된건이 없으면 빠져 나감.
-  if G_nStateCheckCount[NO] > 0 then
+  if L_nStateCheckCount > 0 then
   begin
-    G_nStateCheckCount[NO] := G_nStateCheckCount[NO] - 1;
+    L_nStateCheckCount := L_nStateCheckCount - 1;
   end;
 
-  G_bRcvChecking[NO] := True;
+  L_bRcvChecking := True;
   Try
 
     Try
-      if G_nNodeUpdateIndex[NO] > HIGH(L_cNodeRCVSTATE) then G_nNodeUpdateIndex[NO] := 0;
+      if L_nNodeUpdateIndex > HIGH(L_cNodeRCVSTATE) then L_nNodeUpdateIndex := 0;
 
-      for i := G_nNodeUpdateIndex[NO] to HIGH(L_cNodeRCVSTATE) do
+      for i := L_nNodeUpdateIndex to HIGH(L_cNodeRCVSTATE) do
       begin
-        G_nNodeUpdateIndex[NO] := i + 1;
+        L_nNodeUpdateIndex := i + 1;
         if L_cNodeRCVSTATE[i] = 'U' then  //변경된 건이 있으면 송신 하자....
         begin
           if NodeDestory then Exit;
@@ -2363,10 +2386,10 @@ begin
         end;
         Application.ProcessMessages;
       end;
-      if G_nNodeSearchIndex[NO] > HIGH(L_cNodeRCVSTATE) then G_nNodeSearchIndex[NO] := 0;
-      for i := G_nNodeSearchIndex[NO] to HIGH(L_cNodeRCVSTATE) do
+      if L_nNodeSearchIndex > HIGH(L_cNodeRCVSTATE) then L_nNodeSearchIndex := 0;
+      for i := L_nNodeSearchIndex to HIGH(L_cNodeRCVSTATE) do
       begin
-        G_nNodeSearchIndex[NO] := i + 1;
+        L_nNodeSearchIndex := i + 1;
         if L_cNodeRCVSTATE[i] = 'N' then  //상태를 수신할 건이 있으면 수신 체크 하자....
         begin
           if NodeDestory then Exit;
@@ -2376,11 +2399,11 @@ begin
         Application.ProcessMessages;
       end;
 
-      if G_nDeviceSearchIndex[NO] > NodeDeviceList.Count - 1 then G_nDeviceSearchIndex[NO] := 0;
+      if L_nDeviceSearchIndex > NodeDeviceList.Count - 1 then L_nDeviceSearchIndex := 0;
 
-      for i := G_nDeviceSearchIndex[NO] to NodeDeviceList.Count - 1 do  //컨트롤러의 상태가 변경 또는 체크 할것이 있는지 확인하자
+      for i := L_nDeviceSearchIndex to NodeDeviceList.Count - 1 do  //컨트롤러의 상태가 변경 또는 체크 할것이 있는지 확인하자
       begin
-        G_nDeviceSearchIndex[NO] := i + 1;
+        L_nDeviceSearchIndex := i + 1;
         if TDevice(NodeDeviceList.Objects[i]).DeviceConnected  = csConnected then
         begin
           if TDevice(NodeDeviceList.Objects[i]).ReciveStateChange then
@@ -2427,7 +2450,7 @@ begin
       LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.RcvCheckTimerTimer');
     End;
   Finally
-    G_bRcvChecking[NO] := False;
+    L_bRcvChecking := False;
   End;
 
 end;
@@ -3374,8 +3397,10 @@ procedure TNode.SetNo(const Value: Integer);
 begin
   if FNO = Value then Exit;
   FNo := Value;
-  G_bSocketWriting[Value] := False;
-  G_bFireEvent[NO] := False;
+
+
+  L_bSocketWriting := False;
+  L_bFireEvent := False;
   L_c_reception_buffer := nil;
 end;
 
@@ -3394,9 +3419,9 @@ begin
       if (L_c_reception_buffer = nil) then
         L_c_reception_buffer:= c_byte_buffer.create_byte_buffer('reception_buffer', k_buffer_max);  //소켓 연결시에 버퍼 생성하자.
       NodeConnectTime := Now;
-      G_bSocketWriting[NO] := False;
+      L_bSocketWriting := False;
       DoorArmAreaStateRCV := False;
-      G_nStateCheckCount[NO] := 40;
+      L_nStateCheckCount := 40;
 //      RcvCheckTimer.Interval := 20000; //20초 후부터 기기정보 수신 체크
 //      RcvCheckTimer.Enabled := True; //수신상태 체크
       ControlNodeToDeviceTimeSync;
@@ -3409,7 +3434,7 @@ begin
         L_c_reception_buffer.free;   //소켓 끊어지면 소켓 Clear 하자.
         L_c_reception_buffer := nil;
       end;
-      G_stComBuffer[NO] := ''; //버퍼 Clear;
+      L_stComBuffer := ''; //버퍼 Clear;
       NodeDisConnectTime := Now;
       if RcvDataList.Count > 0 then
       begin
@@ -3551,7 +3576,7 @@ begin
     ConnectRetryCount := ConnectRetryCount + 1;
     LastReceiveTime := Now;
     l_version:= $0101;
-    l_result := wsaStartup(l_version, G_wsa_data[NO]);
+    l_result := wsaStartup(l_version, L_wsa_data);
     if l_result <> 0 then
     begin
       SocketOpen := False;
@@ -3651,7 +3676,7 @@ begin
     stTemp := ByteCopy(Buf,DataLen);   //FD -> 3F 로 변하는 부분때문에...
 //    pTemp := pCopy(Buf,DataLen);
     LastReceiveTime := Now;
-    G_stComBuffer[NO] := G_stComBuffer[NO] + stTemp;
+    L_stComBuffer := L_stComBuffer + stTemp;
     NodeDataReadingProcessing;
   Except
     LogSave(G_stLogDirectory + '\err' + FormatDateTime('yyyymmdd',now) + '.log','Node.TcpClientReceive');
@@ -3667,7 +3692,8 @@ begin
   if G_bApplicationTerminate then Exit;
   if Not (NodeConnected = csConnected) then Exit; //노드가 연결되어 있지 않으면 빠져 나감
 
-  if G_bRcvChecking[NO] or G_bStateChecking[NO] then Exit; //작업 중이면 일단 빠져 나감
+
+  if L_bRcvChecking or L_bStateChecking then Exit; //작업 중이면 일단 빠져 나감
   if NodeDestory then Exit;
 
   Try
@@ -3696,15 +3722,15 @@ begin
       Exit;
     end;
 
-    G_bStateChecking[NO] := True;
+    L_bStateChecking := True;
     Try
       if DoorArmAreaStateRCV then Exit; //전체 상태 수신 한 상태이면
-      if G_nStateCheckEcuSeq[NO] < 0 then G_nStateCheckEcuSeq[NO] := 0;
+      if L_nStateCheckEcuSeq < 0 then L_nStateCheckEcuSeq := 0;
       if ConnectDeviceList.Count < 1 then Exit;
-      if G_nStateCheckEcuSeq[NO] > ConnectDeviceList.Count - 1  then G_nStateCheckEcuSeq[NO] := 0;
+      if L_nStateCheckEcuSeq > ConnectDeviceList.Count - 1  then L_nStateCheckEcuSeq := 0;
 
 
-      nIndex := NodeDeviceList.IndexOf(ConnectDeviceList.Strings[G_nStateCheckEcuSeq[NO]]);
+      nIndex := NodeDeviceList.IndexOf(ConnectDeviceList.Strings[L_nStateCheckEcuSeq]);
       if nIndex < 0 then Exit;
       if TDevice(NodeDeviceList.Objects[nIndex]).CurrentArmDoorStateCheckRCV = 'Y' then
       begin
@@ -3728,8 +3754,8 @@ begin
         TDevice(NodeDeviceList.Objects[nIndex]).DeviceCurrentArmDoorStateCheck;
       end;
     Finally
-      G_nStateCheckEcuSeq[NO] := G_nStateCheckEcuSeq[NO] + 1;
-      G_bStateChecking[NO] := False;
+      L_nStateCheckEcuSeq := L_nStateCheckEcuSeq + 1;
+      L_bStateChecking := False;
     End;
   Finally
   End;

@@ -115,7 +115,6 @@ begin
   Application.CreateForm(TdmMonitoringServer, dmMonitoringServer);
   Application.CreateForm(TdmDirectServer, dmDirectServer);
   Application.CreateForm(TdmFTPModule, dmFTPModule);
-  Application.CreateForm(TdmNodeServer, dmNodeServer);
   Application.CreateForm(TfmMain, fmMain);
   Application.Run;
 end.

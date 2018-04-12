@@ -362,7 +362,7 @@ var
   FingerReaderList : TStringList; //지문리더 리스트
 
 //통신서버 스택 함수 제거용
-(*  G_bCardDownLoading : array [0..10000] of  Boolean;  //카드 다운로드 중
+  G_bCardDownLoading : array [0..10000] of  Boolean;  //카드 다운로드 중
   G_bFireEvent : array [0..10000] of  Boolean;        //화재 알람 발생
   G_bRcvChecking : array [0..10000] of Boolean;   //등록정보 수신중
   G_bSocketWriting : array [0..10000] of Boolean;
@@ -384,7 +384,6 @@ var
   G_stDeviceVer : array [0..10000] of string;
   G_stReceivedLastpacket : array [0..10000] of String;
   G_wsa_data : array [0..10000] of twsaData;
-*)
 
   G_nDebugCardDownLoadCount : integer;
   G_nDebugSendPacketCount : integer;

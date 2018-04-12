@@ -2,9 +2,9 @@ inherited fmMain: TfmMain
   Left = 0
   Top = 0
   Caption = 'GMS_DeviceServer'
-  ClientHeight = 730
-  ClientWidth = 1008
-  Font.Height = -11
+  ClientHeight = 955
+  ClientWidth = 1318
+  Font.Height = -14
   Font.Name = 'Tahoma'
   FormStyle = fsMDIForm
   PopupMenu = PopupMenu1
@@ -15,46 +15,54 @@ inherited fmMain: TfmMain
   OnCreate = FormCreate
   OnResize = FormResize
   OnShow = FormShow
-  ExplicitWidth = 1024
-  ExplicitHeight = 768
-  PixelsPerInch = 96
-  TextHeight = 13
+  ExplicitWidth = 1336
+  ExplicitHeight = 1000
+  PixelsPerInch = 120
+  TextHeight = 17
   inherited ExcelEnImage: TImage
-    Margins.Left = 4
-    Margins.Top = 4
-    Margins.Right = 4
-    Margins.Bottom = 4
+    Margins.Left = 5
+    Margins.Top = 5
+    Margins.Right = 5
+    Margins.Bottom = 5
   end
   inherited ExcelDisImage: TImage
-    Margins.Left = 4
-    Margins.Top = 4
-    Margins.Right = 4
-    Margins.Bottom = 4
+    Margins.Left = 5
+    Margins.Top = 5
+    Margins.Right = 5
+    Margins.Bottom = 5
   end
   inherited Img_Stop: TImage
-    Margins.Left = 4
-    Margins.Top = 4
-    Margins.Right = 4
-    Margins.Bottom = 4
+    Margins.Left = 5
+    Margins.Top = 5
+    Margins.Right = 5
+    Margins.Bottom = 5
   end
   inherited img_Start: TImage
+    Margins.Left = 5
+    Margins.Top = 5
+    Margins.Right = 5
+    Margins.Bottom = 5
+  end
+  object Image1: TImage [4]
+    Left = 10
+    Top = 178
+    Width = 1298
+    Height = 859
     Margins.Left = 4
     Margins.Top = 4
     Margins.Right = 4
     Margins.Bottom = 4
-  end
-  object Image1: TImage [4]
-    Left = 8
-    Top = 136
-    Width = 992
-    Height = 657
     Center = True
   end
   object at_Menu: TAdvToolBarPager [5]
     Left = 0
     Top = 0
-    Width = 1008
-    Height = 129
+    Width = 1318
+    Height = 169
+    Margins.Left = 4
+    Margins.Top = 4
+    Margins.Right = 4
+    Margins.Bottom = 4
     ActivePage = ApManager
     Caption.Caption = 'GMS_DeviceServer'
     CaptionButtons = []
@@ -325,19 +333,23 @@ inherited fmMain: TfmMain
       AlignWithMargins = True
       Left = -1
       Top = 53
-      Width = 1010
-      Height = 76
+      Width = 1320
+      Height = 116
+      Margins.Left = 4
+      Margins.Top = 4
+      Margins.Right = 4
+      Margins.Bottom = 4
       Caption = #47784#45768#53552#47553
       ShortCutHint = 'I'
       object AdvToolBar1: TAdvToolBar
         Left = 3
         Top = 3
-        Width = 158
-        Height = 70
-        Margins.Left = 4
-        Margins.Top = 4
-        Margins.Right = 4
-        Margins.Bottom = 4
+        Width = 206
+        Height = 110
+        Margins.Left = 5
+        Margins.Top = 5
+        Margins.Right = 5
+        Margins.Bottom = 5
         AllowFloating = True
         Caption = ''
         CaptionFont.Charset = DEFAULT_CHARSET
@@ -358,19 +370,19 @@ inherited fmMain: TfmMain
           Tag = 1
           Left = 2
           Top = 2
-          Width = 74
-          Height = 55
+          Width = 98
+          Height = 72
           Hint = 'MOF02i'
-          Margins.Left = 4
-          Margins.Top = 4
-          Margins.Right = 4
-          Margins.Bottom = 4
+          Margins.Left = 5
+          Margins.Top = 5
+          Margins.Right = 5
+          Margins.Bottom = 5
           AntiAlias = aaNone
           BorderStyle = bsNone
           Caption = 'PC'#47784#45768#53552#47553
           Font.Charset = DEFAULT_CHARSET
           Font.Color = clBlack
-          Font.Height = -11
+          Font.Height = -15
           Font.Name = 'Segoe UI'
           Font.Style = []
           ImageIndex = 9
@@ -423,21 +435,21 @@ inherited fmMain: TfmMain
         end
         object mn_DeviceMonitoring: TAdvGlowButton
           Tag = 1
-          Left = 76
+          Left = 100
           Top = 2
-          Width = 78
-          Height = 55
+          Width = 102
+          Height = 72
           Hint = 'MOC01s'
-          Margins.Left = 4
-          Margins.Top = 4
-          Margins.Right = 4
-          Margins.Bottom = 4
+          Margins.Left = 5
+          Margins.Top = 5
+          Margins.Right = 5
+          Margins.Bottom = 5
           AntiAlias = aaNone
           BorderStyle = bsNone
           Caption = #51109#48708#47784#45768#53552#47553
           Font.Charset = DEFAULT_CHARSET
           Font.Color = clBlack
-          Font.Height = -11
+          Font.Height = -15
           Font.Name = 'Segoe UI'
           Font.Style = []
           ImageIndex = 8
@@ -495,6 +507,10 @@ inherited fmMain: TfmMain
       Top = 30
       Width = 55
       Height = 24
+      Margins.Left = 4
+      Margins.Top = 4
+      Margins.Right = 4
+      Margins.Bottom = 4
       Appearance.Shape = bsOrb
       Appearance.BorderColor = clWhite
       Appearance.BorderColorHot = clWhite
@@ -517,7 +533,7 @@ inherited fmMain: TfmMain
       AdvPreviewMenu = StartMenu
       Font.Charset = DEFAULT_CHARSET
       Font.Color = clWhite
-      Font.Height = -11
+      Font.Height = -15
       Font.Name = 'Tahoma'
       Font.Style = [fsBold]
       ParentFont = False
@@ -532,15 +548,23 @@ inherited fmMain: TfmMain
       Top = 3
       Width = 60
       Height = 25
+      Margins.Left = 4
+      Margins.Top = 4
+      Margins.Right = 4
+      Margins.Bottom = 4
       ShowCustomizeOption = False
       ShowHint = False
     end
   end
   object sb_Status: TAdvOfficeStatusBar [6]
     Left = 0
-    Top = 711
-    Width = 1008
+    Top = 936
+    Width = 1318
     Height = 19
+    Margins.Left = 4
+    Margins.Top = 4
+    Margins.Right = 4
+    Margins.Bottom = 4
     AnchorHint = False
     Panels = <
       item
@@ -645,7 +669,7 @@ inherited fmMain: TfmMain
         Progress.ShowBorder = False
         Progress.Stacked = False
         Style = psTime
-        Text = '14:36:59'
+        Text = '15:15:33'
         TimeFormat = 'hh:mm:ss'
         Width = 562
       end>
@@ -656,69 +680,100 @@ inherited fmMain: TfmMain
     Version = '1.5.2.2'
   end
   object pan_TEST: TPanel [7]
-    Left = 14
-    Top = 297
-    Width = 953
-    Height = 352
-    TabOrder = 3
+    Left = 18
+    Top = 388
+    Width = 1247
+    Height = 461
+    Margins.Left = 4
+    Margins.Top = 4
+    Margins.Right = 4
+    Margins.Bottom = 4
+    TabOrder = 4
     Visible = False
     object lb_ConnectedCount: TLabel
-      Left = 287
-      Top = 17
-      Width = 167
-      Height = 20
+      Left = 375
+      Top = 22
+      Width = 219
+      Height = 26
+      Margins.Left = 4
+      Margins.Top = 4
+      Margins.Right = 4
+      Margins.Bottom = 4
       AutoSize = False
     end
     object lb_CardDownLoadCount: TLabel
-      Left = 488
-      Top = 43
-      Width = 305
-      Height = 20
+      Left = 638
+      Top = 56
+      Width = 399
+      Height = 26
+      Margins.Left = 4
+      Margins.Top = 4
+      Margins.Right = 4
+      Margins.Bottom = 4
       AutoSize = False
     end
     object btn_ConnectedCount: TButton
-      Left = 24
-      Top = 16
-      Width = 193
-      Height = 25
+      Left = 31
+      Top = 21
+      Width = 253
+      Height = 33
+      Margins.Left = 4
+      Margins.Top = 4
+      Margins.Right = 4
+      Margins.Bottom = 4
       Caption = 'ConnectedCount'
       TabOrder = 0
       OnClick = btn_ConnectedCountClick
     end
     object btn_FailList: TButton
-      Left = 24
-      Top = 47
-      Width = 193
-      Height = 25
+      Left = 31
+      Top = 61
+      Width = 253
+      Height = 33
+      Margins.Left = 4
+      Margins.Top = 4
+      Margins.Right = 4
+      Margins.Bottom = 4
       Caption = 'FailList'
       TabOrder = 1
       OnClick = btn_FailListClick
     end
     object mem_FailList: TMemo
-      Left = 24
-      Top = 78
-      Width = 385
-      Height = 267
-      ImeName = 'Microsoft Office IME 2007'
+      Left = 31
+      Top = 102
+      Width = 504
+      Height = 349
+      Margins.Left = 4
+      Margins.Top = 4
+      Margins.Right = 4
+      Margins.Bottom = 4
       Lines.Strings = (
         'Memo1')
       TabOrder = 2
     end
     object btn_CardDownLoadCount: TButton
-      Left = 488
-      Top = 12
-      Width = 193
-      Height = 25
+      Left = 638
+      Top = 16
+      Width = 253
+      Height = 32
+      Margins.Left = 4
+      Margins.Top = 4
+      Margins.Right = 4
+      Margins.Bottom = 4
       Caption = 'CardDownLoadCount'
       TabOrder = 3
       OnClick = btn_CardDownLoadCountClick
     end
   end
   object chk_debug: TCheckBox [8]
-    Left = 7
-    Top = 135
-    Width = 97
-    Height = 17
+    Left = 9
+    Top = 177
+    Width = 127
+    Height = 22
+    Margins.Left = 4
+    Margins.Top = 4
+    Margins.Right = 4
+    Margins.Bottom = 4
     Caption = 'debug'
     TabOrder = 7
     OnClick = chk_debugClick
@@ -740,7 +795,7 @@ inherited fmMain: TfmMain
     Left = 344
     Top = 64
     Bitmap = {
-      494C01011F009400A40520002000FFFFFF00FF10FFFFFFFFFFFFFFFF424D3600
+      494C01011F009400A00520002000FFFFFF00FF10FFFFFFFFFFFFFFFF424D3600
       0000000000003600000028000000800000000001000001002000000000000000
       020000000000000000000000000000000000FFFFFF00FAFAFA00EDEDEC00EDED
       EC00EDEDED00ECECEC00ECECEC00EDEDEC00EDEDEC00EDEDEC00EDEDEC00EDED
@@ -4979,7 +5034,7 @@ inherited fmMain: TfmMain
     Left = 408
     Top = 64
     Bitmap = {
-      494C01011F009400A80520002000FFFFFF00FF10FFFFFFFFFFFFFFFF424D3600
+      494C01011F009400A40520002000FFFFFF00FF10FFFFFFFFFFFFFFFF424D3600
       0000000000003600000028000000800000000001000001002000000000000000
       020000000000000000000000000000000000FFFFFF00FAFAFA00EDEDEC00EDED
       EC00EDEDED00ECECEC00ECECEC00EDEDEC00EDEDEC00EDEDEC00EDEDEC00EDED
@@ -9218,7 +9273,7 @@ inherited fmMain: TfmMain
     Left = 664
     Top = 104
     Bitmap = {
-      494C01010E00A300080520002000FFFFFF00FF10FFFFFFFFFFFFFFFF424D3600
+      494C01010E00A300040520002000FFFFFF00FF10FFFFFFFFFFFFFFFF424D3600
       0000000000003600000028000000800000008000000001002000000000000000
       010000000000000000000000000000000000FFFFFF00FFFFFF00FFFFFF00FFFF
       FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
@@ -11341,7 +11396,7 @@ inherited fmMain: TfmMain
     Left = 664
     Top = 56
     Bitmap = {
-      494C010114009400080510001000FFFFFFFFFF10FFFFFFFFFFFFFFFF424D3600
+      494C010114009400040510001000FFFFFFFFFF10FFFFFFFFFFFFFFFF424D3600
       0000000000003600000028000000400000006000000001002000000000000060
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
@@ -12827,7 +12882,7 @@ inherited fmMain: TfmMain
     PagerCaption.TextColorExtended = clBlue
     PagerCaption.Font.Charset = DEFAULT_CHARSET
     PagerCaption.Font.Color = clWindowText
-    PagerCaption.Font.Height = -13
+    PagerCaption.Font.Height = -17
     PagerCaption.Font.Name = 'Segoe UI'
     PagerCaption.Font.Style = []
     QATAppearance.BorderColor = 13087391
@@ -13061,7 +13116,7 @@ inherited fmMain: TfmMain
     Left = 440
     Top = 64
     Bitmap = {
-      494C0101020004047C0520002000FFFFFF00FF10FFFFFFFFFFFFFFFF424D3600
+      494C010102000404780520002000FFFFFF00FF10FFFFFFFFFFFFFFFF424D3600
       0000000000003600000028000000800000002000000001002000000000000040
       000000000000000000000000000000000000FFFFFF00FFFFFF00FFFFFF00FFFF
       FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
